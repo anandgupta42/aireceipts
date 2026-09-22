@@ -9,6 +9,11 @@ permissions:
   contents: read
   issues: write
 
+# Serialize runs so two overlapping scans cannot both open a report.
+concurrency:
+  group: price-scan
+  cancel-in-progress: false
+
 jobs:
   tripwire:
     runs-on: ubuntu-latest
@@ -42,38 +47,45 @@ jobs:
 
           cat price-tripwire-report.md >> "$GITHUB_STEP_SUMMARY"
 
+          tripwire_status="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.status)")"
           drift_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.driftCount)")"
           discovery_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.discoveryCount)")"
 
           {
             echo "exit_code=$status"
+            echo "status=$tripwire_status"
             echo "drift_count=$drift_count"
             echo "discovery_count=$discovery_count"
           } >> "$GITHUB_OUTPUT"
 
-          if [ "$drift_count" -gt 0 ] || [ "$discovery_count" -gt 0 ]; then
-            echo "should_open=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_open=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # One rolling issue, not one per day: refresh the body of the open report if
-      # it exists, otherwise open it. A clean run closes the open report.
+      # One rolling issue, not one per day. `drift`/`discovery`: refresh the open report
+      # (or open it). `clean`: close it. `warn` (dataset fetch failed): touch nothing,
+      # because zero counts on a failed fetch prove nothing.
       - name: Upsert drift/discovery issue
+        if: steps.tripwire.outputs.status != 'warn'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SHOULD_OPEN: ${{ steps.tripwire.outputs.should_open }}
+          TRIPWIRE_STATUS: ${{ steps.tripwire.outputs.status }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title="prices: drift/discovery report"
-          # Exact title match on the open list; GitHub search mangles ':' and '/' in titles.
-          existing="$(gh issue list --state open --limit 200 --json number,title \
-            --jq "map(select(.title == \"$title\")) | .[0].number // empty")"
+          # Exact title match on the full open list (ascending, so the oldest report is
+          # canonical); GitHub search mangles ':' and '/' in titles.
+          matches="$(gh issue list --state open --limit 1000 --json number,title \
+            --jq "map(select(.title == \"$title\") | .number) | sort | .[]")"
+          canonical="$(printf '%s\n' "$matches" | head -n 1)"
+          duplicates="$(printf '%s\n' "$matches" | tail -n +2)"
 
-          if [ "$SHOULD_OPEN" != "true" ]; then
-            if [ -n "$existing" ]; then
-              gh issue close "$existing" --comment "Tripwire is clean as of this run: $RUN_URL"
+          # Fold any duplicates (from older runs) into the canonical issue.
+          for dup in $duplicates; do
+            gh issue close "$dup" --reason "not planned" \
+              --comment "Duplicate of #$canonical, which is the rolling price tripwire report."
+          done
+
+          if [ "$TRIPWIRE_STATUS" = "clean" ]; then
+            if [ -n "$canonical" ]; then
+              gh issue close "$canonical" --comment "Tripwire is clean as of this run: $RUN_URL"
             fi
             exit 0
           fi
@@ -84,8 +96,8 @@ jobs:
             echo "_Last refreshed by [this run]($RUN_URL). This issue is updated in place daily while drift or discovery persists._"
           } > price-tripwire-issue.md
 
-          if [ -n "$existing" ]; then
-            gh issue edit "$existing" --body-file price-tripwire-issue.md
+          if [ -n "$canonical" ]; then
+            gh issue edit "$canonical" --body-file price-tripwire-issue.md
           else
             gh issue create \
               --title "$title" \

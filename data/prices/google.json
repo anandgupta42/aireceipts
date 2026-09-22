@@ -54,7 +54,12 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "**Gemini 3.8 Flash generally available (GA)** : Released `gemini-3.8-flash`, our most intelligent Flash model"
+              "excerpt": "## September 2, 2026 ... **Gemini 3.8 Flash generally available (GA)** : Released `gemini-3.8-flash`, our most intelligent Flash model"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.8 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         },
@@ -69,6 +74,11 @@
               "url": "https://ai.google.dev/gemini-api/docs/pricing",
               "observed_at": "2026-09-22",
               "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.8 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         }
@@ -91,7 +101,12 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "**Gemini 3.7 Flash** (`gemini-3.7-flash`): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026."
+              "excerpt": "## August 13, 2026 ... **Gemini 3.7 Flash** (`gemini-3.7-flash`): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026."
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.7 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         },
@@ -106,6 +121,11 @@
               "url": "https://ai.google.dev/gemini-api/docs/pricing",
               "observed_at": "2026-09-22",
               "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.7 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         }
@@ -128,7 +148,12 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "**Gemini 3.6 Flash** (`gemini-3.6-flash`): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash"
+              "excerpt": "## July 21, 2026 ... **Gemini 3.6 Flash** (`gemini-3.6-flash`): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.6 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         },
@@ -143,6 +168,11 @@
               "url": "https://ai.google.dev/gemini-api/docs/pricing",
               "observed_at": "2026-09-22",
               "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "## Gemini 3.6 Flash ... | Context caching price | Free of charge | $0.075 through December 31, 2026. $0.15 starting January 1, 2027. $0.50 / 1,000,000 tokens per hour (storage price) through December 31, 2026. $1.00 / 1,000,000 tokens per hour (storage price) starting January 1, 2027. |"
             }
           ]
         }
@@ -165,7 +195,7 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "Released `gemini-3.5-flash`, the generally available (GA) version of [Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash),"
+              "excerpt": "## May 19, 2026 ... Released `gemini-3.5-flash`, the generally available (GA) version of [Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash),"
             }
           ]
         }
@@ -188,7 +218,7 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "**Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation."
+              "excerpt": "## July 21, 2026 ... **Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation."
             }
           ]
         }
@@ -211,7 +241,7 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "Released `gemini-3.1-flash-lite`, the generally available (GA) version of [Gemini 3.1 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite),"
+              "excerpt": "## May 7, 2026 ... Released `gemini-3.1-flash-lite`, the generally available (GA) version of [Gemini 3.1 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite),"
             }
           ]
         }
@@ -234,7 +264,7 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "Launched Gemini 3 Flash Preview, `gemini-3-flash-preview`, delivering fast frontier-class performance"
+              "excerpt": "## December 17, 2025 ... Launched Gemini 3 Flash Preview, `gemini-3-flash-preview`, delivering fast frontier-class performance"
             }
           ]
         }
@@ -265,7 +295,7 @@
             {
               "url": "https://ai.google.dev/gemini-api/docs/changelog",
               "observed_at": "2026-09-22",
-              "excerpt": "Released [Gemini 3.1 Pro Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview), our latest iteration in the new Gemini 3 series family."
+              "excerpt": "## February 19, 2026 ... Released [Gemini 3.1 Pro Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview), our latest iteration in the new Gemini 3 series family."
             }
           ]
         }
@@ -275,7 +305,7 @@
   "omitted": [
     {
       "model": "gemini-2.5-pro",
-      "reason": "Tiered by context length, which the flat schema cannot hold honestly (SPEC-0005 R1): Input $1.25 for prompts <= 200k tokens, $2.50 for prompts > 200k tokens; Output $10.00 / $15.00.",
+      "reason": "Tiered by context length: Input $1.25 for prompts <= 200k tokens, $2.50 for prompts > 200k tokens; Output $10.00 / $15.00. The schema can hold this since context_tiers landed, but the model stays omitted on purpose: test/fixtures/gemini/unpriced-pro-model.jsonl pins it as the tokens-only path, so pricing it is a golden-gated change (SPEC-0005 R1, I5).",
       "source": "https://ai.google.dev/gemini-api/docs/pricing"
     },
     {

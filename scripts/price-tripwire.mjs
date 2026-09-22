@@ -69,6 +69,10 @@ function comparableField(row, keys) {
   return null;
 }
 
+// aireceipts prices coding-agent transcripts, which are chat/responses requests. Image,
+// audio, embedding, realtime, moderation and OCR rows can never match a session.
+const TEXT_MODES = new Set(["chat", "responses"]);
+
 function datasetEntriesForVendor(dataset, vendor) {
   const matches = VENDOR_MATCHERS[vendor];
   if (!matches) return [];
@@ -76,6 +80,7 @@ function datasetEntriesForVendor(dataset, vendor) {
     .filter(([modelId, row]) => {
       if (!row || typeof row !== "object" || modelId === "sample_spec") return false;
       if (!matches(modelId, row)) return false;
+      if (typeof row.mode === "string" && !TEXT_MODES.has(row.mode)) return false;
       return typeof row.input_cost_per_token === "number" || typeof row.output_cost_per_token === "number";
     })
     .sort(([a], [b]) => a.localeCompare(b));
@@ -145,31 +150,58 @@ function compareRows(tables, dataset, today) {
   return { drift, skipped };
 }
 
-// Strip a vendor's dated-snapshot suffix (`-20251101`, `-2025-08-07`) so a snapshot of
-// a model we already price is not reported as a discovery.
+// A vendor's dated-snapshot suffix (`-20251101`, `-2025-08-07`) stripped, so a snapshot
+// of a model we already price can be grouped (never hidden: the resolver matches ids
+// exactly, so an unlisted snapshot is still unpriced).
 function undated(modelId) {
   return modelId.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
 }
 
-function discoveryFeed(tables, dataset) {
+// The community dataset lists routing aliases (`deepseek/deepseek-chat`,
+// `vertex_ai/gemini-2.5-pro`); the vendor id is the part after the last prefix.
+function canonicalId(modelId) {
+  return modelId.slice(modelId.lastIndexOf("/") + 1);
+}
+
+function isRetired(row, today) {
+  const date = row?.deprecation_date;
+  return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < today;
+}
+
+/**
+ * Three groups per vendor, all reported: `newIds` (no row, no known base model),
+ * `snapshotIds` (dated snapshot of a priced model; exact id still has no row), and
+ * `retiredIds` (deprecation_date already passed; listed for the record, not counted).
+ */
+function discoveryFeed(tables, dataset, today) {
   const feed = [];
   for (const table of tables) {
     const known = new Set([
       ...Object.keys(table.models ?? {}),
       ...(Array.isArray(table.omitted) ? table.omitted.map((entry) => entry.model) : []),
     ]);
-    const missing = datasetEntriesForVendor(dataset, table.vendor)
-      .map(([modelId]) => modelId)
-      // Provider-prefixed ids (`deepseek/deepseek-chat`, `vertex_ai/...`) are the
-      // community dataset's routing aliases, not vendor model ids.
-      .filter((modelId) => !modelId.includes("/"))
-      .filter((modelId) => !known.has(modelId) && !known.has(undated(modelId)))
-      // Retired models never get a row: aireceipts prices sessions, and a retired id
-      // has no current vendor rate to cite.
-      .filter((modelId) => !dataset[modelId]?.deprecation_date);
-    if (missing.length > 0) feed.push({ vendor: table.vendor, modelIds: missing });
+    const seen = new Set();
+    const newIds = [];
+    const snapshotIds = [];
+    const retiredIds = [];
+    for (const [rawId, row] of datasetEntriesForVendor(dataset, table.vendor)) {
+      const modelId = canonicalId(rawId);
+      // `ft:<base>` rows are fine-tuning price entries, not vendor model ids.
+      if (modelId.startsWith("ft:") || seen.has(modelId) || known.has(modelId)) continue;
+      seen.add(modelId);
+      if (isRetired(row, today)) retiredIds.push(modelId);
+      else if (known.has(undated(modelId))) snapshotIds.push(modelId);
+      else newIds.push(modelId);
+    }
+    if (newIds.length + snapshotIds.length + retiredIds.length > 0) {
+      feed.push({ vendor: table.vendor, newIds, snapshotIds, retiredIds });
+    }
   }
   return feed;
+}
+
+function discoveryCount(feed) {
+  return feed.reduce((sum, entry) => sum + entry.newIds.length + entry.snapshotIds.length, 0);
 }
 
 function renderReport({ drift, discovery, skipped, status }) {
@@ -181,7 +213,7 @@ function renderReport({ drift, discovery, skipped, status }) {
     "",
     `Status: ${status}`,
     `Drift count: ${drift.length}`,
-    `Discovery count: ${discovery.reduce((sum, entry) => sum + entry.modelIds.length, 0)}`,
+    `Discovery count: ${discoveryCount(discovery)} (new ids ${discovery.reduce((s, e) => s + e.newIds.length, 0)}, dated snapshots of priced models ${discovery.reduce((s, e) => s + e.snapshotIds.length, 0)})`,
     "",
     "## Drift",
     "",
@@ -203,8 +235,19 @@ function renderReport({ drift, discovery, skipped, status }) {
   } else {
     for (const entry of discovery) {
       lines.push(`### ${entry.vendor}`, "");
-      for (const modelId of entry.modelIds) lines.push(`- ${modelId}`);
-      lines.push("");
+      if (entry.newIds.length > 0) {
+        lines.push("New ids (no row, no priced base model):", "");
+        for (const modelId of entry.newIds) lines.push(`- ${modelId}`);
+        lines.push("");
+      }
+      if (entry.snapshotIds.length > 0) {
+        lines.push("Dated snapshots of priced models (exact id has no row; the resolver matches ids exactly):", "");
+        for (const modelId of entry.snapshotIds) lines.push(`- ${modelId}`);
+        lines.push("");
+      }
+      if (entry.retiredIds.length > 0) {
+        lines.push(`Retired per the community dataset (${entry.retiredIds.length}, not counted): ${entry.retiredIds.join(", ")}`, "");
+      }
     }
   }
 
@@ -253,14 +296,14 @@ async function main() {
 
   const today = todayIso();
   const { drift, skipped } = compareRows(tables, dataset, today);
-  const discovery = discoveryFeed(tables, dataset);
-  const discoveryCount = discovery.reduce((sum, entry) => sum + entry.modelIds.length, 0);
-  const status = drift.length > 0 ? "drift" : discoveryCount > 0 ? "discovery" : "clean";
+  const discovery = discoveryFeed(tables, dataset, today);
+  const discovered = discoveryCount(discovery);
+  const status = drift.length > 0 ? "drift" : discovered > 0 ? "discovery" : "clean";
   const report = renderReport({ drift, discovery, skipped, status });
 
   console.log(report);
   await maybeWrite(opts.report, report);
-  await maybeWrite(opts.summaryJson, `${JSON.stringify({ status, driftCount: drift.length, discoveryCount })}\n`);
+  await maybeWrite(opts.summaryJson, `${JSON.stringify({ status, driftCount: drift.length, discoveryCount: discovered })}\n`);
 
   if (drift.length > 0) process.exit(EXIT_DRIFT);
 }
