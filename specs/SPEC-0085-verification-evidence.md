@@ -22,7 +22,7 @@ I6: no judgment about correctness, necessity, or model quality.
 ## Requirements
 
 - **R1 — One exact command family and one adapter.** Recognize only Claude Code
-  real `Bash` calls with the literal command `npx tsc --noEmit` (outer whitespace
+  parent-session real `Bash` calls with the literal command `npx tsc --noEmit` (outer whitespace
   permitted), with `run_in_background` absent or false. Chaining, pipelines,
   shell wrappers, environment prefixes, extra flags, and other adapters abstain.
   `ToolCall.shell/status/startedAt/endedAt` are the evidence seam
@@ -110,17 +110,19 @@ an authenticated compiler exit code.
 | R3 | running/missing status; truncated/drop; missing time; out-of-order checks | abstain |
 | R4 | standalone model/JSON + comparison export | strict schema; no money/flagged-pattern contribution |
 | R5 | default/details/text/SVG/PNG | opt-in only; shared copy; ≤50 columns; golden evidence |
-| R6 | actual disposable tsc success/error/edit workflow and CLI | factual execution capture; no network/model in product |
+| R6 | actual disposable tsc check/edit/recheck workflow and CLI | factual execution capture; no network/model in product |
 
 ## Success criteria
 
-- [x] Independent Fable design findings resolved; final implementation review recorded with the PR before publication.
+- [x] Independent Fable design findings resolved.
+- Final independent implementation review must be recorded with the PR before publication.
 - [x] Actual workload replay, CLI E2E, and visual artifact inspected.
-- [ ] Exact positive/negative matrix passes without relaxed assertions.
-- [ ] `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`,
+- [x] Exact positive/negative matrix passes without relaxed assertions.
+- Required before publication: `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`,
   `node scripts/verify-goldens.mjs`,
   `node scripts/determinism-check.mjs --runs=10 -- node scripts/verify-goldens.mjs`,
-  `node scripts/spec-lint.mjs`, `node scripts/hygiene.mjs` pass unmasked.
+  `node scripts/spec-lint.mjs`, `node scripts/hygiene.mjs` pass unmasked, with actual
+  results recorded in the PR (test workers may be limited under contention).
 
 ## Validation
 
@@ -162,3 +164,13 @@ zero-based versus display one-based turns, and document the error variant.
 Also fixed its lower-severity scope/footer/help clarity findings. Documentation
 is a subsection of the existing receipt guide, avoiding a new navigation page.
 Panel B correctness and final independent code review are recorded in the PR.
+
+Independent Fable 5.1 implementation review of `9286a41` reran all gates and
+found the same existing help-phrase contract failure (2,262 / 2,263 tests pass).
+Restored `classic template only`, preserving its assertion and golden contract.
+Strengthened the money-invariance test with an explicitly synthetic, nonzero
+priced control; the real capture stays untouched and tokens-only. Also excluded
+sidechain sessions so the emitted parent-call scope stays literal. Review found
+no model/network calls, invented dollars, path exposure, or prose-based verdicts.
+The final corrected commit is re-reviewed before publication; PR records carry
+its SHA and actual completed gate results.

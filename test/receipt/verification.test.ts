@@ -64,4 +64,24 @@ describe("SPEC-0085 verification evidence surfaces", () => {
     expect(JSON.stringify(blocks)).not.toMatch(/untested|verified|failing|stale|compiles|safe|TS edit/u);
     expect(verificationBlocks(null)).toEqual([]);
   });
+
+  it("keeps a nonzero priced control unchanged when evidence recognition is disabled", async () => {
+    const control = await loadById("claude-code", fixture);
+    if (!control) throw new Error("real-workload fixture failed to load");
+    // Explicitly synthetic pricing control; do not relabel the real capture itself.
+    for (const turn of control.turns) turn.model = "claude-sonnet-5";
+    const recognized = await buildReceiptModel(control);
+    expect(recognized.totalUsd).toBeGreaterThan(0);
+    expect(recognized.verificationEvidence?.outcome).toBe("edit-after-tool-success");
+    for (const turn of control.turns) {
+      for (const call of turn.toolCalls) {
+        if (call.name === "Bash") call.input = { command: "npx tsc --noEmit --pretty false" };
+      }
+    }
+    const unrecognized = await buildReceiptModel(control);
+    expect(unrecognized.verificationEvidence).toBeNull();
+    expect(unrecognized.totalUsd).toBe(recognized.totalUsd);
+    expect(unrecognized.toolRows).toEqual(recognized.toolRows);
+    expect(unrecognized.wasteLines).toEqual(recognized.wasteLines);
+  });
 });

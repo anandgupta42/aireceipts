@@ -39,7 +39,7 @@ function isTypedEdit(call: ToolCall): boolean {
  * Output prose is never examined. All references address only captured calls.
  */
 export function verificationEvidence(session: Session): VerificationEvidence | null {
-  if (session.source !== "claude-code" || (session.droppedRecords ?? 0) > 0) {
+  if (session.source !== "claude-code" || session.isSidechain || (session.droppedRecords ?? 0) > 0) {
     return null;
   }
   const calls = session.turns.flatMap(turn => turn.toolCalls.map(call => ({ call, turn: turn.index })));

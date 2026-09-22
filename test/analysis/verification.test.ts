@@ -28,6 +28,10 @@ describe("SPEC-0085 recorded TypeScript check evidence", () => {
     });
   });
 
+  it("accepts outer whitespace and a recorded Write to typed source", () => {
+    expect(verificationEvidence(session([check({ input: { command: "  npx tsc --noEmit\n" } }), edit({ name: "Write" })]))).toMatchObject({ outcome: "edit-after-tool-success", editTurnIndex: 1 });
+  });
+
   it("trusts the linked tool status, never an output claim that tests passed", () => {
     expect(verificationEvidence(session([check({ status: "error", output: "All tests passed" })]))).toEqual({
       command: "npx tsc --noEmit", outcome: "tool-error", checkTurnIndex: 0,
@@ -96,6 +100,7 @@ describe("SPEC-0085 recorded TypeScript check evidence", () => {
 
   it("has no claim for another adapter, an external-CI statement or absent captured checks", () => {
     expect(verificationEvidence(session([check(), edit()], { source: "codex" }))).toBeNull();
+    expect(verificationEvidence(session([check(), edit()], { isSidechain: true }))).toBeNull();
     expect(verificationEvidence(session([edit()]))).toBeNull();
     expect(verificationEvidence(session([]))).toBeNull();
     expect(verificationEvidence(session([{ name: "Agent", status: "ok", output: "CI passed" }, edit()]))).toBeNull();

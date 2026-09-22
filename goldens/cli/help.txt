@@ -44,7 +44,7 @@ Usage:
                                          client contract only, sends disabled)
   aireceipts [selector] --template <name>  render a receipt style (classic|grocery|datavis)
   aireceipts [selector] --details       add a DETAILS section (token composition, session
-                                         shape, per-model split, verification evidence; classic only)
+                                         shape, per-model split, verification evidence; classic template only)
   aireceipts templates                  list the templates with a live preview of each
   aireceipts --mini [selector]          6-line mini-receipt (newest session)
   aireceipts install-hook               add a Claude Code SessionEnd auto-receipt hook

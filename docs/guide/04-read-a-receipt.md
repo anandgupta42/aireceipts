@@ -145,7 +145,7 @@ For a tool error, the command row says `tool result error (turn N)` and there
 is no `TS edit after it` row. Both cases end with the same two notes: no later
 recognized invocation has a recorded result, and external checks are unknown.
 
-The first version recognizes only foreground Claude Code `Bash` calls whose
+The first version recognizes only foreground Claude Code parent-session `Bash` calls whose
 entire command is `npx tsc --noEmit` and which were not requested to run in the
 background. Outer whitespace is allowed; extra flags,
 chaining, pipes, wrappers, background requests, other commands and other agents

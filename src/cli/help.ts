@@ -29,7 +29,7 @@ const OUTPUT_MODE_ENTRIES: readonly HelpEntry[] = [
     order: 135,
     lines: [
       "  aireceipts [selector] --details       add a DETAILS section (token composition, session",
-      "                                         shape, per-model split, verification evidence; classic only)",
+      "                                         shape, per-model split, verification evidence; classic template only)",
     ],
   },
 ];
