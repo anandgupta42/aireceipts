@@ -63,6 +63,7 @@ jobs:
       # because zero counts on a failed fetch prove nothing.
       - name: Upsert drift/discovery issue
         if: steps.tripwire.outputs.status != 'warn'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
