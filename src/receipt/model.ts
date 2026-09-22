@@ -2,6 +2,7 @@
 // rendered by both the text renderer (this milestone) and, later, the SVG
 // exporter (SPEC-0003 R4) — neither renderer recomputes pricing/attribution;
 // they only format what's already here.
+import { computeNetCache, type NetCache } from "../pricing/netCache.js";
 import type { AgentSource, Session, TokenUsage } from "../parse/types.js";
 import { SOURCE_LABELS } from "../parse/types.js";
 import { addUsage, emptyUsage, sanitizeText } from "../parse/util.js";
@@ -86,6 +87,7 @@ export interface SubagentAggregate {
 }
 
 export interface ReceiptModel {
+  netCache?: NetCache;
   agentLabel: string;
   source: AgentSource;
   sessionId: string;
@@ -471,5 +473,6 @@ export async function buildReceiptModel(session: Session, dataDir: string = defa
     cacheReadAtInputRateUsd: attribution.cacheReadAtInputRateUsd,
     costShape,
     sameFileReReads,
+    netCache: await computeNetCache(session, dataDir),
   };
 }

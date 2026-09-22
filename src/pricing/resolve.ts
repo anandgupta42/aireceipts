@@ -71,7 +71,7 @@ export function isPriceableUsage(usage: TokenUsage): boolean {
  * long-context threshold is prompt-side, so output tokens are intentionally
  * excluded from the selector.
  */
-function ratesForUsage(usage: TokenUsage, row: PriceRow): TokenPriceRates {
+export function ratesForUsage(usage: TokenUsage, row: PriceRow): TokenPriceRates {
   const promptInput = usage.input + usage.cacheRead + usage.cacheCreation;
   let selected: TokenPriceRates = row;
   let selectedThreshold = -1;

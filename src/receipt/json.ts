@@ -210,6 +210,7 @@ function receiptBody(model: ReceiptModel) {
           confidence: model.sameFileReReads.confidence,
         }
       : null,
+    ...(model.netCache ? { netCache: model.netCache } : {}),
     // SPEC-0061 R5 — aggregate only (counts + sums); child ids/titles/paths never export.
     ...(model.subagents ? { subagents: subagentAggregateJson(model) } : {}),
   };

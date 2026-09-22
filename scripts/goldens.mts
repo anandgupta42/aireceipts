@@ -114,6 +114,13 @@ check(`goldens/${stem}-details.txt`, renderReceipt(pricedModel, { color: false, 
 check(`goldens/${LOOP.source}-${nameOf(LOOP.path)}-details.txt`, renderReceipt(loopModel, { color: false, details: true }) + "\n");
 check(`goldens/svg/${stem}-details-light.svg`, renderReceiptSvg(pricedModel, { theme: "light", details: true }));
 
+// SPEC-0083 — new complete-cache fixture pins the opt-in signed arithmetic only.
+const cacheModel = await modelFor("claude-code", "test/fixtures/claude-code/cache-economics-complete.jsonl");
+check("goldens/cache-economics-details.txt", renderReceipt(cacheModel, { color: false, details: true }) + "\n");
+for (const theme of ["light", "dark"] as const) {
+  check(`goldens/svg/cache-economics-details-${theme}.svg`, renderReceiptSvg(cacheModel, { theme, details: true }));
+}
+
 // Hostile fixtures are a visual-regression battery: every one renders through
 // every receipt template in both terminal and SVG form, not only the default
 // classic text path the eval corpus already covers.

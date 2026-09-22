@@ -9,12 +9,12 @@ wrong") and is grounded in the audits in
 
 ## The one rule
 
-Every computed dollar is a **Standard API list-price-equivalent lower bound**,
+Every observed-spend total and attributed spend row is a **Standard API list-price-equivalent lower bound**,
 never an invoice or an exact-billing claim. Internally, its raw arithmetic must
 reconcile to observable tokens × applicable rates from the cited, dated Standard
 API row; a cached-read or cache-write component with no cited applicable rate
-contributes zero, never a guessed input-rate fallback. Externally, every amount
-renders with `≥` because local agent transcripts do not establish the auth and
+contributes zero, never a guessed input-rate fallback. Externally, those cost amounts
+render with `≥` because local agent transcripts do not establish the auth and
 billing route, negotiated plan, credits, service tier, regional uplift, or every
 provider-side usage dimension. Additional known omissions carry their own
 visible caveat or tokens-only subtotal. Silent wrongness is the forbidden state.
@@ -23,6 +23,10 @@ drop/degrade/lower-bound decision routes through a typed `ConfidenceEvent`
 (`src/pr/confidence.ts`), and a hygiene check + an exhaustive-switch test prevent
 a new silent drop from being introduced there. Single-session receipts surface
 the same information through their typed caveat list (`src/receipt/model.ts`).
+
+The optional [net cache arithmetic](#net-cache-arithmetic---details) row is a
+signed same-token price difference, not an observed-spend amount or a bound. It
+uses complete observed cache counters and renders `lower` or `higher` without `≥`.
 
 ## The ConfidenceEvent contract — every reason a number may be incomplete
 
@@ -304,3 +308,20 @@ The built-artifact E2E suite independently stages native Claude JSONL, Codex
 JSONL, and opencode SQLite homes and asserts the same token and Standard API
 lower-bound oracles through real CLI discovery, parsing, pricing, JSON export,
 visible qualification, request-tier boundaries, and downward-only formatting.
+
+
+### Net cache arithmetic (`--details`)
+
+When every Claude Code request carries complete explicit cache counters and its
+dated cited rates resolve, `cache vs uncached` compares the observed reads and
+TTL-specific writes with pricing those same tokens as ordinary uncached input.
+It subtracts write premiums from the read discount. A positive result renders
+`$X lower`, a negative result `$X higher`; it can round to `$0.00`. This signed
+arithmetic has no lower-bound direction and never carries `≥`. It concerns only
+the parent session and is excluded from totals, budgets, waste and PR rollups.
+It is not an invoice or evidence that the task would have cost less.
+
+Missing read/write counters, missing TTL splits, incomplete request prices or
+unattributed/dropped records suppress the net text row; JSON `netCache` retains
+a reason. Codex cache-write counters remain unobserved, even when its normalized
+write count is zero. The existing gross read-repricing line remains separate.

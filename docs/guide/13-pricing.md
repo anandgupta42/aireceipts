@@ -1,9 +1,14 @@
 # How pricing lower bounds are computed
 
-Every dollar on a receipt is a **Standard API list-price-equivalent lower bound**
+Every attributed spend amount on a receipt is a **Standard API list-price-equivalent lower bound**
 computed locally from observable token counts and a cited price table. It is not
 a feed from your vendor's billing system and never claims to be the invoice. This
 page explains the math, the observability limits, and the meaning of `≥ $X`.
+
+The optional `cache vs uncached` details row uses complete cache counters to
+subtract write premiums from the read discount for the same observed tokens.
+It is a signed arithmetic difference, labeled `lower` or `higher`, not a floor,
+invoice or measured savings. Missing observations suppress the row.
 
 ## The method, verbatim
 
