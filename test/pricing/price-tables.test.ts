@@ -54,6 +54,12 @@ const tables: [string, PriceTable][] = [
   ["openai.json", loadTable("openai.json")],
 ];
 
+const CACHE_READ_MULTIPLIER_EXCEPTIONS: Record<string, number> = {
+  "claude-fable-5-1": 0.025,
+  "claude-mythos-5-1": 0.025,
+  "claude-opus-5-5": 0.05,
+};
+
 describe("seeded price tables — R2 cited seed tables", () => {
   for (const [file, table] of tables) {
     describe(file, () => {
@@ -131,9 +137,13 @@ describe("seeded price tables — R2 cited seed tables", () => {
             // column; OpenAI's "Cached input" column). We seeded every row
             // ourselves, so this checks *our own* arithmetic never drifted —
             // it does not assert this ratio holds for vendors in general.
+            // Anthropic's pricing page footnotes a lower cache-read multiplier for
+            // three models (0.025x on Fable 5.1 and Mythos 5.1, 0.05x on Opus 5.5);
+            // every other row on both vendors' pages documents 0.1x.
             if (row.input_cached !== undefined) {
-              it(`row from ${row.from_date}: input_cached is exactly 0.1x input (this table's own convention)`, () => {
-                expect(row.input_cached).toBeCloseTo(row.input * 0.1, 10);
+              const multiplier = CACHE_READ_MULTIPLIER_EXCEPTIONS[modelId] ?? 0.1;
+              it(`row from ${row.from_date}: input_cached is exactly ${multiplier}x input (vendor-documented multiplier)`, () => {
+                expect(row.input_cached).toBeCloseTo(row.input * multiplier, 10);
               });
             }
 
@@ -192,28 +202,60 @@ describe("seeded price tables — R2 cited seed tables", () => {
     expect(Object.keys(openai.models)).toContain("gpt-5.3-codex");
   });
 
-  it("cites complete Standard context tiers for every GPT-5.6 variant", () => {
+  it("cites complete Standard context tiers for every GPT-5.6 variant, launch row and current row", () => {
     const openai = tables.find(([f]) => f === "openai.json")![1];
+    // [launch row (2026-07-09), current row after the vendor's 2026-07-30 / 2026-08-21 cuts]
     const expected = {
-      "gpt-5.6-sol": { input: 5, cached: 0.5, output: 30, write: 6.25, longInput: 10, longCached: 1, longOutput: 45, longWrite: 12.5 },
-      "gpt-5.6-terra": { input: 2.5, cached: 0.25, output: 15, write: 3.125, longInput: 5, longCached: 0.5, longOutput: 22.5, longWrite: 6.25 },
-      "gpt-5.6-luna": { input: 1, cached: 0.1, output: 6, write: 1.25, longInput: 2, longCached: 0.2, longOutput: 9, longWrite: 2.5 },
+      "gpt-5.6-sol": [
+        { from: "2026-07-09", input: 5, cached: 0.5, output: 30, write: 6.25, longInput: 10, longCached: 1, longOutput: 45, longWrite: 12.5 },
+        { from: "2026-08-21", input: 4, cached: 0.4, output: 20, write: 5, longInput: 8, longCached: 0.8, longOutput: 30, longWrite: 10 },
+      ],
+      "gpt-5.6-terra": [
+        { from: "2026-07-09", input: 2.5, cached: 0.25, output: 15, write: 3.125, longInput: 5, longCached: 0.5, longOutput: 22.5, longWrite: 6.25 },
+        { from: "2026-07-30", input: 2, cached: 0.2, output: 12, write: 2.5, longInput: 4, longCached: 0.4, longOutput: 18, longWrite: 5 },
+      ],
+      "gpt-5.6-luna": [
+        { from: "2026-07-09", input: 1, cached: 0.1, output: 6, write: 1.25, longInput: 2, longCached: 0.2, longOutput: 9, longWrite: 2.5 },
+        { from: "2026-07-30", input: 0.2, cached: 0.02, output: 1.2, write: 0.25, longInput: 0.4, longCached: 0.04, longOutput: 1.8, longWrite: 0.5 },
+      ],
     } as const;
 
-    for (const [model, rates] of Object.entries(expected)) {
-      const row = openai.models[model]?.price_history[0];
+    for (const [model, rows] of Object.entries(expected)) {
+      const history = openai.models[model]?.price_history;
+      expect(history, model).toHaveLength(rows.length);
+      rows.forEach((rates, i) => {
+        const row = history![i];
+        expect(row.from_date, `${model}[${i}]`).toBe(rates.from);
+        if (i === rows.length - 1) {
+          expect(row.to_date, `${model}[${i}]`).toBeNull();
+        } else {
+          expect(typeof row.to_date, `${model}[${i}]`).toBe("string");
+        }
+        expect(row).toMatchObject({ input: rates.input, input_cached: rates.cached, output: rates.output });
+        expect(row.input_cache_write).toBe(rates.write);
+        expect(row.context_tiers).toEqual([
+          {
+            above_input_tokens: 272_000,
+            input: rates.longInput,
+            input_cached: rates.longCached,
+            output: rates.longOutput,
+            input_cache_write: rates.longWrite,
+          },
+        ]);
+      });
+    }
+  });
+
+  it("prices the GPT-6 family with the same per-request >272K context tier shape", () => {
+    const openai = tables.find(([f]) => f === "openai.json")![1];
+    for (const model of ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"]) {
+      const row = openai.models[model]?.price_history.at(-1);
       expect(row, model).toBeDefined();
-      expect(row).toMatchObject({ input: rates.input, input_cached: rates.cached, output: rates.output });
-      expect(row!.input_cache_write).toBe(rates.write);
-      expect(row!.context_tiers).toEqual([
-        {
-          above_input_tokens: 272_000,
-          input: rates.longInput,
-          input_cached: rates.longCached,
-          output: rates.longOutput,
-          ...(rates.longWrite === undefined ? {} : { input_cache_write: rates.longWrite }),
-        },
-      ]);
+      expect(row!.to_date).toBeNull();
+      expect(row!.context_tiers).toHaveLength(1);
+      expect(row!.context_tiers![0].above_input_tokens).toBe(272_000);
+      expect(row!.context_tiers![0].input).toBeCloseTo(row!.input * 2, 10);
+      expect(row!.context_tiers![0].output).toBeCloseTo(row!.output * 1.5, 10);
     }
   });
 

@@ -57,13 +57,38 @@ jobs:
             echo "should_open=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Open drift/discovery issue
-        if: steps.tripwire.outputs.should_open == 'true'
+      # One rolling issue, not one per day: refresh the body of the open report if
+      # it exists, otherwise open it. A clean run closes the open report.
+      - name: Upsert drift/discovery issue
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SHOULD_OPEN: ${{ steps.tripwire.outputs.should_open }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh issue create \
-            --title "prices: drift/discovery report" \
-            --label "enhancement" \
-            --body-file price-tripwire-report.md
+          title="prices: drift/discovery report"
+          # Exact title match on the open list; GitHub search mangles ':' and '/' in titles.
+          existing="$(gh issue list --state open --limit 200 --json number,title \
+            --jq "map(select(.title == \"$title\")) | .[0].number // empty")"
+
+          if [ "$SHOULD_OPEN" != "true" ]; then
+            if [ -n "$existing" ]; then
+              gh issue close "$existing" --comment "Tripwire is clean as of this run: $RUN_URL"
+            fi
+            exit 0
+          fi
+
+          {
+            cat price-tripwire-report.md
+            echo
+            echo "_Last refreshed by [this run]($RUN_URL). This issue is updated in place daily while drift or discovery persists._"
+          } > price-tripwire-issue.md
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file price-tripwire-issue.md
+          else
+            gh issue create \
+              --title "$title" \
+              --label "enhancement" \
+              --body-file price-tripwire-issue.md
+          fi

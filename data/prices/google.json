@@ -36,6 +36,240 @@
           ]
         }
       ]
+    },
+    "gemini-3.8-flash": {
+      "price_history": [
+        {
+          "input": 0.75,
+          "output": 3.75,
+          "input_cached": 0.075,
+          "from_date": "2026-09-02",
+          "to_date": "2026-12-31",
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Gemini 3.8 Flash generally available (GA)** : Released `gemini-3.8-flash`, our most intelligent Flash model"
+            }
+          ]
+        },
+        {
+          "input": 1.5,
+          "output": 7.5,
+          "input_cached": 0.15,
+          "from_date": "2027-01-01",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.7-flash": {
+      "price_history": [
+        {
+          "input": 0.75,
+          "output": 3.75,
+          "input_cached": 0.075,
+          "from_date": "2026-08-13",
+          "to_date": "2026-12-31",
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Gemini 3.7 Flash** (`gemini-3.7-flash`): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026."
+            }
+          ]
+        },
+        {
+          "input": 1.5,
+          "output": 7.5,
+          "input_cached": 0.15,
+          "from_date": "2027-01-01",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.6-flash": {
+      "price_history": [
+        {
+          "input": 0.75,
+          "output": 3.75,
+          "input_cached": 0.075,
+          "from_date": "2026-07-21",
+          "to_date": "2026-12-31",
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Gemini 3.6 Flash** (`gemini-3.6-flash`): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash"
+            }
+          ]
+        },
+        {
+          "input": 1.5,
+          "output": 7.5,
+          "input_cached": 0.15,
+          "from_date": "2027-01-01",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.75 through December 31, 2026. $1.50 starting January 1, 2027. | | Output price (including thinking tokens) | Free of charge | $3.75 through December 31, 2026. $7.50 starting January 1, 2027. | | Context caching price | Free of charge | $0.075 through December 31, "
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.5-flash": {
+      "price_history": [
+        {
+          "input": 1.5,
+          "output": 9,
+          "input_cached": 0.15,
+          "from_date": "2026-05-19",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $1.50 | | Output price (including thinking tokens) | Free of charge | $9.00 | | Context caching price | Free of charge | $0.15 $1.00 / 1,000,000 tokens per hour (storage price) | | Grounding with Google Search^\\*^ | Not available^\\*\\*^ | 5,000 free search requests pe"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "Released `gemini-3.5-flash`, the generally available (GA) version of [Gemini 3.5 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash),"
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.5-flash-lite": {
+      "price_history": [
+        {
+          "input": 0.3,
+          "output": 2.5,
+          "input_cached": 0.03,
+          "from_date": "2026-07-21",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.30 (text / image / video / audio) | | Output price (including thinking tokens) | Free of charge | $2.50 | | Context caching price | Not available | $0.03 $1.00 / 1,000,000 tokens per hour (storage price) | | Grounding with Google Search^\\*^ | Not available^\\*\\*^ |"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation."
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.1-flash-lite": {
+      "price_history": [
+        {
+          "input": 0.25,
+          "output": 1.5,
+          "input_cached": 0.025,
+          "from_date": "2026-05-07",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.25 (text / image / video) $0.50 (audio) | | Output price (including thinking tokens) | Free of charge | $1.50 | | Context caching price | Not available | $0.025 (text / image / video) $0.05 (audio) $1.00 / 1,000,000 tokens per hour (storage price) | | Grounding wi"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "Released `gemini-3.1-flash-lite`, the generally available (GA) version of [Gemini 3.1 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite),"
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3-flash-preview": {
+      "price_history": [
+        {
+          "input": 0.5,
+          "output": 3,
+          "input_cached": 0.05,
+          "from_date": "2025-12-17",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Free of charge | $0.50 (text / image / video) $1.00 (audio) | | Output price (including thinking tokens) | Free of charge | $3.00 | | Context caching price | Free of charge | $0.05 (text / image / video) $0.10 (audio) $1.00 / 1,000,000 tokens per hour (storage price) | | Grounding wi"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "Launched Gemini 3 Flash Preview, `gemini-3-flash-preview`, delivering fast frontier-class performance"
+            }
+          ]
+        }
+      ]
+    },
+    "gemini-3.1-pro-preview": {
+      "price_history": [
+        {
+          "input": 2,
+          "output": 12,
+          "input_cached": 0.2,
+          "context_tiers": [
+            {
+              "above_input_tokens": 200000,
+              "input": 4,
+              "output": 18,
+              "input_cached": 0.4
+            }
+          ],
+          "from_date": "2026-02-19",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Input price | Not available | $2.00, prompts \\<= 200k tokens $4.00, prompts \\> 200k tokens | | Output price (including thinking tokens) | Not available | $12.00, prompts \\<= 200k tokens $18.00, prompts \\> 200k | | Context caching price | Not available | $0.20, prompts \\<= 200k tokens $0.40, prompt"
+            },
+            {
+              "url": "https://ai.google.dev/gemini-api/docs/changelog",
+              "observed_at": "2026-09-22",
+              "excerpt": "Released [Gemini 3.1 Pro Preview](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-pro-preview), our latest iteration in the new Gemini 3 series family."
+            }
+          ]
+        }
+      ]
     }
   },
   "omitted": [

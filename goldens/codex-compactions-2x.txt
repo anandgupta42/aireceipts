@@ -13,8 +13,8 @@ apply_patch....................≥ $0.0082  (1 call)
 --------------------------------------------------
 TOTAL....................................≥ $0.0257
 standard API-equivalent floor; not an invoice
-same tokens on gpt-5.4-mini..............≥ $0.0094
-  (64% lower observable floor)
+same tokens on gpt-6-luna................≥ $0.0011
+  (96% lower observable floor)
   (arithmetic, not a prediction)
 - - - - - - - - - - - - - - - - - - - - - - - - -
                 npx aireceipts-cli                

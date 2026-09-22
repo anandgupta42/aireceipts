@@ -145,6 +145,12 @@ function compareRows(tables, dataset, today) {
   return { drift, skipped };
 }
 
+// Strip a vendor's dated-snapshot suffix (`-20251101`, `-2025-08-07`) so a snapshot of
+// a model we already price is not reported as a discovery.
+function undated(modelId) {
+  return modelId.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+}
+
 function discoveryFeed(tables, dataset) {
   const feed = [];
   for (const table of tables) {
@@ -154,7 +160,13 @@ function discoveryFeed(tables, dataset) {
     ]);
     const missing = datasetEntriesForVendor(dataset, table.vendor)
       .map(([modelId]) => modelId)
-      .filter((modelId) => !known.has(modelId));
+      // Provider-prefixed ids (`deepseek/deepseek-chat`, `vertex_ai/...`) are the
+      // community dataset's routing aliases, not vendor model ids.
+      .filter((modelId) => !modelId.includes("/"))
+      .filter((modelId) => !known.has(modelId) && !known.has(undated(modelId)))
+      // Retired models never get a row: aireceipts prices sessions, and a retired id
+      // has no current vendor rate to cite.
+      .filter((modelId) => !dataset[modelId]?.deprecation_date);
     if (missing.length > 0) feed.push({ vendor: table.vendor, modelIds: missing });
   }
   return feed;
