@@ -69,9 +69,20 @@ function comparableField(row, keys) {
   return null;
 }
 
-// aireceipts prices coding-agent transcripts, which are chat/responses requests. Image,
-// audio, embedding, realtime, moderation and OCR rows can never match a session.
+// aireceipts prices coding-agent transcripts, which are chat/responses requests. Rows the
+// community dataset labels with another modality are still listed (its labels are not
+// authoritative: it marks at least one generative Gemini model as `embedding`), but they
+// are grouped separately and not counted.
 const TEXT_MODES = new Set(["chat", "responses"]);
+
+// A canonical id must look like one of the vendor's own ids; otherwise it is a
+// third-party model the vendor merely hosts (`vertex_ai/xai/grok-4.6`).
+const VENDOR_ID_PATTERNS = {
+  anthropic: /^claude-/,
+  deepseek: /^deepseek-/,
+  google: /^gemini-/,
+  openai: /^(gpt-|o\d|chatgpt-)/,
+};
 
 function datasetEntriesForVendor(dataset, vendor) {
   const matches = VENDOR_MATCHERS[vendor];
@@ -80,7 +91,6 @@ function datasetEntriesForVendor(dataset, vendor) {
     .filter(([modelId, row]) => {
       if (!row || typeof row !== "object" || modelId === "sample_spec") return false;
       if (!matches(modelId, row)) return false;
-      if (typeof row.mode === "string" && !TEXT_MODES.has(row.mode)) return false;
       return typeof row.input_cost_per_token === "number" || typeof row.output_cost_per_token === "number";
     })
     .sort(([a], [b]) => a.localeCompare(b));
@@ -169,9 +179,12 @@ function isRetired(row, today) {
 }
 
 /**
- * Three groups per vendor, all reported: `newIds` (no row, no known base model),
- * `snapshotIds` (dated snapshot of a priced model; exact id still has no row), and
- * `retiredIds` (deprecation_date already passed; listed for the record, not counted).
+ * Four groups per vendor, all reported, nothing hidden: `newIds` (no row, no known base
+ * model), `snapshotIds` (dated snapshot of a priced model; the exact id still has no row),
+ * `otherModeIds` (the dataset labels every alias with a non-text modality; listed, not
+ * counted) and `retiredIds` (every alias has a deprecation_date already passed; listed, not
+ * counted). Aliases are aggregated per canonical id before classification, so one retired
+ * routing alias cannot suppress an undated one.
  */
 function discoveryFeed(tables, dataset, today) {
   const feed = [];
@@ -180,21 +193,28 @@ function discoveryFeed(tables, dataset, today) {
       ...Object.keys(table.models ?? {}),
       ...(Array.isArray(table.omitted) ? table.omitted.map((entry) => entry.model) : []),
     ]);
-    const seen = new Set();
-    const newIds = [];
-    const snapshotIds = [];
-    const retiredIds = [];
+    const idPattern = VENDOR_ID_PATTERNS[table.vendor];
+    const rowsById = new Map();
     for (const [rawId, row] of datasetEntriesForVendor(dataset, table.vendor)) {
       const modelId = canonicalId(rawId);
       // `ft:<base>` rows are fine-tuning price entries, not vendor model ids.
-      if (modelId.startsWith("ft:") || seen.has(modelId) || known.has(modelId)) continue;
-      seen.add(modelId);
-      if (isRetired(row, today)) retiredIds.push(modelId);
+      if (modelId.startsWith("ft:") || known.has(modelId)) continue;
+      if (idPattern && !idPattern.test(modelId)) continue;
+      if (!rowsById.has(modelId)) rowsById.set(modelId, []);
+      rowsById.get(modelId).push(row);
+    }
+    const newIds = [];
+    const snapshotIds = [];
+    const otherModeIds = [];
+    const retiredIds = [];
+    for (const [modelId, rows] of rowsById) {
+      if (rows.every((row) => isRetired(row, today))) retiredIds.push(modelId);
+      else if (rows.every((row) => typeof row.mode === "string" && !TEXT_MODES.has(row.mode))) otherModeIds.push(modelId);
       else if (known.has(undated(modelId))) snapshotIds.push(modelId);
       else newIds.push(modelId);
     }
-    if (newIds.length + snapshotIds.length + retiredIds.length > 0) {
-      feed.push({ vendor: table.vendor, newIds, snapshotIds, retiredIds });
+    if (newIds.length + snapshotIds.length + otherModeIds.length + retiredIds.length > 0) {
+      feed.push({ vendor: table.vendor, newIds, snapshotIds, otherModeIds, retiredIds });
     }
   }
   return feed;
@@ -244,6 +264,9 @@ function renderReport({ drift, discovery, skipped, status }) {
         lines.push("Dated snapshots of priced models (exact id has no row; the resolver matches ids exactly):", "");
         for (const modelId of entry.snapshotIds) lines.push(`- ${modelId}`);
         lines.push("");
+      }
+      if (entry.otherModeIds.length > 0) {
+        lines.push(`Labeled a non-text modality by the community dataset (${entry.otherModeIds.length}, not counted; the label may be wrong): ${entry.otherModeIds.join(", ")}`, "");
       }
       if (entry.retiredIds.length > 0) {
         lines.push(`Retired per the community dataset (${entry.retiredIds.length}, not counted): ${entry.retiredIds.join(", ")}`, "");

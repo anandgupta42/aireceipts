@@ -70,10 +70,12 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           title="prices: drift/discovery report"
-          # Exact title match on the full open list (ascending, so the oldest report is
-          # canonical); GitHub search mangles ':' and '/' in titles.
-          matches="$(gh issue list --state open --limit 1000 --json number,title \
-            --jq "map(select(.title == \"$title\") | .number) | sort | .[]")"
+          # Exact title match over every open issue (paginated; pull requests excluded),
+          # ascending so the oldest report is canonical. GitHub search mangles ':' and
+          # '/' in titles, so the filter runs client-side.
+          matches="$(gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100" \
+            --jq "map(select(.pull_request == null and .title == \"$title\") | .number) | .[]" \
+            | sort -n)"
           canonical="$(printf '%s\n' "$matches" | head -n 1)"
           duplicates="$(printf '%s\n' "$matches" | tail -n +2)"
 
