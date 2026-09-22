@@ -34,7 +34,7 @@ const SUGGESTION_HEADER = "suggested CLAUDE.md rules (recurring across recent se
  */
 const STANDING_RULE_TEMPLATES: Record<string, string> = {
   "stuck-loop":
-    "When a command fails, do not re-run it unchanged more than twice — change the command, add logging, or stop and summarize the failure.",
+    "Before repeating a tool call with identical input, check whether the earlier result already answers it. If it does and is still current, reuse it.",
   "trivial-spans":
     "For short acknowledgments and single-line replies, keep responses minimal — do not restate context.",
 };
@@ -48,7 +48,7 @@ const STANDING_RULE_TEMPLATES: Record<string, string> = {
  * entry renders evidence only. Guarded by the banned-phrase test (I3/I6).
  */
 export const SLIP_RULE_LINES: Record<string, string> = {
-  "stuck-loop": "change or stop after two identical failures",
+  "stuck-loop": "check whether repeated calls were needed",
   "trivial-spans": "route short replies to a cheaper model",
   "context-thrash": "clear or split context at task boundaries",
 };
