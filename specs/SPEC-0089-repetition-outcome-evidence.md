@@ -1,12 +1,12 @@
 ---
-id: SPEC-0084
+id: SPEC-0089
 title: "Keep repeated-call advice neutral"
 status: building
-milestone: M84
+milestone: M5
 depends: [SPEC-0013, SPEC-0059]
 ---
 
-# SPEC-0084: Keep repeated-call advice neutral
+# SPEC-0089: Keep repeated-call advice neutral
 
 ## Purpose
 
@@ -109,7 +109,9 @@ content export. The change corrects an observed interpretation error.
 
 S2: independent Fable design review chose the neutral correction and deferred the
 unobserved positive branch. The coordinating agent accepted that scoped design.
-The conditional-reuse qualification remains subject to final Fable review.
+The final independent Fable review accepted the conditional-reuse qualification
+and passed all gates on the initial implementation. The metadata/test follow-up
+receives a focused delta review recorded on the PR.
 
 S3: adapter-based audit examined 77 Claude Code and 200 Codex sessions (30,352
 calls); three Claude files over 64 MiB were excluded. Nine existing structural
@@ -120,4 +122,4 @@ necessary or estimate a population rate; it demonstrates why repetition alone
 cannot establish failure. A docs-only warning leaves the erroneous action copy in
 the actual handoff. Verdict: build this neutral correction; defer the error branch.
 
-S4: spec lint passes. See [the validation record](../docs/internal/validation/spec-0084-repetition-advice.md) for bounded real-workload evidence, visual checks, deliberate golden changes and test limitations. Final gates and independent code review are recorded on the PR.
+S4: spec lint passes. See [the validation record](../docs/internal/validation/spec-0089-repetition-advice.md) for bounded real-workload evidence, visual checks, deliberate golden changes and test limitations. Final gates and independent code review are recorded on the PR.

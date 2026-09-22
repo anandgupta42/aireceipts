@@ -1,9 +1,9 @@
-# SPEC-0084 validation: neutral repetition advice
+# SPEC-0089 validation: neutral repetition advice
 
 Date: 2026-09-22. Base: `34867fa8515230a9c283b1d40c975dca85487633`.
 
 The only product change is two shared handoff advice strings. The repeated-call
-detector, amount calculation, row label, recurrence gate and JSON remain unchanged.
+detector, amount calculation, row label, recurrence gate and JSON schema remain unchanged.
 The standing rule recommends reuse only when an earlier result answers the question
 and is still current, permitting legitimate polls and checks against changed state.
 
@@ -59,9 +59,9 @@ example is copied verbatim from the generated synthetic handoff golden.
 
 ## Regression and gate record
 
-Eight targeted regression cases cover successful rereads, successful and pending
+Nine targeted regression cases cover successful rereads, successful and pending
 polls, deliberate negative tests, absent/mixed results, intervening edit/input
-changes, and conditional reuse. Existing handoff, PR and built-CLI assertions retain
+changes, conditional reuse, and priced status-invariance of handoff JSON. Existing handoff, PR and built-CLI assertions retain
 their strength and adopt the new literal copy. The only changed golden is the one
 handoff instruction in `goldens/handoff-claude-code-loop-bash-5x.txt`; the other 101
 artifacts are byte-identical. Ten golden-verification runs are byte-identical.
@@ -70,5 +70,7 @@ Typecheck, lint, spec lint and hygiene passed. The initial full suite passed 2,2
 of 2,232 tests: generated docs were briefly stale before regeneration, and an
 existing 200ms statusline timing assertion took 388ms under concurrent load. Docs
 were regenerated; the timing assertion was not weakened. The final full rerun with `npx vitest run --maxWorkers=2` passed all 147 files and
-2,232 tests (exit 0), including the unchanged timing test. Independent Fable review
-is recorded in the PR's review comment.
+2,232 tests (exit 0), including the unchanged timing test. Independent Fable review of the initial commit also passed all 2,232 tests with one
+worker, all 102 goldens and ten deterministic runs. Its low-priority feedback added
+a ninth regression case comparing real priced amounts and the complete handoff
+JSON across status variants. Final delta review is recorded in the PR comment.

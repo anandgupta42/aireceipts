@@ -206,7 +206,7 @@ If you are an AI agent asked to install aireceipts, do the following:
 
 <div align="center">
 
-<img alt="Historical terminal recording of a synthetic handoff. Current aireceipts prints FLAGGED PATTERN COST with approximate notation, a not-proven-savings disclaimer, the flagged Bash loop evidence and its fix, and the coverage line; this recording predates that notation." src="site/assets/waste-handoff.gif" width="640">
+<img alt="Historical terminal recording of a synthetic handoff. Current aireceipts prints FLAGGED PATTERN COST with approximate notation, a not-proven-savings disclaimer, the flagged Bash loop evidence and a neutral review prompt, and the coverage line; this recording predates that notation." src="site/assets/waste-handoff.gif" width="640">
 
 </div>
 
