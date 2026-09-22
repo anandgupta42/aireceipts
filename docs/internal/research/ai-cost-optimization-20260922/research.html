@@ -1,0 +1,1080 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>aireceipts — AI cost research & next steps</title><style>*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:#f7f6f2;color:#242b31;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.68}a{color:#135f66;text-decoration-thickness:1px;text-underline-offset:3px}aside{position:fixed;top:0;bottom:0;width:254px;padding:38px 25px;background:#edece6;border-right:1px solid #d9d9d0;overflow:auto}.brand{font-weight:760;letter-spacing:-.04em;font-size:26px;color:#243e3d}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:10px;font-weight:750;color:#596b65}.side-note{font-size:12px;color:#6b726f;margin:12px 0 30px}nav a{display:block;font-size:13px;padding:10px 0;text-decoration:none;color:#495750}nav a:hover,nav a:focus{color:#0c7169;text-decoration:underline}.print{margin-top:28px;border:1px solid #78867b;padding:9px 12px;color:#243e3d;background:transparent;border-radius:4px;cursor:pointer}main{max-width:1260px;margin-left:254px;padding:58px 62px 90px}header{max-width:900px;border-bottom:1px solid #cbd1c7;padding-bottom:30px;margin-bottom:36px}header h1{font-family:Georgia,serif;font-size:clamp(36px,4.2vw,60px);font-weight:400;line-height:1.08;letter-spacing:-.035em;max-width:800px;margin:18px 0}header p{font-size:17px;max-width:750px;color:#53605a}.meta{font-size:12px;color:#66726b}.recommendation{background:#e7efe8;border:1px solid #c4d2c5;padding:28px 32px;margin:0 0 48px;border-radius:5px}.recommendation h2{margin:0;font-family:Georgia,serif;font-size:31px;font-weight:400}.recommendation>p{margin-top:10px}.steps{list-style:none;padding:0;margin:24px 0 8px}.steps li{display:flex;gap:21px;padding:18px 0;border-top:1px solid #c7d5c9}.step-no{font-size:13px;font-weight:700;color:#436454;padding-top:5px}.steps h3{margin:0 0 5px;font-size:17px}.steps p{font-size:14px;margin:4px 0}.steps .gate{font-size:12px;color:#526951}article{padding-top:22px;margin-bottom:68px;max-width:100%}article h1{font-family:Georgia,serif;font-size:36px;line-height:1.15;font-weight:400;margin:12px 0 24px}article h2{font-size:23px;line-height:1.3;margin:38px 0 14px;letter-spacing:-.02em}article h3{font-size:18px;margin:28px 0 10px}article p,article li{font-size:15px}article p{max-width:880px}article ul,article ol{padding-left:24px}.article-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;color:#6a766b;border-top:1px solid #cbd1c7;padding-top:20px}.table-scroll{overflow:auto;margin:20px 0;border:1px solid #d4d8cf;border-radius:4px}table{width:100%;border-collapse:collapse;min-width:630px;font-size:12px;line-height:1.5}th{text-align:left;background:#e9ece4;color:#334337;font-size:11px;padding:13px 15px}td{vertical-align:top;padding:13px 15px;border-top:1px solid #dce0d7}tr:nth-child(even){background:#f0f2eb}blockquote{border-left:3px solid #b18337;background:#f5eddc;margin:22px 0;padding:10px 21px;color:#625138}blockquote p{font-size:13px}code{font-size:.86em;background:#e9ebe4;padding:2px 4px;border-radius:3px;overflow-wrap:anywhere}pre{background:#24352f;color:#e7eee6;padding:22px;overflow:auto;border-radius:4px;font-size:13px;line-height:1.5}pre code{background:transparent;padding:0;color:inherit}.flow{display:block;background:#e7efe8;padding:16px;border-left:3px solid #3c745c;font-size:14px}footer{border-top:1px solid #cbd1c7;padding-top:20px;color:#697469;font-size:12px}@media(max-width:900px){aside{position:relative;width:100%;padding:20px 24px;border-right:0;border-bottom:1px solid #d9d9d0}.side-note{margin:5px 0}nav{display:flex;flex-wrap:wrap;gap:0 18px}nav a{font-size:12px;padding:5px 0}.print{display:none}main{margin-left:0;padding:30px 23px}.recommendation{padding:22px}article h1{font-size:29px}}@media print{aside,.print{display:none}main{margin:0;max-width:none;padding:0}body{background:white}a{color:inherit}article{break-before:page}h2,h3{break-after:avoid}tr{break-inside:avoid}.table-scroll{overflow:visible}table{min-width:0;font-size:10px}header h1{font-size:40px}.recommendation{background:#f4f4f4}pre{white-space:pre-wrap}}</style></head><body><aside><div class="brand">aireceipts</div><div class="eyebrow">Research / September 2026</div><p class="side-note">40 primary sources · 4-agent review<br>Current-main baseline: 34867fa</p><nav><a href="#next">What to do next</a><a href="#plan">Research &amp; delivery plan</a><a href="#current">Current-main audit</a><a href="#providers">Provider cost mechanics</a><a href="#failures">Failure prevention</a><a href="#market">Market &amp; opportunities</a><a href="#historical">Historical code audit</a><a href="#validation">Validation &amp; review</a></nav><button class="print" onclick="window.print()">Print / Save PDF</button></aside><main><header><div class="eyebrow">Product research · Delivery sequence</div><h1>Spend less.<br>Keep the evidence.</h1><p>A concrete plan for improving cost fidelity, identifying actionable mistakes, and measuring whether workflow changes actually help.</p><div class="meta">22 September 2026 · Local, deterministic analysis · Research proposals, not approved implementation specs</div></header><section class="recommendation" id="next"><h2>What we should do next</h2><p>Start with the numbers users must trust. Then improve one decision at a time, using the receipt, details and handoff surfaces already shipped.</p><ol class="steps"><li><span class="step-no">01</span><div><h3>Resolve price fidelity</h3><p>Investigate Sonnet 5 and GPT-5.6 Sol rate conflicts. Establish effective dates and promotion eligibility before changing historical rows.</p><p class="gate">Done when: cited dated rows are reconciled, or uncertainty is explicitly preserved.</p></div></li><li><span class="step-no">02</span><div><h3>Add net cache economics</h3><p>Extend existing cache details with write-adjusted arithmetic. Start with Claude traces that contain complete cache-write and TTL evidence.</p><p class="gate">Done when: positive, negative and unknown cases reconcile without treating missing Codex writes as zero.</p></div></li><li><span class="step-no">03</span><div><h3>Make retry findings trustworthy</h3><p>Use recorded outcomes in the existing loop detector. Evaluate polling, expected failures, changed state and intentional repeated tests.</p><p class="gate">Done when: independent negative cases stay free of false waste labels; ambiguous sequences remain neutral.</p></div></li><li><span class="step-no">04</span><div><h3>Show verification freshness</h3><p>Add one check family to the existing handoff: edits after the last pass and failed checks with no observed equivalent passing rerun.</p><p class="gate">Done when: every finding names its scope and evidence; external or missing checks remain unknown.</p></div></li><li><span class="step-no">05</span><div><h3>Measure one workflow change</h3><p>Extend compare first with a small manual task/outcome sidecar. Include every attempt, child run, failure and repair under consistent acceptance criteria.</p><p class="gate">Done when: a preregistered comparison shows meaningful cost improvement without unacceptable quality loss, or is honestly inconclusive.</p></div></li></ol><p class="gate"><strong>In parallel:</strong> verify remaining SPEC-0044 acceptance evidence and independently label existing findings. First two weeks: pricing conformance, field coverage and one cache/retry slice. Then pilot verification and outcome comparisons; do not promise savings before measuring them.</p></section><article id="plan"><div class="article-label">Research &amp; delivery plan</div><h1>AI cost optimization and mistake prevention: research and delivery plan</h1>
+<p><strong>Date:</strong> 2026-09-22. <strong>Status:</strong> research recommendation; no implementation approval implied.
+<strong>Delivery baseline:</strong> freshly fetched <code>origin/main</code>, <code>34867fa8515230a9c283b1d40c975dca85487633</code> (repository inventory: v0.11.0). The initial audit of the older checkout is retained as historical evidence; current-main reconciliation governs this plan.
+<strong>Branch:</strong> <code>research/ai-cost-optimization-20260922</code>.</p>
+<h2>Recommendation</h2>
+<p>Make aireceipts the local tool that answers three connected questions: <strong>What can I trust about this cost? What should I change next? Did that change help without weakening the result?</strong></p>
+<p>Build this in small increments: verify the remaining confidence acceptance work, extend existing cache details with net write-adjusted economics, sharpen repeated-failure findings, add verification chronology, then extend <code>compare</code> with explicit task outcomes. Preserve the compact receipt and its existing <code>--details</code>/JSON/handoff surfaces. The first useful release need not introduce a new command, a general event platform, or a live agent controller.</p>
+<p>The highest-priority work is improving the reliability of existing claims. The implementation already detects repeated calls and context refill and reprices short tool-free turns. A repeated call is not necessarily a mistake; a short answer is not necessarily easy. A lower list-price estimate is not necessarily a smaller subscription bill. These distinctions determine whether users act on the product's advice.</p>
+<p><strong>Recommended first two weeks:</strong> reconcile the current Sonnet 5 and GPT-5.6 Sol price-table conflicts with dated source evidence; verify the remaining SPEC-0044 self-check acceptance evidence; audit field coverage against current provider documentation; extend the already shipped cache breakdown with one fully traceable net write-adjusted comparison where usage permits; evaluate existing repeated-call findings against independently labeled negative cases. Select the next detector from observed incidence and actionability, not a research paper's headline savings.</p>
+<p>No actual savings, real-user false-positive rate, or productivity improvement was measured in this research. Those are deliverables of the proposed pilot, not claims this report makes.</p>
+<h2>Research method and reading map</h2>
+<p>Three parallel agents investigated provider mechanics, failure prevention/evaluation, and market/prior art. The lead inspected current code through a freshly indexed codebase-memory graph and investigated context/tool efficiency. A second pass cross-reviewed the reports and corrected inconsistent confidence gates, an invalid overlap example, and an incorrect union-accounting invariant.</p>
+<p>The research uses opened primary documentation, official repositories, engineering reports and research papers. Vendor capability descriptions are not hands-on competitor benchmarks; research results are bounded to their populations and setups. Access date is 2026-09-22 unless a source version is explicitly pinned. Current price pages do not establish historical effective dates.</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Read</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#current">Current-main reconciliation</a></td>
+<td>Current implementations, superseded concerns and remaining scope; read first</td>
+</tr>
+<tr>
+<td><a href="#historical">Historical implementation evidence</a></td>
+<td>Initial older-checkout audit; superseded where the reconciliation says so</td>
+</tr>
+<tr>
+<td><a href="#providers">Provider cost mechanics</a></td>
+<td>Model-specific billing, cache formulas, tariff observability, subscription distinctions</td>
+</tr>
+<tr>
+<td><a href="#failures">Failure prevention and evaluation</a></td>
+<td>Six detector designs, adversarial negatives, causal study protocol</td>
+</tr>
+<tr>
+<td><a href="#market">Market and product opportunities</a></td>
+<td>Ten relevant tools, differentiated user jobs, adoption pilot</td>
+</tr>
+</tbody>
+</table></div>
+<p>The worktree was initially created from the checked-out feature branch, then advanced to freshly fetched current main after discovering the baseline mismatch. Its research documents were preserved. The original checkout's unrelated uncommitted edits are preserved. No product code, price tables, skills, or approved spec statuses were changed.</p>
+<h2>Findings that change the product strategy</h2>
+<h3>1. Cost provenance is a prerequisite for optimization</h3>
+<p>Current OpenAI API caching documentation distinguishes newer models' paid cache writes from earlier behavior. Codex credit documentation separately says credit billing has no separate cache-write charge. Therefore model identity and token counts alone cannot establish what the user paid. A receipt needs a declared billing basis and must keep list-price equivalents separate from invoices and quota. <a href="https://developers.openai.com/api/docs/guides/prompt-caching">API caching</a>, <a href="https://learn.chatgpt.com/docs/pricing">Codex pricing</a>.</p>
+<p>Current main already supports per-request context tiers, explicit Standard-API-equivalent floors, request-local identity and mixed priced/unpriced ledgers. GPT-5.5 is deliberately tokens-only because its documented session-wide tier scope cannot be established from a request or slice. The initial checkout's flat-schema concerns are superseded. The remaining task is to check current provider drift and field sufficiency while preserving that conservative contract; missing Codex cache-write usage still limits net-cache analysis.</p>
+<p><strong>Product implication:</strong> reuse the existing coverage explanation and cost-model documentation. Verify one actual remaining mismatch before proposing a change; do not rebuild billing-basis labels or context-tier infrastructure already shipped.</p>
+<p>The current-main follow-up did find concrete price-drift candidates: repository Sonnet 5 and GPT-5.6 Sol rows exceed prices displayed in current official tables. Effective dates and promotion applicability remain unresolved; investigate before changing historical rows. The <a href="#current">reconciliation</a> records exact values and sources. A stale higher price can undermine a Standard-equivalent floor, making this a P0 investigation.</p>
+<h3>2. Cache economics can reverse naive token advice</h3>
+<p>Cache reads, writes, TTLs, storage and model changes alter the economics of repeated context. Anthropic's current read ratios have model exceptions, and Google's explicit cache has storage charges. A high hit rate does not establish low total cost. <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic caching</a>, <a href="https://ai.google.dev/gemini-api/docs/generate-content/caching">Google caching</a>.</p>
+<p><strong>Product implication:</strong> extend the existing read-discount/detail view with a write-adjusted same-token comparison, including negative differences when all inputs are known. Do not infer the cause of a miss from counters alone. Recommend a prefix-layout or TTL experiment only when the user's actual client exposes that control.</p>
+<h3>3. Verification evidence is a practical mistake-prevention feature</h3>
+<p>Observed failures, edits after checks, and unresolved reruns support useful handoff advice. They do not prove bad code or negligence. Existing long-running harness research motivates explicit progress and verification artifacts, but it does not establish that a missing check caused a particular defect. <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Anthropic harness engineering</a>.</p>
+<p><strong>Product implication:</strong> the first prevention feature can be a handoff line: “Edits followed the last recorded successful check; no later result was captured.” Stronger statements require the check's scope and revision. This helps the next session without controlling the running agent.</p>
+<h3>4. Context and tool-output management deserve experiments, not blanket prescriptions</h3>
+<p>The observation-masking study compared context strategies in SWE-agent across five model configurations and found substantial cost reductions in its setting. Its OpenHands probe required retuning; naive reuse of parameters degraded performance. Some cost calculations used post-hoc tariffs. This supports testing context policy, not promising the same savings to aireceipts users. <a href="https://arxiv.org/html/2508.21433v3">The Complexity Trap, v3</a>.</p>
+<p>Tool design guidance similarly favors meaningful, bounded results and evaluation against real tasks. A tool that dumps a large log may create repeated context expense, but result bytes do not reveal its exact marginal token cost in later prompts. <a href="https://www.anthropic.com/engineering/writing-tools-for-agents">Anthropic tool engineering</a>.</p>
+<p><strong>Product implication:</strong> measure output size and repeated artifact reads first. Only estimate context replay cost when actual successive prompt evidence supports it. Offer narrow-output versus full-output as a controlled workflow experiment.</p>
+<h3>5. Swarms trade money, time and coverage</h3>
+<p>Anthropic's often-quoted 15× token figure compares research multi-agent systems with chat, not equivalent single-agent coding tasks. A later vulnerability-discovery study's apparent swarm advantage partly reflected broader search scope; restricting directories changed the efficiency interpretation. <a href="https://www.anthropic.com/engineering/multi-agent-research-system">Research system</a>, <a href="https://www.anthropic.com/research/multiagent-systems">Multi-agent study</a>.</p>
+<p><strong>Product implication:</strong> reuse shipped child-cost rollups and extend them only with evidenced task scope or timing analysis. Do not call overlapping reads wasted work when they could be independent review. Neither summed child time nor overlapping intervals establishes the time saved by parallelism.</p>
+<h3>6. Optimize accepted work, not the cheapest successful screenshot</h3>
+<p>METR's 2025 study found experienced maintainers' perceived benefits diverged from measured completion time. Its 2026 follow-up then highlighted selection and concurrency problems that limited interpretation. These studies motivate careful measurement, not a present-day verdict that coding AI is faster or slower. <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/">2025 trial</a>, <a href="https://metr.org/blog/2026-02-24-uplift-update/">2026 update</a>.</p>
+<p><strong>Product implication:</strong> comparisons need declared tasks, consistent acceptance criteria, all attempts, and repair cost. Keep human review time separate from model charges. A passing command is only evidence for that command's scope.</p>
+<h3>7. Totals and generic optimization advice are already competitive markets</h3>
+<p>ccusage provides broad local reporting; Langfuse explicitly targets coding-agent workflow analysis and experiments. Other inspected tools cover local monitoring, receipts, cost provenance and native transcript analysis. “Offline,” “multi-agent,” and “shows waste” do not individually establish an exclusive market position. <a href="https://github.com/ccusage/ccusage">ccusage</a>, <a href="https://langfuse.com/coding-agents">Langfuse coding agents</a>.</p>
+<p><strong>Product implication:</strong> test demand for a compact, reproducible evidence-to-action artifact that stays local. Compete on the quality of the decision it enables and the honesty of its uncertainty. Do not race adapter counts before existing findings earn trust.</p>
+<h2>Additional analyses: prioritized opportunity map</h2>
+<p>Priority reflects evidence, relevance and dependency, not a fabricated ROI score. “Now” means suitable for the first approved slice after the coverage audit, not already implemented.</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Analysis and user decision</th>
+<th>Required evidence / honest output</th>
+<th>Main counterexample or limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td><strong>Price drift and coverage audit:</strong> does the existing total still match its dated tariff?</td>
+<td>Model/date/tariff applicability; priced subtotal, unpriced tokens, dropped records, duplicates</td>
+<td>Known-event coverage is not percent of total spend known</td>
+</tr>
+<tr>
+<td>P0</td>
+<td><strong>Repeated-call precision audit:</strong> should this warning exist?</td>
+<td>Existing inputs plus observed outcomes; count repeated attempts</td>
+<td>Polling, deliberate replication, flaky tests, state changes</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><strong>Net cache economics:</strong> are reads compensating for write/storage costs?</td>
+<td>Disjoint usage buckets and resolved rates; arithmetic net difference</td>
+<td>Excellent hit rate with expensive writes; missing storage lifecycle</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><strong>Failed-invocation episodes:</strong> what prerequisite should I inspect?</td>
+<td>Terminal outcome, exact command context, error evidence</td>
+<td>Nonzero search status, expected failure, justified remote retry</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><strong>Verification chronology:</strong> what should I recheck?</td>
+<td>Observed check results and subsequent edits; scope/revision if available</td>
+<td>External CI, docs-only change, active or truncated session</td>
+</tr>
+<tr>
+<td>P1</td>
+<td><strong>Unresolved check list:</strong> what remains open?</td>
+<td>Failed/pending/cancelled versus later equivalent success</td>
+<td>A narrower passing check does not close the wider failure</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Recovery cycles:</strong> where did repair effort accumulate?</td>
+<td>Failure→edit→rerun episodes; usage, outcome, timestamps</td>
+<td>TDD and useful debugging are not waste</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Child spend and concurrency:</strong> is decomposition worthwhile?</td>
+<td>Explicit ancestry and unique usage events; interval union and aggregate time separately</td>
+<td>Independent reviewers can justifiably read the same files</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Tool-result volume:</strong> should this tool return less?</td>
+<td>Observed bytes, truncation, exact repeats; optional recorded token count</td>
+<td>Bytes cannot be reliably converted into dollars</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Compaction reacquisition:</strong> would a better handoff help?</td>
+<td>Explicit boundary plus reads of demonstrably unchanged artifacts</td>
+<td>Rereading can be intentional; opaque state hides retained context</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Reasoning/effort profile:</strong> which task family merits a trial?</td>
+<td>Reported reasoning subset, effort setting, full outcome</td>
+<td>Short visible response may require hard reasoning</td>
+</tr>
+<tr>
+<td>P2</td>
+<td><strong>Workflow experiment comparison:</strong> did one change help?</td>
+<td>Task/revision/config sidecar, all runs and acceptance artifacts</td>
+<td>Easier later tasks, service drift, selective omission</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><strong>Combined opportunity amount:</strong> which interventions overlap?</td>
+<td>Canonical billed components/allocation slices and explicit interaction model</td>
+<td>Removing a call changes later context/cache; alternatives are not additive</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><strong>Batch/Flex eligibility:</strong> can asynchronous work move modes?</td>
+<td>Supported API surface, independent jobs, deadline tolerance, served tier</td>
+<td>Interactive dependent steps are not a ready-made batch</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><strong>Explicit cache lifecycle:</strong> is storage idle?</td>
+<td>Cache creation/extension/deletion and cross-client usage evidence</td>
+<td>One transcript cannot prove a shared cache is unused</td>
+</tr>
+<tr>
+<td>P3</td>
+<td><strong>Local longitudinal change detection:</strong> did a configuration change coincide with a shift?</td>
+<td>Versioned local runs, task mix, common price basis, declared config changes</td>
+<td>Correlation and cohort drift; do not blame a model or person</td>
+</tr>
+</tbody>
+</table></div>
+<p>Expose capabilities per adapter. A missing field should disable the corresponding strong claim without disabling unrelated analysis. Begin where reliable fields already exist, instead of promising identical depth across every vendor. Cost-shape facts (pre-edit share, concentration, late-turn ratio), same-file rereads, child rollups, cache details, evidence-to-rule handoffs and nonadditive pattern subtotals already exist on main. Rows above are extension/evaluation opportunities where those capabilities overlap, not proposals to rebuild them.</p>
+<h2>Accounting and comparison rules</h2>
+<h3>Separate four kinds of number</h3>
+<ol>
+<li><strong>Observed usage:</strong> vendor counters with source references and documented normalization.</li>
+<li><strong>Priced/allocated spend:</strong> dated applicable rates applied to usage, with billing basis and allocation method.</li>
+<li><strong>Arithmetic scenario:</strong> same observed volume repriced under explicit assumptions; not a task-performance prediction.</li>
+<li><strong>Measured intervention difference:</strong> a comparison of actual runs under a declared study design and acceptance criterion.</li>
+</ol>
+<p>Never sum across those categories as “total savings.” Subscriptions require token/quota observations and a list-price-equivalent label where appropriate. Unknown discounts, service tiers or omitted charges can make the direction of error unknown; reserve <code>≥</code> for a justified lower bound.</p>
+<h3>Cache formula</h3>
+<p>For uncached tokens <code>U</code>, cache reads <code>R</code>, writes <code>Wt</code>, rates <code>pU</code>, <code>pR</code>, <code>pWt</code>, and output <code>O</code> at <code>pO</code>:</p>
+<p><code>token_cost = (U*pU + R*pR + Σ(Wt*pWt) + O*pO) / 1,000,000</code></p>
+<p>The buckets must be disjoint. Reasoning tokens already included in output are not added again. Storage/tool charges are separate observed components. The same-token input-price difference versus uncached input is:</p>
+<p><code>cache_difference = [R*(pU-pR) - Σ(Wt*(pWt-pU))] / 1,000,000</code></p>
+<p>This can be negative. Do not derive it by subtracting two lower-bound receipt totals: their difference has no guaranteed bound. Require a common complete component set; Codex's absent write counters prevent an exact net-cache claim. For one prefix written once then fully read <code>N-1</code> times, caching beats repeated ordinary input if <code>N &gt; (w-r)/(1-r)</code>, assuming <code>r&lt;1</code>, fixed rates, no eviction/rewrite/storage, identical usage and no quality change. The full derivation and TTL caveats are in the provider report. This is arithmetic, not an instruction to increase request count.</p>
+<h3>Cheaper-model escalation formula</h3>
+<p>For an illustrative policy that always tries a cheaper run costing <code>c</code>, then escalates with probability <code>q</code> to an additional run costing <code>e</code>, expected model cost is <code>c + q*e</code>, plus observed switching/recovery costs. Compare it to a strong-only policy's full expected cost, including that policy's own failures. Do not assume either policy has equal acceptance or that a failed cheap attempt leaves no state to repair.</p>
+<p>Using hypothetical cost units, <code>c=2,e=10,q=0.4</code> gives 6 units before other costs; <code>q=0.9</code> gives 11. This illustrates why per-token price is insufficient, not an empirical forecast. A retrospective short-output heuristic cannot supply <code>q</code>.</p>
+<h3>Cohort objective</h3>
+<p><code>cost_per_accepted_task = total_cost_of_all_assigned_attempts / accepted_tasks</code></p>
+<p>Include abandoned runs, failed retries, children and subsequent repair within the predeclared observation window. When no tasks are accepted, the ratio is undefined. Show acceptance rate, sample count, unresolved prices, total spend and review time alongside it. If price coverage is incomplete, do not silently treat the subtotal as the whole cost. Keep all assigned attempts in primary outcome and missingness reporting, using token-based descriptions where appropriate. Any restricted priced cohort is descriptive or sensitivity analysis unless eligibility was fixed before assignment; it cannot alone support a causal savings claim.</p>
+<h3>Overlap</h3>
+<p>Keep the existing maximum-class flagged-pattern subtotal, non-additive warnings and separate scenarios first. Only add a combined amount if users need it and the semantics are supportable. A future union operates on usage-event, billed-component and allocation-slice identities. Adding identical/subset coverage changes nothing; adding partially overlapping coverage adds only newly covered atoms. Repricing a removed turn and saving its cache reads cannot be counted twice.</p>
+<h2>Concrete delivery backlog</h2>
+<p>These are proposal IDs, not new SPEC numbers. Each nontrivial implementation needs the normal draft-spec/maintainer approval path. Estimated effort is hands-on engineering time for one maintainer with agent assistance, excluding review queues and corpus recruitment; it is not a commitment.</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Work item</th>
+<th>Scope and owners by area</th>
+<th>Estimate / dependency</th>
+<th>Acceptance and stop condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R0 — Verify remaining assurance</td>
+<td>Reconcile SPEC-0044 acceptance evidence with existing cost-model docs and self-check; discovery fix SPEC-0045 is already shipped</td>
+<td>1–2 days audit; implementation only if a real gap remains</td>
+<td>Existing independent manifests and real-PR dogfood evidence; do not rebuild documentation or discovery handling</td>
+</tr>
+<tr>
+<td>R1 — Field coverage and independent labels</td>
+<td>Adapter capability matrix; consented sample; labels authored without detector output; evaluation owner</td>
+<td>2–3 days plus recruitment; parallel with R0</td>
+<td>Per-field denominators, positive and negative examples, unknowns by adapter; no new detector if incidence or data is absent</td>
+</tr>
+<tr>
+<td>R2 — Current tariff/usage conformance</td>
+<td>Reconcile Sonnet 5 / GPT-5.6 Sol current-table conflicts and dated applicability using existing PricingUnit/context-tier/CostEstimate contracts</td>
+<td>1–2 days audit; 2–3 more only for a demonstrated gap; R0/R1</td>
+<td>Existing floors and unknowns preserved; no new schema if current contract suffices; Codex absent writes remain unknown</td>
+</tr>
+<tr>
+<td>R3 — Net cache delta</td>
+<td>Extend shipped cache detail/read-discount view with write-adjusted arithmetic for one sufficiently observed case, likely Claude direct API-equivalent usage</td>
+<td>2–4 days; R2</td>
+<td>Positive/negative/unknown examples; missing writes/storage suppress net claims; existing receipt bytes change only via approved goldens</td>
+</tr>
+<tr>
+<td>R4 — Existing-loop precision</td>
+<td>Carry outcomes/evidence through existing detector; narrow semantics, polling negatives; <code>src/pricing/waste.ts</code></td>
+<td>2–4 days; R1, may parallel R2</td>
+<td>Zero observed false waste labels on held-out negatives; preserve neutral repeated-call facts; suppress noisy classes</td>
+</tr>
+<tr>
+<td>R5 — Verification handoff</td>
+<td>One recognized command family, chronology plus scope; extend handoff/export</td>
+<td>3–5 days; R1/R4 evidence work</td>
+<td>Edits-after-check and unresolved result examples; outside-CI/active-session negatives; abstain on incomplete scope</td>
+</tr>
+<tr>
+<td>R6 — Experiment sidecar</td>
+<td>Small local manifest imported by <code>compare</code>, all attempts and acceptance evidence</td>
+<td>3–5 days; R0/R1; pilot after R3/R5</td>
+<td>A developer can compare one intervention without running models through aireceipts; reject automatic unrelated-task matching</td>
+</tr>
+<tr>
+<td>R7 — Pilot and decision</td>
+<td>Existing receipt versus one actionable finding; reviewed local summaries</td>
+<td>2–4 elapsed weeks; R3 or R5 and R6</td>
+<td>Practical effect plus quality constraint, no excluded failures; inconclusive remains inconclusive; cut features users do not act on</td>
+</tr>
+</tbody>
+</table></div>
+<p>Do not parallelize edits to shared normalized types and receipt contracts blindly. One owner checks the existing contract, then pricing and detector work can proceed with separate fixtures; add fields only when demonstrably absent. Reuse one renderer, one price schema, one confidence mechanism and existing overlap flags. The current waste implementation is <code>src/pricing/waste.ts</code>; a skill's generic proposed directory is not evidence that a registry already exists.</p>
+<p><span class="flow">Price fidelity + field coverage → cache economics / retry precision → verification handoff → outcome comparison</span></p>
+<h3>First five working days</h3>
+<p><strong>Day 1:</strong> read the current-main reconciliation and investigate the two price-drift candidates; verify the remaining SPEC-0044 acceptance items without duplicating shipped docs or SPEC-0045; produce a coverage worksheet for model/date, raw/final usage semantics, cache tiers, tool outcome, edit scope and ancestry. Separate supported from assumed fields. Confirm the exact user decision for the first slice.</p>
+<p><strong>Day 2:</strong> label a pilot sample of roughly 30 candidate episodes plus clean negative sessions, spanning API and subscription usage where available. This is qualitative scoping, not precision certification. Establish a disjoint holdout and record missing fields. Real data stays local; no raw content enters telemetry or public fixtures.</p>
+<p><strong>Day 3:</strong> reproduce one remaining applicability or net-cache insight gap with a sanitized independent fixture and write a narrow draft spec. If current conformance is already correct, proceed directly to the net-cache extension. In parallel, record legitimate repeated-call counterexamples. Do not change prices through uncited inference.</p>
+<p><strong>Day 4:</strong> after spec approval, implement only the selected extension, run the repository gates and money-path mutation checks required by scope. Reuse existing cache detail output and prototype net arithmetic only for supported inputs. No approval is presumed by this plan.</p>
+<p><strong>Day 5:</strong> demonstrate a traceable receipt and a negative/unknown case to pilot users; test whether they understand the amount and next action. Choose R3 or R5 based on actionable incidence. If neither has adequate evidence, improve coverage/wording instead of building another heuristic.</p>
+<h3>Four-to-eight-week decision sequence</h3>
+<p>Week 1 establishes trust and data sufficiency. Weeks 2–3 ship at most one approved insight slice and a narrower existing loop rule. Week 4 pilots the sidecar and handoff with users. Weeks 5–8, if recruitment and task volume permit, run a preregistered intervention study and decide whether to expand. A calendar deadline never overrides insufficient evidence or spec approval.</p>
+<h2>Product value and reliability gates</h2>
+<p>Use three gates with different purposes; do not confuse them.</p>
+<p><strong>Arithmetic correctness:</strong> supported rows and normalized usage reconcile; unknown pricing never silently becomes a known zero (omitted components retain tokens and caveats within an explicitly qualified floor); identical inputs and pinned versions produce byte-identical output. Goldens protect all existing surfaces. Monetary changes retain property/mutation testing. Include threshold boundaries, cache write/read subsets, duplicated streaming usage, partial transcripts and ancestry overlap.</p>
+<p><strong>Finding reliability:</strong> default “waste” or causal labels require near-zero false positives, as the repo already mandates. Require zero observed false waste labels in independent held-out negative cases and no unresolved severe mislabel. A proposed quantitative target is a one-sided 95% precision lower bound of at least 99%, with cluster-aware uncertainty and meaningful coverage. With ideal independent observations, roughly 299 all-correct emitted labels would be needed for that bound; correlated sessions require more evidence or a different cluster-aware analysis. This is not a promise that 299 labels suffice in practice. A 30-case pilot cannot certify it. When evidence is too small, ship exact arithmetic and neutral chronology in opt-in details, not a confident waste accusation.</p>
+<p><strong>Intervention value:</strong> predeclare a minimum meaningful cost reduction and acceptable quality noninferiority margin for the task family. Require uncertainty bounds to clear both, and no material increase in review burden or escaped defects. A nonsignificant quality difference does not establish safety. Keep failed/abandoned attempts in the assigned cohort, audit graders, and use a fixed analysis plan or valid sequential method. The failure-prevention report gives the full protocol.</p>
+<p>For onboarding, start with a 12-person qualitative pilot across API and subscription users. Proposed targets: 8 unassisted first receipts, 6 evidence inspections, 4 completed workflow experiments, 3 returning users in week two. These are early product signals, not a powered savings study. Record why people do not act: unsupported recommendation, unclear evidence, unavailable setting, or effort exceeding value.</p>
+<p>SPEC-0081's rejected automatic-conversion proposal is not revived here: observe existing onboarding and classify demonstrated failure reasons before proposing a funnel change. The final study sample size depends on pilot variance and clustering. Randomize persistent advice at developer level where feasible; task-level randomization can contaminate controls as users learn the advice. For offline harness comparisons, pair task snapshots, randomize order and retain all runs. No paid model trials are part of this research; a future trial needs its own budget and execution scope.</p>
+<h2>How the product can prevent mistakes without becoming an agent controller</h2>
+<p>Use the already shipped session-end, handoff and PR surfaces. Show the strongest supported actionable observation, with an evidence reference and specific scope. Example wording below is illustrative proposed behavior, not current CLI output:</p>
+<pre><code class="language-text">Verification evidence
+  Last recorded passing check: unit tests, before the final edit
+  Later equivalent result: not captured
+  Next step: check the edited scope before relying on that pass
+
+Cost basis
+  API list-price equivalent; subscription invoice not determined
+  Cache writes and reads: included where reported and priced
+  Missing tariff dimension: exact total unavailable
+</code></pre>
+<p>Avoid a wall of warnings or a score that hides unknowns. “No finding supported” should be a valid result. Product recommendations should be bounded and derived from captured facts; do not automatically execute commands extracted from untrusted transcripts, rewrite agent instructions, cancel processes, change providers, or reduce verification.</p>
+<p>A future live advisory hook could be deterministic and local, but it changes the product's role and needs its own architecture decision, budget behavior, latency bounds and false-alert study. Hard stops and automatic model routing are further separate proposals. They are not necessary to deliver useful mistake prevention through the next handoff.</p>
+<h2>Deliberately deferred</h2>
+<ul>
+<li>Universal “optimal model” recommendations, model rankings or claims another model would have solved a task.</li>
+<li>A general billing/observability platform, hosted dashboards, account collection or transcript uploads.</li>
+<li>Full prompt reconstruction, semantic failure diagnosis or LLM judges inside the product.</li>
+<li>Batch/Flex recommendations for interactive sessions without workload eligibility evidence.</li>
+<li>Automatic deletion of provider caches or modification of user workflows.</li>
+<li>A headline summed “potential savings” number from overlapping scenarios.</li>
+<li>Dollar-per-line-of-code, agent leaderboards, and a productivity score that rewards fewer checks.</li>
+<li>Broad adapter expansion before evidence depth proves useful to existing users.</li>
+</ul>
+<p>OpenTelemetry naming may inform optional local interoperability, but its GenAI conventions have moved to a dedicated repository. Pin a version if reused; do not import a telemetry exporter or recreate the full tracing stack merely to align names. <a href="https://github.com/open-telemetry/semantic-conventions-genai">Official conventions repository</a>.</p>
+<h2>Constraints preserved</h2>
+<p>I1: deterministic analysis, no model calls or new product-path network. I2: dated applicable price evidence or tokens/explicit unknown. I3: traceable numbers and clearly labeled arithmetic/inference. I4: local evidence; existing disclosed opt-out telemetry only, no raw transcripts, commands, paths, costs or content hashes. I5: shared byte-stable receipt contract and goldens. I6: session/workflow facts and measured comparisons, no model/agent rankings.</p>
+<p>Maintainer control over spec approval, skill changes, cited price-table changes and releases remains intact. This report selects work and proposes gates; it does not self-approve specifications or authorize a release.</p>
+<h2>Deliverable boundary</h2>
+<p>The recommended sequence is concrete enough to draft the first narrow spec: verify remaining confidence acceptance evidence and extend the current cache details with a supported net price difference, with an independent evidence corpus alongside it. The important unknown is not the number of possible features; it is which observations are present often enough, accurate enough and actionable enough to improve a real user's next session.</p>
+<p>Baseline and document verification results are recorded in <a href="#validation">Validation and review</a>. The complete research bundle is also copied to the work Obsidian vault under <code>Research/AI Cost Optimization and Mistake Prevention/</code>.</p>
+</article><article id="current"><div class="article-label">Current-main audit</div><h1>Current-main reconciliation and revised priorities</h1>
+<p>Date: 2026-09-22. Freshly fetched <code>origin/main</code>: <code>34867fa8515230a9c283b1d40c975dca85487633</code>. Repository release inventory: v0.11.0.</p>
+<p>The initial checkout was an older feature branch at <code>a56a6a7</code>, whose inventory described v0.2.0. Before delivery, a worktree inventory exposed newer main. The research team inspected an immutable archive of current main through a freshly indexed codebase-memory graph, reviewed its docs/specs, then advanced the new research worktree to that same commit while preserving the research. The original checkout and its dirty files were not changed.</p>
+<p><strong>This reconciliation and the revised synthesis govern implementation priorities.</strong> Earlier code-audit references explicitly describe the historical checkout. Several initial gaps have already been fixed; rebuilding them would waste effort.</p>
+<h2>What is already implemented</h2>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Current code evidence</th>
+<th>Consequence for the plan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Context-tier pricing</td>
+<td><code>src/pricing/types.ts:36</code> / <code>:45</code>; <code>src/pricing/resolve.ts:74</code></td>
+<td>No new generic context-tier schema required</td>
+</tr>
+<tr>
+<td>Request-local pricing identity</td>
+<td><code>src/parse/types.ts:83</code>; <code>src/pricing/resolve.ts:377</code></td>
+<td>Reuse <code>PricingUnit</code>, provider/model/date gates and per-request resolution</td>
+</tr>
+<tr>
+<td>Standard-API-equivalent floors</td>
+<td><code>src/receipt/costEstimate.ts:8</code>, <code>:25</code>, <code>:34</code>; <code>docs/trust.md</code></td>
+<td>Billing-basis distinction and uncertainty are already public contracts</td>
+</tr>
+<tr>
+<td>Codex request reconciliation</td>
+<td><code>src/parse/codex.ts:396</code>, <code>:425</code>, <code>:507</code></td>
+<td>Contradictory request evidence already suppresses request dollars</td>
+</tr>
+<tr>
+<td>Reasoning billing</td>
+<td><code>src/parse/codex.ts:42</code>, <code>:70</code></td>
+<td>Reasoning is validated as a subset of output; do not propose charging it again</td>
+</tr>
+<tr>
+<td>Cache categories and details</td>
+<td><code>src/receipt/present.ts:411</code>, <code>:425</code>, <code>:451</code></td>
+<td>Read/write/TTL detail and read-only cache arithmetic already exist</td>
+</tr>
+<tr>
+<td>Cost-shape facts</td>
+<td><code>src/pricing/costShape.ts:95</code>; <code>src/receipt/model.ts:326</code></td>
+<td>Pre-edit share, expensive-turn concentration and confounded late-turn ratio already exist</td>
+</tr>
+<tr>
+<td>Same-file rereads</td>
+<td><code>src/pricing/waste.ts:188</code>; <code>src/receipt/model.ts:327</code></td>
+<td>Standalone low-confidence diagnostic already excludes recorded edits, compactions, failed reads and shell touches</td>
+</tr>
+<tr>
+<td>Loop source positions</td>
+<td><code>src/receipt/model.ts:338</code>; <code>src/receipt/present.ts:339</code></td>
+<td>Model/text already retain locations; JSON consistency is the narrower gap</td>
+</tr>
+<tr>
+<td>Pattern handoff</td>
+<td><code>src/receipt/handoff.ts:70</code>, <code>:104</code>; <code>src/pr/body.ts:623</code></td>
+<td>Largest observed-cost class subtotal, not a sum of overlaps or a savings prediction</td>
+</tr>
+<tr>
+<td>Exported interpretation</td>
+<td><code>src/receipt/json.ts:262</code></td>
+<td>Legacy <code>couldHaveSaved</code> key is explicitly heuristic-pattern pricing; percentage is null</td>
+</tr>
+<tr>
+<td>Scoped discovery failure</td>
+<td>SPEC-0045 shipped; <code>docs/trust.md</code> discovery entry</td>
+<td>Do not reopen the old scoped discovery fix as missing work</td>
+</tr>
+<tr>
+<td>Child cost rollups</td>
+<td>SPEC-0060/0061 shipped and documented on session/PR/JSON/statusline surfaces</td>
+<td>Extend timing/evidence only if useful; do not rebuild child-cost inclusion</td>
+</tr>
+<tr>
+<td>Cost-model documentation</td>
+<td><code>docs/cost-model.md</code>, including independent oracle discussion</td>
+<td>Documentation exists despite stale “missing docs” inventory wording</td>
+</tr>
+</tbody>
+</table></div>
+<p>These references are for current-main commit <code>34867fa</code>, not the historical audit's line numbers. Spec frontmatter alone is not an implementation inventory: SPEC-0067/0068 still say approved while code and published schema contain their features. Reconcile remaining acceptance/corpus evidence rather than assuming the features are unbuilt.</p>
+<p>The historical GPT-5.5 short-rate concern is also superseded: <code>data/prices/openai.json:127</code> deliberately omits GPT-5.5 because its session-wide context tariff scope cannot be safely inferred for a request or PR slice.</p>
+<h2>Concrete current issues and opportunities</h2>
+<h3>1. Investigate price drift before any new savings calculation</h3>
+<p>Two current-table conflicts deserve immediate investigation through the cited-price process:</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Current repo row</th>
+<th>Official page observed 2026-09-22</th>
+<th>What remains unknown</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Sonnet 5</td>
+<td><code>data/prices/anthropic.json:63</code>: September 1 onward input/output 3/15 USD per million</td>
+<td>Current cache table input/output 2/10, with corresponding lower write/read prices</td>
+<td>Whether an announced increase was cancelled, deferred or otherwise qualified; historical effective interval</td>
+</tr>
+<tr>
+<td>GPT-5.6 Sol</td>
+<td><code>data/prices/openai.json:43</code>: input/output 5/30 USD per million; cited July 10</td>
+<td>Current pricing table 4/20 short context, 8/30 long context; promotional pricing mentioned</td>
+<td>Promotion start, eligibility and applicable date interval; confirm model-page/table alignment</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sources: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic caching table</a>, <a href="https://developers.openai.com/api/docs/pricing">OpenAI API pricing</a>.</p>
+<p>These are verified conflicts between recorded and currently displayed rates, <strong>not proven incorrect historical receipts or invoices</strong>. A current webpage does not establish when a change became effective. Do not overwrite old rows or backdate current prices from access date. Resolve announcements, exact model/tier eligibility and effective intervals; if history cannot be established, preserve explicit uncertainty.</p>
+<p>If a stale row exceeds the applicable Standard list price, labeling its result a floor does not repair the arithmetic. This makes drift investigation a higher-priority task than a new pricing architecture. No price rows were edited in this research.</p>
+<h3>2. Extend gross cache-read arithmetic to net write-adjusted economics</h3>
+<p><code>src/pricing/resolve.ts:153</code> and the details view already show a read-only same-token cache comparison. The useful increment is subtracting the observed write premium and any observable storage charge on a common, complete component set.</p>
+<p>Start with compatible Claude traces whose write/TTL fields are actually present. Codex explicitly lacks persisted write counters; the zero normalization at <code>src/parse/codex.ts:87</code> does not prove no writes were billed. Its current read-only comparison must not be promoted to a net benefit.</p>
+<p><strong>Subtracting two lower-bound totals does not yield a lower-bound savings number.</strong> A net arithmetic comparison requires known common coverage; otherwise keep the read-only fact and explain which component is missing. Suppress economic conclusions if unresolved write or tariff evidence can change the sign.</p>
+<h3>3. Use retained outcomes to improve the existing loop detector</h3>
+<p><code>flattenCalls</code> now preserves raw input, shell marker and status (<code>src/pricing/waste.ts:70</code>), so the historical statement that it drops status is obsolete. However <code>detectStuckLoops</code> at line 105 still compares consecutive tool/input identities without using those outcomes. This is a smaller implementation opportunity than creating a general event schema.</p>
+<p>The short-output repricing heuristic remains at <code>src/pricing/waste.ts:270</code>, now with stricter per-unit pricing evidence. Its pricing integrity has improved; the heuristic still does not establish task difficulty or cheaper-model success. Evaluate wording and actionability without weakening its existing evidence gates.</p>
+<p>Loop locations now survive into the model/text, but <code>wasteLineJson</code> at <code>src/receipt/json.ts:57</code> still omits them for stuck-loop findings. Trivial-span locations are omitted earlier. Consistent versioned evidence references are a narrow export improvement.</p>
+<h3>4. Add verification chronology and test advice empirically</h3>
+<p>Existing handoff already connects detected patterns to fixed next-run advice. The new question is whether that advice is applicable and useful. Add observed checks, post-check edits and unresolved terminal outcomes only where source coverage permits. Use current handoff and <code>compare</code>; trial a manual local task/outcome sidecar before building experiment infrastructure.</p>
+<p>For existing same-file reread and cost-shape facts, evaluate comprehension and remaining independent corpus gates. Do not relabel rereads as unnecessary work or require a statistical waste-classification gate for an exact neutral arithmetic identity. The stricter gate in the plan applies to new default waste/causal labels, not every descriptive fact.</p>
+<h3>5. Respect the rejected onboarding proposal</h3>
+<p>SPEC-0081 is rejected. Its tombstone records unsupported funnel inference from a tiny cohort and a misleading use of nonzero exit counts. It suggests a smaller controlled-exit taxonomy/measurement follow-up. Do not resurrect automatic demos or generic conversion flows as a new research discovery. The proposed 12-person pilot is qualitative observation of existing onboarding and new insight usability; it makes no conversion-lift claim.</p>
+<h2>Revised implementation order</h2>
+<ol>
+<li>Reconcile the two dated-price conflicts; verify actual remaining SPEC-0044 acceptance evidence and spec-status drift.</li>
+<li>Audit source-field coverage and independently label current loop/reread/advice behavior.</li>
+<li>Extend shipped cache details with net write-adjusted arithmetic only for complete evidence.</li>
+<li>Improve loop outcome handling and JSON evidence parity as narrow follow-ups.</li>
+<li>Add one verification chronology slice to existing handoff.</li>
+<li>Measure one workflow intervention with all attempts, acceptance and missing prices retained.</li>
+</ol>
+<p>Current-main verification results are recorded separately from the initial older-baseline run in <a href="#validation">Validation and Review</a>. This correction removes redundant work while preserving the research's core recommendation: reliable observations, a specific available action, and measured task outcomes.</p>
+</article><article id="providers"><div class="article-label">Provider cost mechanics</div><h1>Provider cost mechanics: reliable accounting before optimization</h1>
+<blockquote>
+<p>Baseline correction: the initial code audit used the older <code>a56a6a7</code> checkout. Current <code>origin/main</code> at <code>34867fa</code> has substantial additional implementations. <a href="#current">Current-main reconciliation</a> and the revised delivery plan supersede any older-code gap or new-feature claim below. Provider and research-source findings remain separately dated.</p>
+</blockquote>
+<p>Research date and source access date: <strong>2026-09-22</strong>. Scope: official OpenAI, Anthropic, and Google documentation, opened during research; no paid model calls. Recommendations below are proposals, not approved specs. Product grounding: <code>AGENTS.md</code>, <code>specs/SPEC-0000-product.md</code>, and the parent research agent's code inspection. Prices and product behavior are snapshots, not promises about historical sessions or future availability.</p>
+<h2>Decision</h2>
+<p>Current main already implements an explicit Standard-API-equivalent basis, request-level tariff resolution and conservative floors. Prioritize conformance with current dated prices, then extend net cache economics and measured workflow comparisons. A superficially precise savings number is worse than an honest unknown when the transcript omits cache-write categories, service tier, geography, subscription treatment, or a long-context threshold. The opportunity is to explain <strong>which observed behavior consumed resources, how confidently it can be priced, and what experiment would test an improvement</strong>.</p>
+<p>The highest-value finding is that API pricing and subscription credit accounting can differ even for cache writes on the same model. The second is that familiar caching and long-context rules already vary by model generation. Rules such as “OpenAI cache writes are free,” “all Claude cache reads cost one tenth,” or “Claude above 200k always costs extra” are unsafe as universal assumptions.</p>
+<h2>What the opened primary sources establish</h2>
+<p>Each numbered entry gives a bounded source summary. Source-specific rates should become cited, dated data only through the repository's price-update process.</p>
+<ol>
+<li>
+<p><strong>OpenAI prompt caching.</strong> GPT-5.6 and later use a 1.25× cache-write rate and a 0.1× read rate; cache writes replace the ordinary input rate for those tokens, rather than adding a second full charge. Earlier models have different behavior. Usage now includes <code>input_tokens_details.cache_write_tokens</code>. Newer models support explicit breakpoints and a minimum 30-minute cache lifetime. Exact prefix reuse matters. <a href="https://developers.openai.com/api/docs/guides/prompt-caching">Official prompt-caching guide</a>.</p>
+</li>
+<li>
+<p><strong>Anthropic prompt caching.</strong> Five-minute writes cost 1.25× base input; one-hour writes cost 2×. Read ratios vary: the current table includes 0.025× and 0.05× exceptions alongside 0.1×. <code>input_tokens</code> excludes cache reads and writes; sum the three categories for total input. TTL begins at request start, so generation time consumes it. Token minima are model-specific. <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Official prompt-caching guide</a>.</p>
+</li>
+<li>
+<p><strong>Claude tariffs.</strong> The current guide says Claude 4.6 and later include the full 1M context window at standard rates. Applicable US-only inference carries a 1.1× multiplier; fast mode and batch have separate applicability rules. The guide also warns that newer tokenizers change token volume for identical text. <a href="https://platform.claude.com/docs/en/about-claude/pricing">Official Claude pricing</a>.</p>
+</li>
+<li>
+<p><strong>Google API surfaces.</strong> Current Interactions API documentation supports implicit caching, but directs explicit-cache users to <code>generateContent</code>. Its older API guide describes explicit-cache storage billed by tokens and TTL, with a default one-hour TTL. A cache object therefore has a lifecycle cost outside individual completion receipts. <a href="https://ai.google.dev/gemini-api/docs/caching">Interactions caching</a>, <a href="https://ai.google.dev/gemini-api/docs/generate-content/caching">generateContent caching</a>.</p>
+</li>
+<li>
+<p><strong>Gemini tariff discontinuity.</strong> The current Gemini 2.5 Pro standard table charges different input, cached-input, and output rates above 200k prompt tokens, and lists storage separately. Its batch cached-input and storage prices are unchanged from standard. Thus a blanket “halve the complete bill with batch” calculation would be wrong. <a href="https://ai.google.dev/gemini-api/docs/pricing">Official Gemini pricing</a>.</p>
+</li>
+<li>
+<p><strong>OpenAI tariff dimensions.</strong> The price table distinguishes short/long context and Standard/Batch/Flex/Fast modes, with regional modifiers and model-specific availability. A model-name-only lookup cannot represent all these choices. Do not infer a numerical long-context boundary from a table that does not establish that boundary. <a href="https://developers.openai.com/api/docs/pricing">Official API pricing</a>.</p>
+</li>
+<li>
+<p><strong>OpenAI subscription distinction.</strong> Codex credit billing explicitly has no separate cache-write charge; API-key usage follows API pricing. The documentation also says credit prices alone do not determine included subscription usage. Neither an API-equivalent amount nor a credit estimate proves a reduction in the user's subscription bill. <a href="https://learn.chatgpt.com/docs/pricing">Official subscription and credit pricing</a>.</p>
+</li>
+<li>
+<p><strong>Claude session totals are estimates.</strong> Claude Code computes local dollar figures from token counts and list prices, or configured organizational rates. Its docs identify the Console as authoritative for billing. A vendor CLI's own displayed total is useful reconciliation evidence, not automatically invoice truth. <a href="https://code.claude.com/docs/en/costs">Claude Code cost management</a>.</p>
+</li>
+<li>
+<p><strong>Claude cache behavior depends on setup.</strong> Main conversations within included subscription usage request a one-hour TTL by default; API/credit/cloud usage defaults to five minutes. Subagents have separate conversations and cache prefixes. Effort changes can invalidate caches, but current model/client exceptions exist. <a href="https://code.claude.com/docs/en/prompt-caching">Claude Code prompt caching</a>.</p>
+</li>
+<li>
+<p><strong>Reasoning is billable resource usage.</strong> OpenAI reasoning tokens are billed as output and occupy context despite not being directly visible. The reasoning guide also describes generation-specific carryover behavior. Visible answer length therefore cannot identify output cost or prove waste. <a href="https://developers.openai.com/api/docs/guides/reasoning#how-reasoning-works">OpenAI reasoning guide</a>.</p>
+</li>
+<li>
+<p><strong>Batch and Flex require workload fit.</strong> OpenAI Batch offers a 50% discount and a completion window of up to 24 hours. Flex trades latency/availability for lower prices; its documented resource-unavailable errors are uncharged, and retrying at standard processing can change cost. These are properties of an execution mode, not retrospective proof that an interactive agent could use it. <a href="https://developers.openai.com/api/docs/guides/batch">Batch guide</a>, <a href="https://developers.openai.com/api/docs/guides/flex-processing">Flex guide</a>.</p>
+</li>
+<li>
+<p><strong>Compaction is a state transition.</strong> OpenAI compaction can run within a response and produces an opaque state item; observing the event does not reveal the retained semantic content. The guide presents context reduction as a quality/cost/latency tradeoff. <a href="https://developers.openai.com/api/docs/guides/compaction">Compaction guide</a>.</p>
+</li>
+</ol>
+<h2>Accounting model to make these facts usable</h2>
+<p>The initial old-checkout audit found a flat price schema and a GPT-5.5 short-context row. Current-main inspection supersedes those findings: context tiers, per-request identity and explicit cost-basis/coverage contracts are implemented, GPT-5.5 is deliberately omitted, and Codex reasoning is already included in output billing. Preserve these contracts. The remaining limitations include absent Codex write counters, commercial billing context and some diagnostic dimensions. See the current-main reconciliation for exact source references and two current-price conflicts.</p>
+<p>Use the following as a target evidence map, not a prerequisite universal-schema rewrite. First audit field availability and extend existing usage/confidence types only for one demonstrated tariff ambiguity. Add further dimensions when a supported analysis needs them:</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Field group</th>
+<th>Minimum evidence to retain</th>
+<th>Failure behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity</td>
+<td>Source event locator; provider request ID; session/parent IDs; adapter version</td>
+<td>Explain possible overlap; never sum uncertain duplicates silently</td>
+</tr>
+<tr>
+<td>Usage</td>
+<td>Raw vendor counters; normalized disjoint buckets; final/cumulative/delta marker</td>
+<td>Preserve unknown; absent is not zero</td>
+</tr>
+<tr>
+<td>Tariff</td>
+<td>Exact model/version; request timestamp; API surface; served tier; geography when material</td>
+<td>No exact dollars if a material dimension is unresolved</td>
+</tr>
+<tr>
+<td>Billing basis</td>
+<td>API list-price equivalent, configured contract rate, subscription/credits, or unknown</td>
+<td>Put basis beside the amount; avoid the label “you paid”</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Total model input, observed prefix fingerprints, compaction events, cache TTL where present</td>
+<td>Counters remain useful; causal diagnosis may be unavailable</td>
+</tr>
+<tr>
+<td>Outcome</td>
+<td>Task identity, revision, command result, independent acceptance artifact</td>
+<td>No claim of successful optimization from a lower receipt alone</td>
+</tr>
+</tbody>
+</table></div>
+<p>Use exact integer token counts and integer monetary units or rational rates, summing before display rounding. A normalized input identity is <code>I = U + R + W5 + W60 + Wother</code>, where the buckets are disjoint. Output reasoning is either a documented subset of output or a separate vendor bucket normalized into it; it is never blindly added again. Maintain the raw record so the mapping can be audited.</p>
+<p>For a resolved tariff, <code>C_tokens = (U*pU + R*pR + Σ Wt*pWt + O*pO)/1e6</code>. Add tool/service/storage charges only when separately observed and supported. A known token subtotal can be displayed as a subtotal, but an unresolved component prevents calling it the complete total. OpenAI total input and Anthropic ordinary input cannot be interpreted identically. <a href="https://developers.openai.com/api/docs/guides/prompt-caching">OpenAI caching</a>, <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic caching</a>.</p>
+<p>Keep two timestamps for price evidence: source observation and documented effective date. Today's webpage cannot prove what yesterday's tariff was. Never backfill a historical price solely from access date. Missing billed tier is especially important after fallback: the requested tier need not prove the served tier. A supported baseline can be offered explicitly as arithmetic, but should not masquerade as resolved billing.</p>
+<h2>Cache economics: useful calculations and their limits</h2>
+<p>The following are original accounting derivations, conditional on the rates and request pattern supplied. They are not measured savings from aireceipts users.</p>
+<p>For an identical prefix of <code>L</code> tokens, ordinary input rate <code>p</code>, write multiplier <code>w</code>, read multiplier <code>r</code>, and <code>N</code> total requests with one write followed by full hits:</p>
+<p><code>uncached = N*L*p/1e6</code></p>
+<p><code>cached = L*p*(w + (N-1)*r)/1e6</code></p>
+<p>Caching is cheaper when <code>N &gt; (w-r)/(1-r)</code>. With illustrative <code>w=1.25,r=0.1</code>, two requests suffice; with <code>w=2,r=0.1</code>, three suffice. These examples assume the prefix would otherwise be processed every time, no eviction, no extra output, and no behavior change. Additional rewrites reset the economics. This is a scenario calculator, not a directive to generate more requests.</p>
+<p>For measured disjoint cache buckets, a transparent comparison to processing the <strong>same observed tokens</strong> uncached is:</p>
+<p><code>cache_delta = [R*(pU-pR) - Σ Wt*(pWt-pU)]/1e6</code></p>
+<p>It can be negative. Label it “same-token uncached arithmetic,” never “money you saved,” because some input might not exist without caching and actual billing may differ. Do not average per-request hit percentages: use <code>ΣR/ΣI</code>, disclose the population, and show cost beside hit rate. A huge cached prompt can have an excellent hit rate and still be unnecessarily expensive.</p>
+<p>For explicit storage, use <code>S = ∫cached_tokens(t)*storage_rate(t) dt / 1e6</code>, with time measured in the rate's specified unit. Net input advantage over a stated baseline is avoided ordinary-input charges minus cached reads, storage, and any observed setup charges. If cache creation/deletion or TTL extension records are missing, storage cost is unknown; do not charge the entire object lifetime independently to every session using it.</p>
+<p>TTL selection needs a timeline simulation over eligible unchanged prefixes, measured from request starts where required. Comparing one-hour versus five-minute TTLs should account for writes prevented, extra write price, partial-prefix changes, and session endings. “More than five minutes between replies” is insufficient: timestamps may describe tool completion rather than model request start, and the model may have changed.</p>
+<p>A compression proposal needs the same discipline. Let <code>D</code> be expected input-cost reduction per future turn, <code>K</code> observed or scenario compaction/rewrite cost, and <code>n</code> future turns. Its simple monetary break-even is <code>n*D &gt; K</code>; if <code>D &lt;= 0</code>, it never breaks even under that scenario. This excludes quality and recovery costs until separately measured. A shorter cold prompt can cost more than a longer cached one. Never infer removed tokens from bytes in an encrypted compaction item.</p>
+<h2>Proposed product analyses</h2>
+<h3>P0: Audit existing price coverage and billing-basis explanation</h3>
+<p>Reuse the existing CostEstimate and pricing-coverage contracts; audit remaining tariff conformance and effective dates rather than rebuilding the foundation. Explain the specific missing dimension and count affected requests/tokens. Show list-price equivalent separately from any observed bill or contract calculation. Keep subscription quota percentages as their own observation, not converted dollars.</p>
+<p>Acceptance: every adversarial fixture with ambiguous tier, long-context eligibility, cache-write price, or account basis abstains appropriately; every fully supported fixture reconciles exactly before rounding. Historical unknowns remain unknown when the current price table changes. A user should be able to identify why two identical token totals price differently.</p>
+<h3>P1: Net cache extension and disruption timeline</h3>
+<p>Extend existing cache detail/read-discount output with a write-adjusted net comparison where evidence is complete, with optional event markers for model changes, compaction, tool-definition changes, and inactivity. Report “cache reads fell after X,” not “X caused the miss,” unless the complete eligible prefix and provider rule establish it. Display the same-token arithmetic delta, including negative results.</p>
+<p>Required fields: final per-request counters, request timestamps, resolved tariff, and optional context fingerprints. Common false positives: first requests, intentional new tasks, context growth, different subagent prefixes, platform routing, missing hidden instructions, and model/client exceptions. Prefix fingerprints remain local and should not be added to telemetry.</p>
+<p>Experiment: analyze a consented local corpus and manually label disruption cases. Require high precision for named causes before putting them in the default receipt; otherwise retain them in an explanatory detail view. Measure how often the proposed action is available in the user's actual client, since a raw API capability may be inaccessible in a subscription CLI.</p>
+<h3>P2: Model-switch and subagent cost decomposition</h3>
+<p>Measure the observed cost around switching models and starting children. Attribute child spend once; display parent/child hierarchy, observed cache-write costs, and concurrency. Repeated context ingestion requires actual input evidence. Compare a cheaper per-token model with the <strong>full subsequent observed task cost</strong>, rather than repricing the next answer alone. Routing can lose economically if cold context or additional turns dominate, but observed decomposition alone cannot establish marginal overhead or a switch's causal effect.</p>
+<p>Required fields: parent-child identity, request-model sequence, cache counters, and task boundary. A child can be useful even if its first request is expensive; concurrency can reduce elapsed time while increasing total spend. Neither condition implies waste. Avoid replacing measured latency with the sum of overlapping child durations.</p>
+<p>Experiment: paired tasks with fixed repository snapshot and acceptance criteria, one orchestration intervention at a time. Count all attempted children and failed runs. Report dollar-equivalent distribution, wall time, task completion, and recovery work together; publish no model ranking.</p>
+<h3>P2: Reasoning and output-budget observability</h3>
+<p>Add reasoning share only when reported and normalized confidently. Combine it with stop reason, output cap, retries, and task outcome to identify candidate experiments. A request that reaches its cap and retries may warrant a larger cap; a short answer with many reasoning tokens may be entirely appropriate.</p>
+<p>An advisory should read “high reasoning share; compare lower effort on this task family,” not “wasted thinking.” Count the entire experiment, including failed lower-effort runs and successful recovery. A settings change may also affect cache behavior, so record it alongside the result.</p>
+<h3>P2: Context retention and compaction ledger</h3>
+<p>First expose existing context-thrash evidence, recorded compactions and reread counts. Defer a full retention ledger until captured successive prompts establish what was actually included. Stable local result fingerprints identify repeated output; they do not prove that output remained in later model inputs. Charge only measured token quantities; text matching cannot allocate provider token counts exactly across multimodal or hidden content.</p>
+<p>Show post-compaction rereads and repeated searches as recovery indicators, not proof of memory loss. Files may have changed; verification may be intentional. Compare natural task-boundary handoffs, tool-output caps, and earlier compaction independently. Retain failed acceptance outcomes even when the shorter transcript looks cheaper.</p>
+<h3>P3: Batch/Flex eligibility checklist and explicit-cache audit</h3>
+<p>Offer these only for API workflows with sufficient execution metadata. Candidate batch units must have independent inputs, tolerate delayed results, and use supported endpoints/models. An entire interactive coding session is normally a dependency chain, not a ready-made batch. Flex advisories need deadline tolerance and fallback accounting.</p>
+<p>Explicit-cache audit requires cache-object lifecycle records, so defer it until imported evidence supports it. Idle storage can be a worthwhile finding, but absence of requests in one local transcript does not prove no other client used the cache. Avoid automatic deletions or provider changes; aireceipts can produce a local action plan without violating its zero-network product path.</p>
+<h2>Mistakes to prevent in the optimization layer</h2>
+<ol>
+<li><strong>Overlapping savings.</strong> A cache fix, context reduction, and model change can concern the same tokens. Give each scenario its own baseline or build one combined scenario; never sum independent upper bounds.</li>
+<li><strong>Output-only denominators.</strong> Include input, writes, tools, retries, and child calls. A cheap successful run selected from several failures is not a cheap attempt.</li>
+<li><strong>Tokenizer equivalence.</strong> Same-token model repricing is valid arithmetic but not a prediction for the same text or task. Keep that distinction visible.</li>
+<li><strong>Averaging away hard tasks.</strong> Report counts and distributions by a declared task family. An apparent average improvement may come from easier later tasks.</li>
+<li><strong>Treating failure as billable by default.</strong> Some errors are uncharged; interrupted streams may contain partial usage. Preserve the distinction between observed chargeable work, explicit zero, and unknown.</li>
+<li><strong>Promoting API estimates to invoice facts.</strong> Discounts, credits, taxes, platform markups, and subscription rules may be absent. Reconciliation is optional local evidence import, not silent online account inspection.</li>
+<li><strong>Confusing access date and effective date.</strong> Tariff updates must preserve historical rows and prove applicability. Model aliases can change beneath a stable name.</li>
+<li><strong>Saving tokens by breaking the task.</strong> Acceptance results and recovery cost belong in every cost experiment. A receipt cannot infer product quality from a successful process exit alone.</li>
+</ol>
+<h2>Delivery gates and concrete research follow-up</h2>
+<p>First, investigate the current Sonnet 5 and GPT-5.6 Sol price-table conflicts and establish dated applicability. Only author a new narrow tariff-evidence specification if existing confidence, PricingUnit and context-tier contracts cannot cover a demonstrated case. Do not bundle advisory heuristics into this foundational change. Build a fixture matrix spanning provider, billing basis, cache-write generation, TTL, threshold boundary, missing metadata, streaming duplication, and parent-child overlap. Pin source evidence and raw input fixtures without credentials or private transcript content.</p>
+<p>Second, produce a local corpus report showing <strong>field coverage</strong>, not assumed opportunity size: fraction of requests with exact model/date, served tier, total input, write TTL, parent identity, reasoning counts, and outcome artifact. This determines which analyses can ship immediately. No unsupported percentage savings should appear in the roadmap.</p>
+<p>Third, trial the cache ledger with a small explicitly consented dataset. At least 30 independently labeled candidate cases plus noncandidate negatives can inform a pilot; they cannot certify near-zero false positives. Default exact arithmetic requires complete inputs and zero unsupported dollar claims. Named-cause or waste labels must pass the shared held-out, cluster-aware near-zero-false-positive gate in <code>Failure Prevention and Evaluation.md</code>; otherwise retain neutral observations in opt-in details. Report confidence intervals, abstentions and sample limitations.</p>
+<p>Fourth, run opt-in paired workflow experiments only after a separate execution budget and credentials are authorized. Predefine acceptance tests, randomized order where practical, and stop rules. The default CLI remains a deterministic analyzer of completed local evidence. Ship an advisory when its prerequisites are observable and its wording survives counterexamples; keep lower-confidence hypotheses in the research report.</p>
+<p>The strongest defensible improvement is a receipt that can say: <strong>the tariff is known, these request categories explain the cost, this event coincided with a change, and this controlled comparison would tell us whether changing the workflow helps.</strong> That is a concrete optimization system without pretending to know an unrun counterfactual.</p>
+</article><article id="failures"><div class="article-label">Failure prevention</div><h1>Failure prevention and trustworthy cost optimization</h1>
+<blockquote>
+<p>Baseline correction: the initial code audit used the older <code>a56a6a7</code> checkout. Current <code>origin/main</code> at <code>34867fa</code> has substantial additional implementations. <a href="#current">Current-main reconciliation</a> and the revised delivery plan supersede any older-code gap or new-feature claim below. Provider and research-source findings remain separately dated.</p>
+</blockquote>
+<p>Research date: 2026-09-22. Status: research and proposed experiments, not an approved implementation spec. Sources below were opened on this date. Repository grounding: <code>AGENTS.md</code> and <code>specs/SPEC-0000-product.md</code>; existing shipped features cited here come from that inventory, not a fresh implementation audit.</p>
+<p>The most useful next capability is an evidence-backed account of <strong>what happened after a mistake and whether the final change was checked</strong>. Repeated failed commands, stale verification, and unclosed child tasks are observable enough to support conservative receipts. Whether an agent misunderstood the objective, forgot a requirement, or could have used a cheaper model usually is not. A transcript analyzer should make that boundary visible.</p>
+<p>The cost target should be <strong>total cost per accepted task</strong>, including unsuccessful attempts and subsequent repair. Token reductions that worsen outcomes or increase human review are not demonstrated improvements. A receipt can measure observed work and propose experiments; it cannot recover an unobserved counterfactual.</p>
+<h2>What the evidence establishes</h2>
+<h3>Productivity measurements need current evidence and careful denominators</h3>
+<p>METR's July 2025 randomized trial involved 16 experienced maintainers completing 246 tasks in familiar repositories. Allowing early-2025 AI increased completion time by 19%; developers nevertheless believed AI helped. The study explicitly does not generalize this result to most developers, unfamiliar repositories, or future models. Its useful lesson for aireceipts is methodological: perceived savings and measured completion time can disagree substantially. <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/">METR, 2025-07-10</a></p>
+<p>The February 2026 follow-up matters equally. METR reported that developers and tasks were increasingly selecting out of the no-AI condition, and concurrent agents made task-time reporting unreliable. The returning-developer estimate suggested 18% speedup but its confidence interval included slowdown; METR characterized the new data as an unreliable estimate of present productivity. Do not carry the 2025 slowdown forward as a claim about September 2026 tools, or present the follow-up as proof of acceleration. <a href="https://metr.org/blog/2026-02-24-uplift-update/">METR, 2026-02-24</a></p>
+<h3>Failure taxonomies are useful; semantic diagnoses require more evidence</h3>
+<p>MAST version 2 classified 14 failure modes into specification problems, inter-agent misalignment, and verification problems, using seven frameworks and over 200 tasks. Examples include repeated steps, history loss, ignored inputs, premature termination, and inadequate verification. This is a helpful taxonomy, not a validated deterministic coding-transcript classifier. Its semantic labels depended on expert annotation and an LLM judging pipeline; aireceipts must not import that pipeline into its zero-model-call product. Version 2 is pinned deliberately because later revisions change the study population. <a href="https://arxiv.org/html/2503.13657v2">Cemri et al., v2, 2025-04-22</a></p>
+<p>Anthropic's long-running harness work describes agents losing useful state across context boundaries and marking features complete without adequate testing. Its interventions included incremental work, persistent progress artifacts, and explicit end-to-end checks. These are engineering observations from an application-building harness, not a randomized estimate of savings or proof that a missing handoff caused a particular failure. They motivate measuring verification freshness and explicit recovery activity. <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Anthropic, 2025-11-26</a></p>
+<p>SWE-agent showed that the interface through which an agent searches, edits, and tests influences behavior and performance. The implication is to distinguish tool-interface problems from model capability when categorizing failed work. Its 2024 benchmark results do not establish the best present-day interface or a universal token reduction. <a href="https://arxiv.org/abs/2405.15793">Yang et al., 2024-05-06</a></p>
+<h3>More agents can buy coverage, overhead, or both</h3>
+<p>Anthropic's research-agent system reported approximately 15 times chat token usage for multi-agent runs. The baseline is <strong>chat</strong>, not a comparable single coding agent, and the tasks were research tasks. Therefore this number is not an expected coding-swarm multiplier. The same account emphasizes task decomposition and explicitly bounded delegation. Measure each session's actual parent and child usage instead of embedding a generic multiplier. <a href="https://www.anthropic.com/engineering/multi-agent-research-system">Anthropic, 2025-06-13</a></p>
+<p>An August 2026 Anthropic experiment compared coordinated vulnerability-discovery swarms with independent searches. The coordinated system found more vulnerabilities, but also searched beyond the independent agents' assigned directories. Restricting attention to shared core directories made tokens per vulnerability appear comparable. The work also distinguishes independent discovery from tightly interdependent software construction. This is strong motivation to record task scope before comparing swarm costs; raw findings per run can reward broader scope. It does not establish that coordination has no value. <a href="https://www.anthropic.com/research/multiagent-systems">Anthropic, 2026-08-13</a></p>
+<h3>Evaluation infrastructure and graders can manufacture apparent gains</h3>
+<p><em>AI Agents That Matter</em> argues for joint cost and accuracy evaluation, holdout sets, and reproducible evaluation setups. Its practical lesson is to compare configurations at a stated quality constraint, rather than celebrating accuracy purchased through unrestricted repeated sampling. The paper is evidence for an evaluation discipline, not for a specific savings percentage in aireceipts users' workloads. <a href="https://arxiv.org/abs/2407.01502">Kapoor et al., 2024-07-01</a></p>
+<p>Anthropic's infrastructure study found a six-percentage-point Terminal-Bench 2.0 spread across resource configurations while holding model, harness, and tasks constant. Resources can both prevent infrastructure failures and enable different solving strategies. Record CPU, memory, timeout, concurrency, and environment versions in experiments; an out-of-memory failure is not automatically a model reasoning failure. The reported magnitude is specific to that experiment. <a href="https://www.anthropic.com/engineering/infrastructure-noise">Anthropic, 2026-02-05</a></p>
+<p>OpenAI's February audit found flawed tests in at least 59.4% of a selected, often-failed subset of SWE-bench Verified, plus evidence of contamination. The percentage is <strong>not</strong> a random-sample estimate for the entire benchmark. Its then-recommendation of SWE-Bench Pro subsequently received an important qualification. <a href="https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/">OpenAI, 2026-02-23</a></p>
+<p>In July, OpenAI audited SWE-Bench Pro and estimated roughly 30% of public tasks had breaking issues, including underspecification, excessive implementation specificity, insufficient tests, and contradictory prompts. This is a model provider's audit, not an independently settled universal error rate. For this project, the actionable conclusion is to audit the acceptance oracle and use fresh project-specific held-out tasks; replacing one leaderboard name with another does not solve evaluation validity. <a href="https://openai.com/index/separating-signal-from-noise-coding-evaluations/">OpenAI, 2026-07-08</a></p>
+<p>Anthropic's evaluation guidance distinguishes transcripts from outcomes: a completion assertion is not a verified change in the environment. It recommends multiple trials and mixed grading approaches. Aireceipts can retain deterministic grading and human adjudication while leaving model graders outside the product path. <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic, 2026-01-09</a></p>
+<h2>Proposed measurement contract</h2>
+<p>The following is original product design, not a claim that the papers validated these rules. Build on the existing stuck-loop, context-thrash, handoff, and confidence surfaces rather than creating parallel definitions.</p>
+<p>The initial audit used the older checkout; current main changes the implementation picture. <code>detectStuckLoops</code> at <code>src/pricing/waste.ts:105</code> still ignores outcomes, although <code>flattenCalls</code> at line 70 now retains status. <code>detectTrivialSpans</code> at line 270 preserves the short-output heuristic with stronger request-level pricing gates. Cost-shape and same-file reread diagnostics, loop text locations, and an overlap-safe non-savings handoff subtotal are already implemented. The narrower remaining evidence-export gap is loop/trivial span locations in JSON. Therefore sharpen and independently validate existing findings, then add verification chronology; do not rebuild the existing diagnostics. See the current-main reconciliation for exact references.</p>
+<p>Every finding needs a versioned detector ID, ordered evidence references, explicit observation window, eligible-event count, missing-field reasons, and separate <strong>evidence strength</strong> and <strong>actionability</strong>. Evidence strength means structured outcome versus textual hint; it is not an invented probability that the work was wasteful. Preserve source offsets so users can inspect events locally. Prefer a structured <code>unknown</code> over an empty collection that appears to mean zero failures.</p>
+<p>Minimum normalized fields, when available:</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Field group</th>
+<th>Needed fields</th>
+<th>Missing-data behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity</td>
+<td>source adapter/version, session ID, event ID, tool-call ID, child/parent link</td>
+<td>Never merge unrelated sessions by timestamp alone</td>
+</tr>
+<tr>
+<td>Ordering</td>
+<td>source sequence, start/end timestamps, explicit causal links</td>
+<td>Local ordering can survive absent clocks; cross-agent order may remain unknown</td>
+</tr>
+<tr>
+<td>Command</td>
+<td>exact command/arguments, working directory, process/session ID</td>
+<td>Do not equate commands run in different contexts</td>
+</tr>
+<tr>
+<td>Result</td>
+<td>terminal versus pending state, exit code/signal, structured error, output hash, truncation flag</td>
+<td>Text-only success is weaker evidence; pending is not failure</td>
+</tr>
+<tr>
+<td>State</td>
+<td>observed edits, file/content hashes or revision IDs, environment changes</td>
+<td>No claim that state stayed unchanged if mutations are unobserved</td>
+</tr>
+<tr>
+<td>Usage</td>
+<td>normalized usage event ID, model/date, token categories, allocation methodology</td>
+<td>Tokens only without eligible price rows; no per-call dollars without attribution</td>
+</tr>
+<tr>
+<td>Outcome</td>
+<td>optional local task manifest, acceptance evidence, check scope, final revision</td>
+<td>Session completion alone does not imply task acceptance</td>
+</tr>
+</tbody>
+</table></div>
+<p>Hashes and paths remain local. Hashing a transcript-derived value does not make it appropriate adoption telemetry. New sensitive analysis must remain outside the existing telemetry payload contract.</p>
+<h2>Deterministic detectors worth testing</h2>
+<h3>1. Repeated failed invocation without observed recovery</h3>
+<p><strong>Rule:</strong> at least three terminal failures with the same conservative command signature, working directory, and comparable error fingerprint, without an intervening observed relevant edit, dependency installation, environment change, or changed arguments. Start with exact argument equality; do not normalize away quoted content, flags, or environment variables. Compare structured error codes before text fingerprints.</p>
+<p><strong>Output:</strong> “This invocation failed three times with the same recorded error; no intervening recovery change was recorded.” List attempts, failure kinds, and evidence gaps. If state visibility is incomplete, remove the implication that the underlying state was unchanged. Exclude pending process polling and result retrieval from the attempt count.</p>
+<p><strong>Negative cases:</strong> retrying a transient remote error, deliberately sampling a flaky test, waiting for a deployment, or testing repeated failures as the actual task. Suppress for explicit retry policies and reproducibility experiments; otherwise explain the ambiguity. Exit code 1 from a search command can mean no matches, so use tool-specific semantics rather than a universal nonzero-is-error rule.</p>
+<p><strong>Intervention to test:</strong> a handoff note suggesting inspection of the first error and a changed precondition before retrying. Show observed associated spend only; do not call all retries avoidable or convert tool-runtime milliseconds into dollars.</p>
+<h3>2. Verification made stale by later edits</h3>
+<p><strong>Rule:</strong> a recognized successful check is followed by a recorded edit affecting its declared scope, with no later successful equivalent check before the observation window ends. Strong form requires revision or content hashes and a declared check scope. With only timestamps, report “edits followed the last observed successful check,” not “the final code was untested.”</p>
+<p><strong>Output:</strong> last successful check, checked revision if known, subsequent relevant edits, later pending/failed checks, and transcript completeness. A structured assertion tied to a revision is preferred to natural-language claims such as “tests passed.”</p>
+<p><strong>Negative cases:</strong> documentation-only edits outside check scope, formatter-only changes explicitly covered by policy, tests executed externally, an active session, or a truncated transcript. A successful unit test does not establish end-to-end acceptance, and a test command itself may mutate snapshots or generated files.</p>
+<p><strong>Intervention:</strong> include the precise stale check in the existing handoff. This can prevent mistakes in the next session without controlling the running agent. Initial release should describe chronology and scope; definitive requirement violations need an explicit project check manifest.</p>
+<h3>3. Terminal failures without observed resolution</h3>
+<p><strong>Rule:</strong> group terminal failures by command and scope; identify groups with no later successful equivalent invocation or explicit structured dismissal. Separate failed, timed out, cancelled, and still running.</p>
+<p><strong>Output:</strong> “One check has no recorded passing rerun,” with a local evidence link. This is more defensible than detecting “false completion” from the assistant's prose. A failure followed by a narrower passing command does not close the broader failed check.</p>
+<p><strong>Negative cases:</strong> expected negative tests, baseline failures intentionally outside the task, user cancellation, and external CI. Baseline/current distinctions require captured baseline evidence. No grading of negligence or task correctness is justified by absence alone.</p>
+<p><strong>Intervention:</strong> a short open-check list in the handoff. Give users a structured local way to annotate expected failures without rewriting historical evidence.</p>
+<h3>4. Rework episodes and recovery latency</h3>
+<p><strong>Rule:</strong> identify check failure → recorded edits → rerun sequences. Track elapsed tool intervals, number of edit/rerun cycles, and associated usage. A later pass closes the observed recovery episode; cancellation leaves it censored. Repeated full-suite runs between unchanged snapshots can be identified separately.</p>
+<p><strong>Output:</strong> “Three edit/check cycles preceded the first observed pass.” Report successful recovery as useful work. Where operations overlap, interval unions measure recorded elapsed activity; summing child durations measures aggregate tool time, which is different.</p>
+<p><strong>Negative cases:</strong> test-driven development, intentional mutation testing, benchmarking, and flaky-test diagnosis. High iteration counts do not demonstrate poor reasoning. Do not award “first-pass success” for skipping checks.</p>
+<p><strong>Intervention:</strong> compare targeted-check-first and full-suite-first policies prospectively. Any savings calculation includes the final full check and escaped regressions, preventing the metric from rewarding less verification.</p>
+<h3>5. Duplicate child reads and unresolved child lifecycles</h3>
+<p><strong>Rule:</strong> require explicit parent/child relationships. Identify identical read-only commands on matching snapshots that return the same output hash, and count child tasks lacking a terminal result within a complete parent window. Account for child usage once through canonical usage-event identity.</p>
+<p><strong>Output:</strong> “Two child agents read the same snapshot” and “one child has no recorded terminal result.” Neither observation proves redundant reasoning or an abandoned task. Report overlap counts separately from total spend unless allocation is supportable.</p>
+<p><strong>Negative cases:</strong> independent review, security audits, deliberate replication, shared setup needed for distinct tasks, and results delivered outside captured logs. An identical file path does not establish identical contents. Parent-child wall-clock overlap is not a measurable speedup against a sequential counterfactual.</p>
+<p><strong>Intervention:</strong> test explicit work partitions and artifact handoffs against existing delegation. Require equal task scope and quality criteria. A swarm's wider search coverage must not be mistaken for better efficiency on an unchanged task.</p>
+<h3>6. Reacquisition after an explicit context boundary</h3>
+<p><strong>Rule:</strong> after a recorded compaction or reset, identify exact repeated reads/searches of unchanged artifacts seen earlier. Record count, output bytes, and attributable usage within a predefined event window.</p>
+<p><strong>Output:</strong> “These artifacts were read again after compaction.” Avoid “the agent forgot”: reacquisition may be necessary, and the analyzer generally cannot inspect the retained internal context.</p>
+<p><strong>Negative cases:</strong> changed files, new subtask ownership, compliance review, and incomplete pre-compaction history. Bytes are not tokens; output truncation further weakens any volume estimate.</p>
+<p><strong>Intervention:</strong> enrich existing handoffs with completed checks, unresolved errors, revision, and artifact references. Compare subsequent recovery effort empirically. The detector supplies a candidate mechanism, not causal evidence that compaction increased costs.</p>
+<h2>Avoid deceptive savings arithmetic</h2>
+<p>Partition cost reporting into observed spend, observed spend associated with a finding, and measured experimental change. Only the third supports “reduced cost,” and only for the studied population. Overlapping findings must reference shared event identities so their associated spend is not added twice. A verification gap has no meaningful recoverable-dollar amount by itself.</p>
+<p>Define the experiment's primary cost statistic as total model/API spend across <strong>all assigned attempts</strong>, including failed and abandoned attempts, divided by accepted tasks. Show total assigned tasks, acceptance rate, and spend separately; when acceptance is zero the ratio is undefined. This ratio measures a workflow cohort, not the dollar value of a single failure. Preserve historical list-price comparisons separately from actual billing if subscriptions, credits, and quota constraints make the two differ.</p>
+<p>Human review minutes, subsequent repair time, and elapsed time should remain separate outcomes. Monetize human time only with an explicitly supplied rate and label the calculation; never infer salary or imply that two minutes of waiting equal two minutes of human labor saved.</p>
+<h2>Study protocol and shipment gates</h2>
+<p><strong>Stage A: validate the observations.</strong> Assemble a consented local corpus with failures, successful runs, deliberately adversarial negative cases, truncated logs, and all supported adapter families. Hold out entire tasks, developers, and repositories where possible; never split neighboring events from the same session across train/tune and evaluation. Two humans independently label findings and actionable next steps, resolving disagreements against source evidence. Product execution remains deterministic and offline.</p>
+<p>Measure precision separately for each detector, adapter, and evidence-strength tier; report coverage and abstention alongside it. Include findings the detector missed, so apparent precision is not purchased through invisible near-total abstention. A small pilot tunes rules; it does not authorize default waste labels. Require zero observed false waste labels on independently labeled held-out negative cases, adjudicate every ambiguity, and report the statistical bound and clustering limitations. For a proposed quantitative default-label gate, target a one-sided 95% lower precision bound of at least 99%; this operationalizes the repo's near-zero-false-positive requirement and is a proposed product tolerance, not a literature constant. If the corpus cannot support that claim, retain neutral observations in opt-in details and explicitly call reliability unestablished.</p>
+<p>Correlated events do not create independent evidence. Confidence intervals should resample at the developer/repository cluster level when there are enough clusters; report task-level results within clusters. With few clusters, use exact/randomization methods where assignment supports them, show each cluster's result, and mark broad population claims as unsupported. A tiny corpus with zero false positives cannot certify a strict reliability bound. Determine required corpus size from desired precision and observed clustering before labeling a rule ready.</p>
+<p><strong>Stage B: test whether advice helps.</strong> Begin in shadow mode, then compare the existing receipt with a receipt containing one actionable finding. Predeclare one primary intervention and its quality criterion. For persistent advice that users learn and carry forward, randomize at developer level or use explicitly modeled blocks with washout; task-level randomization can contaminate controls. For tightly controlled offline harness experiments, pair fresh isolated checkouts of the same task, randomize execution order, and treat repeated runs as nested within task.</p>
+<p>Keep model version, harness, task scope, price-table version, resources, retry budget, and acceptance oracle fixed or record them as blocked factors. Fresh tasks need independent acceptance review and regression checks. Log all assigned tasks, exclusions, dropouts, infra failures, and cancellations before viewing outcomes. Maintain intention-to-treat reporting; a per-protocol analysis can supplement it. Capture voluntary nonparticipation and missing outcome reasons, given the METR selection lesson.</p>
+<p>Use acceptance rate, total cost per accepted task, human review/repair time, and escaped defects as separate outcomes. Predeclare a quality noninferiority margin justified by the use case, minimum meaningful cost reduction, and a sample-size/power calculation using a pilot. A suggested decision rule is: quality lower bound clears the chosen margin, the cost-reduction lower bound clears the predeclared minimum meaningful reduction, and no material harm signal appears in review burden or escaped defects. If intervals are wide, the result is inconclusive. Do not declare success from a nonsignificant quality difference.</p>
+<p>Avoid repeatedly checking for significance and stopping on the first favorable batch. Choose a fixed analysis date/sample size or a valid sequential design. Adjust exploratory multiple-detector comparisons or clearly label them exploratory, then confirm promising interventions on new tasks. Run variants across several time blocks to expose model-service and infrastructure variation. Publish negative and inconclusive findings locally alongside positive ones.</p>
+<h2>Concrete delivery sequence</h2>
+<ol>
+<li><strong>Evidence foundation:</strong> audit which adapters preserve terminal status, tool identity, edits, and parent-child links; publish a capability/missingness matrix. Verify the remaining cost-attribution acceptance evidence without duplicating shipped documentation, tier support or scoped discovery handling. Deliver replay fixtures and an evidence schema proposal.</li>
+<li><strong>Two conservative findings:</strong> prototype stale-check chronology and unresolved terminal failures, initially JSON-only behind an explicit opt-in. Require evidence references, abstention, negative fixtures, byte stability, and all repository verification gates before shipping.</li>
+<li><strong>Recovery and delegation measurements:</strong> extend existing loop/context findings with state evidence, then add child overlap only where ancestry and deduplication are reliable. Do not bundle all these candidates into a universal “waste score.”</li>
+<li><strong>Local outcome ledger:</strong> propose a user-supplied task/revision/acceptance sidecar for <code>compare</code> and multi-session analysis. Study advice using fresh local tasks before announcing a savings percentage.</li>
+<li><strong>Separate prevention decision:</strong> a live warning hook, automatic cancellation, or model router would change aireceipts from a receipt reader into an execution participant. That requires a new architecture spec and explicit maintainer approval; it is not necessary for the initial postmortem/handoff capability. Do not add or modify skills as part of this research.</li>
+</ol>
+<p>The highest-value near-term artifact is a receipt that can say: <strong>this failed, this was retried, these edits followed the last check, and this remains unverified in the captured record</strong>. Those observations are useful without pretending to know whether a different model, fewer agents, or fewer tests would have completed the task.</p>
+</article><article id="market"><div class="article-label">Market &amp; opportunities</div><h1>Market evidence and product opportunities for aireceipts</h1>
+<blockquote>
+<p>Baseline correction: the initial code audit used the older <code>a56a6a7</code> checkout. Current <code>origin/main</code> at <code>34867fa</code> has substantial additional implementations. <a href="#current">Current-main reconciliation</a> and the revised delivery plan supersede any older-code gap or new-feature claim below. Provider and research-source findings remain separately dated.</p>
+</blockquote>
+<p>Research date: 2026-09-22. This is a research proposal, not an approved spec or implementation commitment. Evidence is from the worktree's AGENTS.md, SPEC-0000, README, and the primary sources linked below. Competitor capabilities are documented claims inspected online, not hands-on validation. Repository default branches and vendor documentation can change; this is a dated snapshot, not a historical release audit.</p>
+<h2>Recommendation</h2>
+<p>Concentrate on <strong>an auditable explanation of one avoidable cost, followed by a measured workflow experiment</strong>. Complete attribution confidence before adding more advice. Then test cache economics, observed failure/recovery episodes, and overlapping-opportunity accounting. Extend the existing <code>compare</code> and handoff rather than launching another cost dashboard.</p>
+<p>The reviewed market already offers local multi-agent totals, terminal status lines, cache counters, quota forecasts, workflow traces, and optimization advice. Neither “local” nor “multi-agent” nor “find waste” establishes uniqueness. A plausible position is a small, offline, reproducible artifact that connects usage evidence, honest uncertainty, and a specific next experiment. That position remains a hypothesis requiring user testing.</p>
+<h2>What the market already does</h2>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Observed capability</th>
+<th>Relationship to aireceipts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/ccusage/ccusage">ccusage</a></td>
+<td>Local usage; unified daily, weekly, monthly and session reports across 18 named coding sources; statusline, cache tiers, JSON, custom prices and offline cached pricing.</td>
+<td>Direct competitor for “what did I spend?” Multi-agent support and a terminal report are crowded.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/junhoyeo/tokscale">Tokscale</a></td>
+<td>Broad local-source ingestion, some provider/API sync paths, terminal views and leaderboard. Documented pricing resolution includes overrides, aliases and fuzzy matching; quota values are labeled vendor-reported.</td>
+<td>Direct competitor for cross-agent visibility. Its breadth is a reason to prioritize depth and explicit matching semantics, not race adapter counts.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor">Claude Code Usage Monitor</a></td>
+<td>Version 4 documentation describes official-limit capture, labeled fallback estimates, local historical reporting, forecasts, and versioned machine-readable output.</td>
+<td>Direct adjacent competitor for local usage operations. Confidence labels and offline history are already present elsewhere.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/chrishutchinson/claude-receipts">claude-receipts</a></td>
+<td>SessionEnd hook, HTML/console/thermal output; uses ccusage for session cost and token data.</td>
+<td>Direct overlap in receipt aesthetics and automatic delivery. A receipt image alone is weak differentiation.</td>
+</tr>
+<tr>
+<td><a href="https://langfuse.com/coding-agents">Langfuse</a></td>
+<td>Coding-agent hooks/gateway integrations; tool calls, retries, spend, context and skills analysis; session comparison and experiments.</td>
+<td>Broader observability product with real coding-agent overlap. Its deployment/workflow differs from a standalone file-reading CLI.</td>
+</tr>
+<tr>
+<td><a href="https://docs.helicone.ai/features/advanced-usage/caching">Helicone</a></td>
+<td>Gateway response caching, request-derived cache keys, cache-hit reporting and time/cost savings views.</td>
+<td>Broader API observability/control product. Request interception changes execution; aireceipts observes existing local evidence.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/AgentOps-AI/agentops">AgentOps-AI</a></td>
+<td>SDK instrumentation, execution graphs, model cost tracking, framework integrations, hosted or self-hosted app/backend.</td>
+<td>Broader agent-development platform; useful prior art for spans and outcomes, not a drop-in local transcript receipt.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/eunomia-bpf/agentsight">AgentSight</a></td>
+<td>System tracing plus native session-file modes; local top/report/visual replay without eBPF on supported platforms; eBPF captures process/files/TLS boundaries.</td>
+<td>Emerging adjacent competitor in local behavior analysis. “No SDK” is not an exclusive advantage.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/Azure/agentops">Azure AgentOps Accelerator</a></td>
+<td>Foundry-oriented evaluation, baseline comparisons, local result files and PR-friendly release evidence.</td>
+<td>Distinct from AgentOps-AI. Useful evidence-artifact precedent, but targets enterprise agent operation.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/infracost/infracost">Infracost</a></td>
+<td>Infrastructure cost breakdown/diff and PR comment workflow.</td>
+<td>Adjacent workflow precedent, not an AI session-cost competitor.</td>
+</tr>
+</tbody>
+</table></div>
+<p>The most relevant competitive pressure is Langfuse's explicit move into coding-agent workflow improvement, not only generic LLM observability. Its coding-agent page discusses repeated file reads, unused tools, shorter prompts and evaluating skill changes. aireceipts should avoid claiming that other tools show totals but never explain behavior. The narrower distinction is the constraints and evidence quality of the delivered artifact.</p>
+<p>The <a href="https://langfuse.com/docs/observability/features/token-and-cost-tracking">Langfuse pricing model</a> also illustrates why “cost” needs provenance: usage/cost can be ingested or inferred; ingested values take priority; pricing tiers can depend on context or request metadata. Its documentation notes that model-definition changes affect new generations. This supports storing the exact local pricing snapshot and method, not assuming two historical reports are comparable merely because their model names match.</p>
+<h2>User jobs worth serving</h2>
+<ol>
+<li><strong>API-paying individual:</strong> “Which observed behavior accounts for this expensive session, and what should I change first?” Deliver one high-confidence episode with attributable cost and source references.</li>
+<li><strong>Subscription user:</strong> “Did this workflow consume avoidable quota or time?” Show tokens and observed quota evidence separately from API-equivalent dollars. Do not treat list-price estimates as their invoice or imply lower tokens necessarily mean a lower subscription payment.</li>
+<li><strong>Maintainer reviewing agent work:</strong> “What did implementation and verification actually cost, and what evidence supports the result?” Attach a compact local artifact to the existing PR workflow, retaining uncertainty around session/commit attribution.</li>
+<li><strong>Developer tuning instructions or tools:</strong> “Did the new workflow reduce resource use without weakening verification?” Compare explicit runs with the same task definition and acceptance checks.</li>
+<li><strong>Small team without an observability deployment:</strong> “Can we agree on an auditable method while keeping transcripts local?” Exchange redacted evidence summaries and versioned JSON, with no account or hosted collection requirement.</li>
+</ol>
+<p>These jobs require different denominators. Cost/session, cost/accepted task, tokens/verification run and elapsed time answer different questions. “Cheaper” must always identify which resource, which unit of work, and which acceptance condition.</p>
+<h2>Prioritized analysis hypotheses</h2>
+<h3>P0: Validate and extend the existing uncertainty explanation</h3>
+<p>Current main already has CostEstimate, priced/unpriced coverage, request-level pricing and documented floor semantics. Audit and extend these contracts rather than inventing a second confidence system. A money line should have a drill-down linking usage event(s), adapter method, dated price row, tier information, allocation method and exclusions. The first useful distinction is observed vendor usage versus arithmetic cost versus allocation versus hypothetical repricing. Missing usage and unmatched prices must stay visible.</p>
+<p>Add a small reconciliation view: priced usage, unpriced usage, duplicated observations excluded, unattributed cost and invariant failures. Coverage needs named denominators: known events covered by pricing is not “percentage of total spend known,” because unknown-event cost cannot be measured. Carry stable source IDs and local content hashes, never transcript excerpts in adoption telemetry.</p>
+<p><strong>User decision:</strong> trust the total, investigate missing data, or decline to use the number for a comparison.</p>
+<p><strong>Value gate:</strong> run existing self-check expectations and independent real transcripts; every nonzero cost explains its inputs; totals reconcile exactly; unsupported usage produces an explicit limitation. A blocker is evidence that unknown or dropped usage can silently appear as zero.</p>
+<p><strong>Kill/defer criterion:</strong> defer cosmetic confidence scores that do not change decisions. Do not collapse heterogeneous uncertainty into an unexplained 0–100 score.</p>
+<h3>P1: Report net cache economics, not just cache-hit percentage</h3>
+<p>Current main already shows cache composition, TTL writes and read-only discount arithmetic under details. The useful increment is a net write-adjusted same-input comparison where all affected categories are observed. A high hit percentage can coexist with costly cache writes, large repeated context, or model changes.</p>
+<p>For the same observed input volumes, let the uncached baseline be the dated ordinary-input price applied to all eligible input tokens. Subtract actual eligible input cost to obtain a <strong>net cache price difference</strong>. This is arithmetic, not a claim that disabling caching preserves all behavior or latency. A negative difference is valid. Keep output costs outside this comparison.</p>
+<p><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic's caching documentation</a> distinguishes write durations and read prices, with model-specific exceptions. Therefore read/write multipliers must come from cited dated rows; do not hard-code one universal cache discount. If the transcript cannot distinguish write duration, show the known evidence and range or tokens, consistent with existing price rules.</p>
+<p>Potential episode detectors: repeated cache creation after interruptions, sudden input/cached-token discontinuities, or heavy context replay after compaction. These are correlations. They do not prove TTL expiration, prefix mutation or avoidable cache invalidation without corresponding request evidence.</p>
+<p><strong>User decision:</strong> measure an instruction-layout change, reduce repeated context, or preserve a productive long-lived session.</p>
+<p><strong>Value gate:</strong> reviewers correctly distinguish gross read discount from net cache benefit on positive and negative examples; arithmetic reconciles; source semantics are verified for each adapter.</p>
+<p><strong>Kill/defer criterion:</strong> no exact savings number where missing cache tier or token semantics can materially change its sign.</p>
+<h3>P1: Explain failure and recovery with narrow, observable episodes</h3>
+<p>Move beyond “repeated command” toward a local sequence such as: command returns a recognized failure; the same command repeats under demonstrably unchanged relevant inputs; a later configuration fix precedes success. Capture the episode and its attributed spend without asserting that all failed attempts were unnecessary.</p>
+<p>Keep categories narrow: missing executable, missing file, authentication failure, unsupported CLI flag, or an identical failing test with observed unchanged inputs. A red test in test-driven development is not a mistake. Repeated tests after edits are verification. Transient network failures can justify retries. Shell equivalence and environment changes are hard; unknown state should lower confidence or suppress “avoidable” wording.</p>
+<p>Add a verification-evidence view: observed checks, observed exit codes, timing relative to the last attributable edit, and unknowns. “No test run observed” is valid; “code is untested” is not. A passing test before the final edit is stale evidence, not proof of a defect.</p>
+<p><strong>User decision:</strong> add a prerequisite check, correct an environment assumption, or run the missing post-edit check.</p>
+<p><strong>Value gate:</strong> independently labeled real episodes and clean negative cases; record precision with denominators and ambiguity, not just hand-authored fixtures. Review every claimed mistake.</p>
+<p><strong>Kill/defer criterion:</strong> suppress any category repeatedly confusing legitimate debugging or verification with waste. Do not optimize by recommending fewer checks without equivalent acceptance evidence.</p>
+<h3>P1: Make overlapping opportunities impossible to add twice</h3>
+<p>A repeated-tool turn can belong to both a loop finding and a context-refill finding, while some of its input is also cached. The current trivial-span rule requires a tool-free turn, so it cannot overlap a loop on that same turn. Summing independently advertised savings is misleading.</p>
+<p>Represent each opportunity as evidence event IDs, the cost components it affects, an intervention and prerequisites. Present individual arithmetic scenarios separately. Only combine actions when a deterministic composition exists: remove a repeated turn first, then reprice remaining eligible usage, with cache effects identified as unknown unless modeled from sufficient data. Keep the existing non-additive warnings first. A future affected-spend union must use canonical atoms of usage-event ID, priced component and allocation slice; an event-level total otherwise includes unrelated output or other tools' shares. Affected spend is not guaranteed savings.</p>
+<p>Distinguish <em>what happened</em> from <em>what an intervention changes</em>. Parent and child-agent costs are accounting partitions; workflow phases and tool groups are alternative views. They must not be stacked as independent costs.</p>
+<p><strong>User decision:</strong> pick one intervention and understand its maximum exposed spend.</p>
+<p><strong>Value gate:</strong> adding identical or subset atom coverage leaves the union unchanged; partially overlapping coverage increases it only by newly covered atoms. Every combined estimate explains composition and cannot exceed its modeled baseline. Defer combined amounts until users need them and allocation semantics support them.</p>
+<p><strong>Kill/defer criterion:</strong> ship separate scenarios if interactions cannot be defended. A large “total potential savings” number is not worth false precision.</p>
+<h3>P2: Turn compare into a local workflow experiment record</h3>
+<p>The existing <code>compare</code> is an important starting point. Add optional user-authored experiment metadata: task ID, starting revision, agent/model versions, configuration hash, intervention, explicit acceptance checks and declared exclusions. Import run evidence; do not execute models or purchase test runs inside aireceipts.</p>
+<p>A useful comparison includes total cost, unpriced tokens, elapsed duration, verification evidence, and recovery episodes. Include failed and abandoned attempts in the experiment ledger. Otherwise “cost per successful task” rewards systems whose expensive failures were omitted. If all attempts are known and acceptance is consistently applied, report total spend divided by accepted tasks alongside completion rate and sample count.</p>
+<p>Do not match unrelated tasks automatically by embedding or model judgment. Prefer controlled paired tasks, rotated order and multiple repetitions; display distributions and uncertainty when samples support them. Changed provider prices require a common dated repricing scenario shown separately from original-run cost. Test outcomes are limited evidence of quality, not proof of correctness.</p>
+<p><a href="https://code.claude.com/docs/en/costs">Claude Code's official cost guidance</a> recommends context management, narrower tools/instructions, focused delegation and model selection. Those are useful candidate interventions, not aireceipts-specific savings evidence. Its guidance also makes clear that teams multiply context; delegation can isolate verbose results while increasing total agent work. Measure both total cost and elapsed time.</p>
+<p><strong>Value gate:</strong> at least several independent users can answer whether a specific workflow change helped, with all attempts and acceptance checks visible.</p>
+<p><strong>Kill/defer criterion:</strong> if setup is more effort than the tuning decision warrants, retain a small JSON sidecar and documented manual protocol rather than building experiment infrastructure.</p>
+<h2>Onboarding and distribution without expanding the product boundary</h2>
+<p>The shipped <code>setup</code>, integrations, SessionEnd hook, handoff and PR export already provide distribution surfaces. Improve the first result: “We found these supported sessions; here is the latest receipt; this is the strongest supported finding; here is the command to inspect its evidence.” If no finding is justified, say so.</p>
+<p>Use the default receipt for one concise finding; detailed evidence belongs behind an explicit command/JSON field. A page of warnings will train people to ignore the tool. Keep integration installation consent-based and show the exact local file changes.</p>
+<p>A reproducible, sanitized “known good / known misleading” transcript corpus can explain the methodology and invite contributions. Include missing-price, stale-verification, subagent duplication and overlapping-opportunity examples. Credit competing tools fairly. Publish a compatibility page that names what is observed per adapter and what is unavailable, instead of implying equal depth.</p>
+<p>For adoption, use the already approved coarse feature telemetry only. Proposed new event enums or payloads require normal schema/spec review. Do not send cost, transcript hashes, paths, task labels, commands or validation results. Local studies can generate opt-in summaries that users deliberately share, but there is no implied permission to upload them.</p>
+<p>Measure activation as a successful supported-session receipt, finding inspection as an explicitly invoked evidence view, and repeat use through the approved pseudonymous/coarse mechanism. None of these proves savings. For product value, recruit a small consenting pilot and ask participants to keep local experiment records; only collect manually approved aggregates.</p>
+<p>Suggested pilot gates, <strong>targets rather than observed results</strong>: 12 participants spanning API and subscription users; at least 8 complete first-run onboarding unassisted; at least 6 inspect a finding; at least 4 perform a defined workflow experiment; at least 3 repeat use in week two. For any claimed savings, require unchanged acceptance conditions and all attempts included. If users only export an image once, improve recurring decision value before adding features.</p>
+<h2>Delivery sequence and unknowns</h2>
+<ol>
+<li>Reconcile current dated-price conflicts and remaining SPEC-0044 self-check acceptance evidence; reuse the existing cost-model docs and evidence contract.</li>
+<li>Collect a permissioned, independent corpus and label cache/failure/verification opportunities before committing to detectors.</li>
+<li>Spec one narrow cache-economics or recovery slice, selected by real incidence and precision.</li>
+<li>Preserve current maximum-class pattern accounting; add atom-level union only if a new user need justifies it.</li>
+<li>Pilot lightweight experiment records through existing compare/handoff.</li>
+<li>Expand adapters or distribution only when they unblock demonstrated user jobs.</li>
+</ol>
+<p>The largest unknown is transcript sufficiency: request-level cache semantics, relevant file state, checks executed outside the agent, and exact outcome evidence may be absent. Another is willingness to act: users may enjoy receipts but avoid controlled experiments. This research did not benchmark competitors, measure users, or demonstrate achieved savings. Lack of a feature in a reviewed README is not evidence that no product offers it.</p>
+<h2>Primary source register</h2>
+<p>All pages below were inspected on <strong>2026-09-22</strong>; access date applies to every entry. Paraphrases above are deliberately short and do not reproduce vendor claims as independently verified outcomes.</p>
+<ol>
+<li><a href="https://github.com/ccusage/ccusage">ccusage repository</a> — supported sources, offline mode, reporting.</li>
+<li><a href="https://github.com/junhoyeo/tokscale">Tokscale repository</a> — source modes, pricing resolution, quotas.</li>
+<li><a href="https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor">Claude Code Usage Monitor repository</a> — v4 trust labels and local history.</li>
+<li><a href="https://github.com/chrishutchinson/claude-receipts">claude-receipts repository</a> — receipt/hook precedent.</li>
+<li><a href="https://langfuse.com/coding-agents">Langfuse coding-agent product page</a> — direct workflow-optimization overlap.</li>
+<li><a href="https://langfuse.com/docs/observability/features/token-and-cost-tracking">Langfuse token and cost tracking</a> — ingestion, inference, model tiers.</li>
+<li><a href="https://docs.helicone.ai/features/advanced-usage/caching">Helicone caching documentation</a> — gateway response cache mechanism.</li>
+<li><a href="https://github.com/AgentOps-AI/agentops">AgentOps-AI repository</a> — SDK/platform scope.</li>
+<li><a href="https://github.com/eunomia-bpf/agentsight">AgentSight repository</a> — local session and system tracing modes.</li>
+<li><a href="https://github.com/Azure/agentops">Azure AgentOps Accelerator repository</a> — evaluation and release-evidence artifacts.</li>
+<li><a href="https://github.com/infracost/infracost">Infracost repository</a> — breakdown/diff/comment workflow.</li>
+<li><a href="https://code.claude.com/docs/en/costs">Claude Code cost documentation</a> — vendor workflow guidance.</li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic prompt-caching documentation</a> — cache accounting and limitations.</li>
+</ol>
+</article><article id="historical"><div class="article-label">Historical code audit</div><h1>aireceipts: historical implementation evidence and analytical limits</h1>
+<blockquote>
+<p>Baseline correction: the initial code audit used the older <code>a56a6a7</code> checkout. Current <code>origin/main</code> at <code>34867fa</code> has substantial additional implementations. <a href="#current">Current-main reconciliation</a> and the revised delivery plan supersede any older-code gap or new-feature claim below. Provider and research-source findings remain separately dated.</p>
+</blockquote>
+<p>Research date: 2026-09-22. Baseline: <code>a56a6a7689dba82d8eef256c1c6e9127065a24af</code>.
+Worktree: <code>research/ai-cost-optimization-20260922</code>.</p>
+<p>This is a historical read-only implementation assessment of the initial checkout, not a bug-fix spec or a claim that real users were misbilled. Symbol discovery and source inspection used codebase-memory-mcp, freshly indexed for this worktree. Config, specs, and corpus manifests were read directly. The original worktree has uncommitted changes; this research uses its committed HEAD and the user-provided constitution. It does not incorporate those unrelated edits.</p>
+<h2>Existing capabilities worth extending</h2>
+<p>The product already has vendor adapters, dated cited price rows, per-tool attribution, three waste analyses, comparative receipts, weekly aggregation, handoffs, budget/statusline integration, and PR attribution. Adding another spend chart or another generic cheaper-model recommendation would duplicate substantial existing work.</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Inspected implementation</th>
+<th>What it establishes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normalized usage</td>
+<td><code>src/parse/types.ts:44</code> (<code>TokenUsage</code>)</td>
+<td>Input, output, cache read, cache creation, optional 5m/1h creation subsets, total</td>
+</tr>
+<tr>
+<td>Tool events</td>
+<td><code>src/parse/types.ts:58</code> (<code>ToolCall</code>)</td>
+<td>Name, input/output, optional status, shell marker, genuine start/end timestamps</td>
+</tr>
+<tr>
+<td>Turns</td>
+<td><code>src/parse/types.ts:78</code> (<code>Turn</code>)</td>
+<td>Index, optional timestamp/model/usage/output tokens, tool calls</td>
+</tr>
+<tr>
+<td>Price schema</td>
+<td><code>src/pricing/types.ts:21</code> (<code>PriceRow</code>)</td>
+<td>Flat input/output/cache rates plus date interval and citations</td>
+</tr>
+<tr>
+<td>Cost arithmetic</td>
+<td><code>src/pricing/resolve.ts:107</code> (<code>costOf</code>)</td>
+<td>Disjoint normalized token buckets priced and added; cached-rate fallback exists</td>
+</tr>
+<tr>
+<td>Attribution</td>
+<td><code>src/pricing/attribution.ts:64</code> (<code>attributeByTool</code>)</td>
+<td>A turn's cost is divided equally among its tool calls; tool-free turns use the thinking/reply category</td>
+</tr>
+<tr>
+<td>Repeated calls</td>
+<td><code>src/pricing/waste.ts:86</code> (<code>detectStuckLoops</code>)</td>
+<td>Consecutive equal tool names and normalized inputs, minimum run of three</td>
+</tr>
+<tr>
+<td>Repricing</td>
+<td><code>src/pricing/waste.ts:137</code> (<code>detectTrivialSpans</code>)</td>
+<td>Tool-free turns with at most 120 output tokens repriced against a lower-input-rate model</td>
+</tr>
+<tr>
+<td>Context refill</td>
+<td><code>src/pricing/waste.ts:241</code> (<code>detectContextThrash</code>)</td>
+<td>Refill after clustered compactions; unioned prompt-side token windows avoid repeated counting within a finding</td>
+</tr>
+<tr>
+<td>Weekly overlap</td>
+<td><code>src/aggregate/waste.ts:70</code> (<code>aggregateWaste</code>)</td>
+<td>Existing non-additive flags for overlap between context-thrash and other classes</td>
+</tr>
+<tr>
+<td>Receipt assembly</td>
+<td><code>src/receipt/model.ts:200</code> (<code>buildReceiptModel</code>)</td>
+<td>One shared model, existing parse-drop/cache-tier caveats; loop/trivial span turn indices are not retained in the displayed finding shape</td>
+</tr>
+<tr>
+<td>Comparison</td>
+<td><code>src/receipt/compare.ts:17</code> (<code>compareDeltaLine</code>)</td>
+<td>Descriptive cost/token ratio; explicitly declines a direct priced/unpriced comparison</td>
+</tr>
+<tr>
+<td>Discovery</td>
+<td><code>src/parse/load.ts:18</code> (<code>listFullSessions</code>)</td>
+<td>Loads summaries through a cache; adapter-level exceptions become empty lists</td>
+</tr>
+</tbody>
+</table></div>
+<p>Line references are for the baseline commit, not promises about future line numbers.</p>
+<h2>Six findings that materially change the roadmap</h2>
+<h3>1. Provenance must come before stronger savings claims</h3>
+<p>The usage and price types lack explicit billing basis, service tier, modality, context-length tariff dimensions, request-level price provenance, and a reasoning-output subset. Some adapters retain relevant raw information, but the shared contract cannot represent these distinctions comprehensively.</p>
+<p><code>data/prices/google.json</code> explicitly omits Gemini Pro models because tiered context prices cannot be represented honestly. Conversely, the GPT-5.5 entry in <code>data/prices/openai.json</code> stores short-context rates while its own citation mentions a long-context tariff. This asymmetry warrants a scoped audit. It does not establish that a particular transcript crossed the threshold or that any invoice was wrong.</p>
+<p>The useful fix is not to add guessed rates. It is to record supported tariff applicability, refuse an exact dollar total when required dimensions are missing, and show the priced subtotal and unpriced usage separately. A <code>lower-bound</code> label is valid only if missing charges are known to be nonnegative; an unknown discount or service tier can move the actual cost in either direction.</p>
+<p>SPEC-0044 is already building and records unfinished self-check/cost-model documentation plus a deeper discovery load-failure gap. Finish and verify that work before presenting a new optimization layer as trustworthy. Its dated implementation notes are evidence of past work and known gaps, not proof that every checklist item is currently complete.</p>
+<h3>2. Repeated input does not prove wasted work</h3>
+<p><code>flattenCalls</code> (<code>src/pricing/waste.ts:52</code>) retains normalized input and cost shares but drops status/output from the detector's working representation. <code>detectStuckLoops</code> consequently cannot distinguish three legitimate polling calls from three identical failures using outcomes. It also cannot establish whether external state changed between calls.</p>
+<p>This is an implementation-derived counterexample, not a measured false-positive rate. The next research task should label real repeated-call sequences independently, with negative cases for polling, retries after a state change, flaky tests, rate-limit recovery, and explicit repeated measurements. A higher-confidence finding requires stable command identity plus observed failure and state evidence; otherwise use neutral repeated-call wording or abstain.</p>
+<p>The sum attributed to a repeated-call run includes the first call. Even if a later retry was avoidable, the first failed attempt may have been necessary discovery. Report observed spend in the sequence; never equate the whole amount with recoverable savings.</p>
+<h3>3. Short output is an inadequate routing signal</h3>
+<p>The current repricing rule checks output length, tool absence, priced usage, and a cheaper input rate. It does not measure task difficulty, reasoning effort, answer correctness, or the user's acceptance. A short security decision and a short acknowledgment can satisfy the same length rule.</p>
+<p><code>cheapestCurrentRow</code> (<code>src/pricing/resolve.ts:123</code>) chooses by input price, not by the complete token mix. It selects an open-ended current row, rather than a date-matched historical alternative. These choices can be valid for an explicitly labeled current-price illustration, but cannot justify a cheapest-total-cost claim or a historical counterfactual.</p>
+<p>The active engine spec already calls this <strong>re-priced trivial spans</strong>, not proven routable spend (<code>specs/SPEC-0001-m1-receipt-engine.md:48</code>). Preserve that restraint and make future candidate routing an experiment suggestion. Calculate any arithmetic alternative using the complete eligible token mix and explicit tariff/date assumptions. Do not turn an existing heuristic into an automated router.</p>
+<h3>4. Attributed tool cost is not the tool's marginal cost</h3>
+<p>The shared attribution function deliberately divides each turn's model cost evenly across calls. A read tool may appear to cost money because of the allocation convention, while its output adds input tokens on later turns. Conversely, a tool can consume external compute whose price never appears in the transcript.</p>
+<p>A future tool-output analysis should keep three separate quantities: direct recorded tool charges, allocated model spend, and observed output size. An optional replay-exposure estimate needs evidence that a specific result remained in subsequent prompts, plus cache status and compatible tokenization. Without that evidence, bytes/characters are honest and marginal dollars are not.</p>
+<h3>5. Preserve evidence through rendering; do not add overlapping amounts</h3>
+<p>The raw stuck-loop and trivial-span findings already carry turn indices, but receipt assembly drops those indices for those two kinds. The context-thrash finding retains them. Preserve stable source references consistently in a future versioned analytical export; do not create a competing renderer.</p>
+<p>Weekly aggregation already labels certain overlaps as non-additive. Extend this existing mechanism instead of announcing overlap detection as a new feature. For a deduplicated total, calculate a union of actual billed token/cost atoms. Do not union whole turns if one detector covers prompt tokens only and another covers only an equal-share tool allocation. Do not mix observed spend with alternative-price arithmetic in the same sum.</p>
+<h3>6. An evaluation fixture is not an independent value study</h3>
+<p><code>eval/corpus.json</code> has 25 entries at the baseline. Its introductory text says expected findings were verified against detector output. The manifest is useful for regression checks; it does not establish independently labeled precision on real workloads. This is a limitation of what the manifest proves, not a claim that its fixtures were all generated or mislabeled.</p>
+<p>The repo's <code>/improve</code> and <code>/add-waste-check</code> skills already demand real occurrences, negative examples, non-redundancy, and value gates. Make those requirements measurable: label a holdout without showing detector output, split by task/repository rather than random turns, report abstentions and false-alert frequency, and keep implementation-authored goldens separate from the value corpus.</p>
+<h2>Proposed analytical contract</h2>
+<p>Extend existing normalized events and receipt exports incrementally after a draft spec is approved. A finding should carry:</p>
+<ul>
+<li>Stable local evidence references and a deterministic detector/version identifier.</li>
+<li>Which prerequisites were observed, missing, or inferred.</li>
+<li>A factual description and one suggested action, with its applicability.</li>
+<li>Amount semantics: observed allocated spend, API list-price equivalent, arithmetic scenario, measured experimental difference, or unknown.</li>
+<li>Token/cost atom coverage and overlap references.</li>
+<li>Known negative cases and why this instance passed or why the detector abstained.</li>
+</ul>
+<p>Keep observed facts, heuristic interpretations, and interventions separate. Confidence should begin as explainable categories, not an uncalibrated numeric score. A suggestion can be useful with no dollar estimate.</p>
+<p>Unknown is not zero: unknown timestamps prevent a duration claim; unknown success prevents a failure claim; unknown price applicability prevents an exact-dollar claim. A cumulative vendor usage field must be differenced according to that vendor's semantics, with reset/dedup handling, before treating it as a request increment.</p>
+<p>For reproducibility, retain the transcript digest, parser version, analysis-policy version, cited price-bundle digest, explicit effective date, and user-supplied configuration. These are local artifacts. Do not export raw commands, paths, prompts, or guessable hashes through telemetry. Public exports need explicit redaction and should prefer receipt-local opaque references over content hashes.</p>
+<h2>What has not been established</h2>
+<p>No private transcript corpus was sampled for this research. No provider bills were reconciled. No optimization was deployed, and no model was run for an outcome comparison. Therefore this report makes no measured claim about user savings, detector precision, or achievable acceptance-rate improvements.</p>
+<p>The plan's first measurement gate exists to discover those facts. Existing product tests can establish baseline behavior and protect contracts; passing them cannot substitute for that measurement.</p>
+</article><article id="validation"><div class="article-label">Validation &amp; review</div><h1>Research validation and review</h1>
+<p>Date: 2026-09-22. Delivery baseline: freshly fetched <code>origin/main</code>, <code>34867fa8515230a9c283b1d40c975dca85487633</code>. Initial historical audit baseline: <code>a56a6a7689dba82d8eef256c1c6e9127065a24af</code>.
+Research branch: <code>research/ai-cost-optimization-20260922</code>.</p>
+<h2>Scope</h2>
+<p>Six research documents contain approximately 16,100 words and link 40 distinct primary-source URLs. This seventh document records verification. Three specialist agents researched in parallel; the lead performed code inspection, additional primary-source research and synthesis. All agents then performed bounded adversarial reviews.</p>
+<p>The bundle contains proposals and evidence, not approved implementation specs. No product source, price rows, skills or existing spec status was modified. No release, PR publication, paid model experiment or private-transcript value study was performed.</p>
+<h2>Current-main verification</h2>
+<p>All commands below ran in the new worktree after advancing it to current main and installing its locked dependencies. Exit codes were inspected directly from the execution tool; no command was piped through a summarizing filter.</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th style="text-align:right">Exit</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npx tsc --noEmit</code></td>
+<td style="text-align:right">0</td>
+<td>Passed</td>
+</tr>
+<tr>
+<td><code>npx eslint . --max-warnings 0</code></td>
+<td style="text-align:right">0</td>
+<td>Passed</td>
+</tr>
+<tr>
+<td><code>npx vitest run</code></td>
+<td style="text-align:right">0</td>
+<td>146 files, 2,224 tests passed</td>
+</tr>
+<tr>
+<td><code>node scripts/verify-goldens.mjs</code></td>
+<td style="text-align:right">0</td>
+<td>102 artifacts byte-identical</td>
+</tr>
+<tr>
+<td><code>node scripts/determinism-check.mjs --runs=10 -- node scripts/verify-goldens.mjs</code></td>
+<td style="text-align:right">0</td>
+<td>All 10 runs byte-identical</td>
+</tr>
+<tr>
+<td><code>node scripts/spec-lint.mjs</code></td>
+<td style="text-align:right">0</td>
+<td>78 specs OK</td>
+</tr>
+<tr>
+<td><code>node scripts/hygiene.mjs</code></td>
+<td style="text-align:right">0</td>
+<td>Passed</td>
+</tr>
+</tbody>
+</table></div>
+<p>The first attempted reuse of the original checkout's dependencies failed typechecking because <code>@types/node</code> was unavailable. That temporary symlink was removed, and the new worktree received its own lockfile-based <code>npm ci --ignore-scripts</code> installation. The initial older-baseline verification then passed 1,306 tests and 95 goldens. After discovering newer main, the worktree was advanced with <code>git reset --keep origin/main</code>, preserving only the research documents, and dependencies were installed again. The successful results in the table are the later current-main run. No dependency manifest or lockfile was edited by this task.</p>
+<p>These checks establish the baseline and unchanged receipt contracts. They do not establish that proposed detectors work, that users save money, or that all price applicability gaps are resolved. No new implementation tests were written for these research-only documents.</p>
+<h2>Review corrections incorporated</h2>
+<ol>
+<li><strong>Invalid overlap example:</strong> current tool-free trivial spans cannot overlap a tool-call loop on the same turn. Replaced with loop/context-refill overlap.</li>
+<li><strong>Incorrect union invariant:</strong> a partially overlapping finding may add newly covered spend. Idempotence applies to identical/subset coverage, not every overlap.</li>
+<li><strong>Wrong union granularity:</strong> event-level union can sweep in unrelated output or tool allocations. Future combined totals need billed components/allocation slices; initial work retains non-additive flags.</li>
+<li><strong>Inconsistent reliability gates:</strong> 30 pilot cases or 90% precision cannot certify near-zero false positives. Harmonized default-label requirements and explicitly separated arithmetic, finding reliability and intervention value.</li>
+<li><strong>Practical value:</strong> the intervention gate must clear a predeclared meaningful reduction, not merely a statistically positive change.</li>
+<li><strong>Scope creep:</strong> a universal event schema, reconstructed prompt ledger and generalized tariff platform are not prerequisites. Narrowed the first slice to one demonstrated ambiguity and observable fields.</li>
+<li><strong>Causal language:</strong> model-switch and child spend are decomposition until a controlled comparison supports overhead/effect claims.</li>
+<li><strong>Missing-price selection bias:</strong> primary reporting retains every assigned attempt. A restricted priced cohort is sensitivity/descriptive analysis unless eligibility was fixed before assignment.</li>
+<li><strong>Baseline mismatch:</strong> the initial feature branch lagged main substantially. Freshly fetched main was independently inspected, the worktree advanced, recommendations revised to credit shipped features, and all required checks rerun. A dedicated reconciliation records current source references.</li>
+<li><strong>Qualified-floor wording:</strong> unknown pricing must never silently become known zero; omitted components may contribute zero to an explicitly qualified floor while retaining their usage and caveats.</li>
+</ol>
+<p>Final current-main review found one remaining wording issue about qualified floors (item 10), which the lead corrected. Earlier reviews and the main reconciliation also removed redundant implementation proposals. The failure/evaluation reviewer independently checked the illustrative IID precision calculation: 299 all-correct observations give <code>0.05^(1/299) ≈ 0.99003085</code>; correlated sessions do not satisfy that model automatically.</p>
+<h2>Evidence limits and document integrity</h2>
+<p>Provider documentation and competitor repositories were opened, not merely taken from search snippets. The market review reports documented capabilities, not hands-on execution. Research studies' limitations are retained, including task scope, historical model versions, selection, grader validity and infrastructure effects.</p>
+<p>Code claims are anchored to inspected symbols at their explicitly named historical or current baseline; current-main reconciliation takes precedence. A missing schema dimension is not itself proof of a wrong real receipt. The current 25-entry evaluation manifest is useful regression evidence but not a substitute for independent real-world labels.</p>
+<p>Before delivery, all seven Markdown documents were checked for trailing whitespace, unresolved placeholders, broken relative Markdown links and internal citation artifacts. The source and Obsidian copies were compared byte-for-byte. The original checkout's pre-existing modifications remain outside this worktree's research diff.</p>
+<p>Vault destination: <code>/Users/anandgupta/obsidian/altimate/Research/AI Cost Optimization and Mistake Prevention/</code>.</p>
+</article><footer>Generated from the canonical Markdown research bundle. Standalone HTML; no external scripts, fonts, tracking or network assets.</footer></main></body></html>
