@@ -15,7 +15,7 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 ## 1. Executive summary
 
 1. **Raise retention from 90 to 180 days first.** The purge starts about 2026-09-30, and nothing else here blocks it.
-2. **Decide the cheaper-model policy (decision 0) alongside the price PR.** The PR is #359 (branch `chore/prices-2026-09-refresh`): 31 new ids (13 Anthropic, 10 OpenAI, 8 Google), drift down from 19 to 0. The PR defers the three sub-mini OpenAI rows, so it can merge under any option; the option decides when those rows land.
+2. **Decide the cheaper-model policy (decision 0) alongside the price PRs.** The refresh is split one vendor per PR (SPEC-0005 R2): #371 tooling, #369 Anthropic, #370 OpenAI, #368 Google, #367 DeepSeek. 31 new ids (13 Anthropic, 10 OpenAI, 8 Google), drift down from 19 to 0. The OpenAI PR defers the three sub-mini rows, so it can merge under any option; the option decides when those rows land.
 3. **Ship a one-PR SPEC-0043 amendment before v0.12.0.** It adds `cliVersion` and `installHash` to `receipt_generated`. Without it, the release's coverage effect cannot be measured.
 4. **Cut v0.12.0 through the full release checklist,** then the maintainer publishes.
 5. **Ship a defensive install-id fix now; investigate the root cause separately.** Success is measured by identity preservation, not "zero churn."
@@ -45,7 +45,7 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 
 ### A. Price freshness and model coverage
 
-- **Price PR.** PR #359 (four commits after three Codex review rounds) does four things. The rolling-issue workflow in it is implemented and merges with the PR.
+- **Price PRs.** #359 was split after its review into #371 (tooling: workflow, tripwire, README, tarball ceiling), #369 Anthropic, #370 OpenAI, #368 Google and #367 DeepSeek (closed rows cite the 2026-08-16 cutoff on the row). Three Codex rounds plus a split review. The five branches merge independently in any order. Together they do four things.
   - Adds 31 ids.
   - Removes the cancelled Sonnet 5 rise.
   - Applies the GPT-5.6 cuts.
@@ -195,7 +195,7 @@ Each promoted registry entry's canonical `recommendation` must fit the slip's 48
 | Order | Item | Vehicle |
 |---|---|---|
 | **Now 1** | Retention 180 days, daily cap | Azure |
-| Now 2 | Decision 0, then triage and merge the price PR | button 2 |
+| Now 2 | Decision 0, then triage and merge the five price PRs (#371, #369, #370, #368, #367) | button 2 |
 | Now 3 | SPEC-0043 amendment (`cliVersion`, `installHash`); defensive identity fix; geo docs | one PR each |
 | Now 4 | Attach check (F1) and hook-version investigation (F3) | investigation |
 | Now 5 | **Release v0.12.0.** Checklist: main CI green; version matches; `/release-manager` `VERDICT: GO` for the exact SHA; `preflight-release.mjs` exits 0; changelog; `/review-docs`; specs flipped; inventory updated; release PR; **maintainer publishes** | agent prepares |
