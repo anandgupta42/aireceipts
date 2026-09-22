@@ -114,7 +114,7 @@ check(`goldens/${stem}-details.txt`, renderReceipt(pricedModel, { color: false, 
 check(`goldens/${LOOP.source}-${nameOf(LOOP.path)}-details.txt`, renderReceipt(loopModel, { color: false, details: true }) + "\n");
 check(`goldens/svg/${stem}-details-light.svg`, renderReceiptSvg(pricedModel, { theme: "light", details: true }));
 
-// SPEC-0083 — new complete-cache fixture pins the opt-in signed arithmetic only.
+// SPEC-0090 — new complete-cache fixture pins the opt-in signed arithmetic only.
 const cacheModel = await modelFor("claude-code", "test/fixtures/claude-code/cache-economics-complete.jsonl");
 check("goldens/cache-economics-details.txt", renderReceipt(cacheModel, { color: false, details: true }) + "\n");
 for (const theme of ["light", "dark"] as const) {

@@ -147,6 +147,7 @@ describe("complete observed cache price arithmetic", () => {
     expect(renderReceipt(model, { color: false })).not.toContain("cache vs uncached");
     expect(renderReceipt(model, { color: false, details: true })).toContain("$0.44 lower");
     expect(receiptJsonSchema.safeParse(toJsonModel(model)).success).toBe(true);
+    expect(toJsonModel(model).netCache?.interpretation).toBe("hypothetical no-cache price minus observed cache price, same tokens; arithmetic, not a prediction");
     const blocks = buildReceiptView(model, "classic", { details: true }).blocks;
     expect(validateReceiptBlocks(blocks, model)).toEqual([]);
     const index = blocks.findIndex(b => b.kind === "row" && b.label === "cache vs uncached");

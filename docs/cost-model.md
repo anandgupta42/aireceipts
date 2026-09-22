@@ -24,7 +24,7 @@ drop/degrade/lower-bound decision routes through a typed `ConfidenceEvent`
 a new silent drop from being introduced there. Single-session receipts surface
 the same information through their typed caveat list (`src/receipt/model.ts`).
 
-The optional [net cache arithmetic](#net-cache-arithmetic---details) row is a
+The optional [net cache arithmetic](#net-cache-arithmetic) row is a
 signed same-token price difference, not an observed-spend amount or a bound. It
 uses complete observed cache counters and renders `lower` or `higher` without `≥`.
 
@@ -310,7 +310,7 @@ lower-bound oracles through real CLI discovery, parsing, pricing, JSON export,
 visible qualification, request-tier boundaries, and downward-only formatting.
 
 
-### Net cache arithmetic (`--details`)
+### Net cache arithmetic
 
 When every Claude Code request carries complete explicit cache counters and its
 dated cited rates resolve, `cache vs uncached` compares the observed reads and

@@ -30,9 +30,10 @@ aireceipts --methodology
 > tokens only — never a guessed dollar amount. A dominating session aggregate
 > with no request/model join appears in an explicit "(unattributed usage)"
 > token bucket; an aggregate that conflicts with itemized components remains
-> excluded evidence. Both contribute zero dollars. Every computed dollar is a Standard-API
+> excluded evidence. Both contribute zero dollars. Every attributed spend amount is a Standard-API
 > list-price-equivalent lower bound, never an invoice or subscription charge.
-> Cache-write tokens are priced per known TTL tier when the transcript splits
+> The optional net cache comparison is signed same-token arithmetic, not a floor
+> or measured savings. Cache-write tokens are priced per known TTL tier when the transcript splits
 > them (5-minute and 1-hour rates); any unsplit cache-write tokens are assumed
 > to be 5-minute-tier (Claude Code's default cache TTL) and priced only when
 > that rate is cited. Cached reads or writes with no cited applicable rate
@@ -42,7 +43,7 @@ aireceipts --methodology
 
 Two properties fall out of this. First, cost is per-tool because it's split across
 the tools a turn called — that's why `Bash` and `Edit` carry a dollar figure.
-Second, the product makes only a floor claim: all computed dollar rows use `≥`,
+Second, attributed spend rows make only a floor claim and use `≥`,
 even when the internal token×row arithmetic reconciles perfectly.
 
 ## Where the prices come from

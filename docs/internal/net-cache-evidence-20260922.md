@@ -1,6 +1,6 @@
 # Net cache evidence, 22 September 2026
 
-Implementation scope: SPEC-0083; complete parent-session observed-token arithmetic, never invoice savings or a lower bound.
+Implementation scope: SPEC-0090; complete parent-session observed-token arithmetic, never invoice savings or a lower bound.
 
 ## Real workload checks
 
@@ -14,6 +14,11 @@ The actual built CLI rendered the synthetic complete-cache fixture as PNG in lig
 
 ## Review and gates
 
-Claude Fable (`claude-fable-5-1`) authored the exact design on 22 September. An independent spec critique found no blocker subject to the demonstrated occurrence gate. The preliminary independent Fable code review found two substantive integration issues: the honesty validator did not yet recognize signed arithmetic, and the shared methodology still described all dollars as floors. Both were fixed with an exact traced-row-plus-disclosures exception, adversarial validator tests, and consistent methodology/trust/pricing docs. A separate cold-reader agent caught nested-field documentation placement and introductory wording; both were corrected. Final HEAD review and gates will be recorded with the PR. Focused tests include an independent arithmetic property oracle, context boundary, both TTL premiums, missing-counter abstention, selected-snapshot provenance, real CLI dispatch and JSON schema parity.
+Claude Fable (`claude-fable-5-1`) authored the exact design on 22 September. An independent spec critique found no blocker subject to the demonstrated occurrence gate. The preliminary independent Fable code review found two substantive integration issues: the honesty validator did not yet recognize signed arithmetic, and the shared methodology still described all dollars as floors. Both were fixed with an exact traced-row-plus-disclosures exception, adversarial validator tests, and consistent methodology/trust/pricing docs. A separate cold-reader agent caught nested-field documentation placement and introductory wording; both were corrected. At implementation commit `2d0f99e`, the same independent Fable reviewer returned PASS after personally running typecheck, lint, all 2,253 tests in 147 files, 105 goldens, spec lint, hygiene and 10-run determinism with exit 0. Scoped mutation on the new money module killed 144/154 mutants (93.51%), exit 0. A final documentation/test-assertion delta is separately reviewed before publication. Focused tests include an independent arithmetic property oracle, context boundary, both TTL premiums, missing-counter abstention, selected-snapshot provenance, real CLI dispatch and JSON schema parity.
 
 No claim about avoided spending, task quality, provider invoices or causal cache benefit follows from these checks.
+
+Known nonblocking limitation: an arithmetically nonfinite accumulated net amount
+is withheld under the generic `unpriced-usage` reason. No finite amount is
+substituted. The shipped rate tables and practical transcript sizes do not
+approach this boundary.

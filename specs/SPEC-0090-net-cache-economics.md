@@ -1,12 +1,12 @@
 ---
-id: SPEC-0083
+id: SPEC-0090
 title: Report complete observed net cache price arithmetic
 status: building
 milestone: M83
 depends: [SPEC-0054]
 ---
 
-# SPEC-0083: Report complete observed net cache price arithmetic
+# SPEC-0090: Report complete observed net cache price arithmetic
 
 ## Purpose
 
@@ -54,10 +54,22 @@ Claude Fable (`claude-fable-5-1`, local CLI design review, 2026-09-22) authored 
 
 ## Success criteria
 
-- [ ] All requirements covered by tests, mutation gate for new pricing logic.
-- [ ] Real workloads and visual output inspected; Fable review findings resolved.
-- [ ] `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`, `node scripts/verify-goldens.mjs`, determinism (10 runs), spec lint and hygiene pass with unmasked exits.
+- [x] All requirements covered by tests, mutation gate for new pricing logic.
+- [x] Real workloads and visual output inspected; Fable review findings resolved.
+- [x] `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`, `node scripts/verify-goldens.mjs`, determinism (10 runs), spec lint and hygiene pass with unmasked exits.
 
 ## Validation
 
 Reuse audit: `ratesForUsage`, `resolvePrice`, `pricingUnitsForTurn`, `withTotal` and Claude whole-vector snapshot selection already exist. The current `cacheReadAtInputRateDelta` omits write premiums, so it cannot serve as a net calculation. Smallest useful extension is one pure pricing module plus details presentation, with a per-snapshot evidence marker rather than a general provenance rewrite. Independent critique by the failure-prevention agent (separate context, 2026-09-22) found no blocker and endorsed the value subject to the real-trace gate. It requested caution on generic write-rate applicability: existing PriceRow defines that field for writes without TTL-specific prices; Anthropic currently uses explicit TTL rates. Raw cohort observation: 39,371 of 39,375 snapshots carried explicit valid cache fields (duplicates included); full-session eligibility is checked separately. User authorization is the go-ahead recorded above; no agent approval of a broader scope is implied. Kill criterion: if no real trace has complete eligible observations, defer dollar presentation and retain evidence findings instead of weakening the rule.
+
+
+Final validation at implementation commit `2d0f99e`: independent Claude Fable
+(`claude-fable-5-1`) returned PASS after personally running tsc, ESLint,
+147 files / 2,253 tests, 105 goldens, spec lint, hygiene and 10-run determinism,
+all exit 0. New money-module mutation: 144/154 killed, 93.51%, gate exit 0.
+Subsequent documentation-anchor/quoted-methodology corrections and an explicit
+JSON interpretation assertion receive focused checks and exact-HEAD delta review.
+
+Administrative numbering correction: a global inventory of 47 worktrees and
+open PR reservations found SPEC-0083 already allocated elsewhere. This scoped
+feature is SPEC-0090; no behavior, approval scope or evaluation criteria changed.
