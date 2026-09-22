@@ -105,7 +105,9 @@ claude-opus-4-8......................87% · ≥ $0.16
 claude-sonnet-5......................13% · ≥ $0.01
 ```
 
-The section slots between the price-delta line and the footer.
+The section slots between the price-delta line and the footer. When supported
+TypeScript tool results and chronology are captured, [recorded verification
+evidence](#recorded-verification-evidence) appears at its end, after BY MODEL if present.
 Line by line: **tokens in / out** is the raw prompt/completion split; **cache
 read / write** shows whether caching is actually working (when the transcript
 reports the cache-write TTL tiers, a `writes: 5m … · 1h …` sub-line appears —
@@ -118,6 +120,52 @@ model. It is a secondary parent-only partition with no displayed subtotal, so it
 does not purport to decompose a `TOTAL` that may also include subagents. Every line renders only when its data
 exists in the transcript. `--details` composes with the default template only;
 it also works with `--svg`.
+
+### Recorded verification evidence
+
+`aireceipts --details` can show a recorded TypeScript command followed by a
+TypeScript edit, or a command whose tool result was an error:
+
+```text
+VERIFICATION EVIDENCE
+npx tsc --noEmit..........tool result ok (turn 2)
+TS edit after it........................turn 3
+no later matching result recorded
+(recorded calls only; external checks unknown)
+```
+
+This is a transcript inspection aid. It reports the linked tool result and
+captured turn numbers, so you can inspect the command before relying on it.
+Displayed turns start at 1; the JSON indices start at 0 (displayed turns 2 and
+3 are JSON indices 1 and 2).
+“Tool result ok” is not a compiler exit-code certificate or proof of any
+project's correctness. A tool error can mean a missing compiler or a permission
+problem as well as a type error. No output prose is interpreted as success.
+For a tool error, the command row says `tool result error (turn N)` and there
+is no `TS edit after it` row. Both cases end with the same two notes: no later
+recognized invocation has a recorded result, and external checks are unknown.
+
+The first version recognizes only foreground Claude Code `Bash` calls whose
+entire command is `npx tsc --noEmit` and which were not requested to run in the
+background. Outer whitespace is allowed; extra flags,
+chaining, pipes, wrappers, background requests, other commands and other agents
+are outside this slice. TypeScript edits are successful named `Edit` or `Write`
+calls to `.ts`, `.tsx`, `.mts`, or `.cts` paths in later captured turns. Paths
+never appear in the evidence block or its JSON. The check and edit need not
+cover the same project; the receipt makes no such claim.
+
+Turn order supplies the chronology; recorded timestamps must also agree.
+Unknown or running tool statuses, dropped records, absent timing or ambiguous
+ordering suppress the relevant finding. A docs-only edit or a failed edit does
+not produce the typed-edit line. A later recognized completed invocation
+becomes the latest observation; this does not certify that an earlier problem
+was repaired. External CI, shell-based edits and child sessions remain unknown.
+
+No block means no supported finding, not that no verification happened. The
+block appears only in classic `--details` text/SVG/PNG. Receipt/compare JSON
+includes the evidence field whenever a supported finding exists; it needs no
+additional opt-in flag. It does not change default receipts, handoffs, pricing,
+flagged-pattern subtotals, budgets or telemetry.
 
 ## Pick a different session
 

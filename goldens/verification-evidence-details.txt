@@ -1,0 +1,32 @@
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                    AIRECEIPTS                    
+   Claude Code · Sep 22 2026 20:21:05 UTC · 17s   
+              claude-fable-5-1 100%               
+         cache served 66% of input tokens         
+
+pre-edit: 66% of tokens (2/3 turns)
+  (share before the first named edit tool)
+
+Edit...........................7,815 tok  (1 call)
+Bash...........................7,571 tok  (1 call)
+Read...........................7,394 tok  (1 call)
+--------------------------------------------------
+TOTAL...................................22,780 tok
+no price table matched
+
+DETAILS
+tokens in / out...........................66 / 416
+cache read / write......................15k / 7.6k
+  writes: 5m 0 · 1h 7.6k
+turns / tool calls...........................3 / 3
+peak turn........................7.8k tok (turn 3)
+
+VERIFICATION EVIDENCE
+npx tsc --noEmit...........tool result ok (turn 2)
+TS edit after it............................turn 3
+no later matching result recorded
+(recorded calls only; external checks unknown)
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                npx aireceipts-cli                
+         github.com/anandgupta42/receipts         
+- - - - - - - - - - - - - - - - - - - - - - - - -

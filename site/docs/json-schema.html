@@ -390,7 +390,23 @@ footer{
     <tr><td><code>priceRowsUsed</code></td><td>array</td><td>Every dated price row consulted; see PriceRowUsed.</td></tr>
     <tr><td><code>costShape</code></td><td>CostShape</td><td>SPEC-0067 — cost-shape facts (standalone, never in savings math): <code>preEdit</code> (pre-edit cost/token share), <code>topTurns</code> (expensive-turn concentration, or null), <code>lateTurn</code> (neutral late-half/early-half cost ratio, low confidence, or null).</td></tr>
     <tr><td><code>sameFileReReads</code></td><td>SameFileReReads | null</td><td>SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none.</td></tr>
+    <tr><td><code>verificationEvidence</code></td><td>object, optional</td><td>Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see <a href="04-read-a-receipt.html#recorded-verification-evidence">verification evidence</a>. Omitted when unsupported or incomplete.</td></tr>
     <tr><td><code>subagents</code></td><td>Subagents (optional)</td><td>SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths.</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="verificationevidence">VerificationEvidence</h3>
+
+<p>JSON indices start at 0; text/SVG/PNG turn numbers start at 1.</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>command</code></td><td>string</td><td>Exactly <code>npx tsc --noEmit</code>; no inferred shell-command equivalence.</td></tr>
+    <tr><td><code>outcome</code></td><td>enum</td><td><code>tool-error</code> or <code>edit-after-tool-success</code>; adapter tool-result status, not compiler or project correctness.</td></tr>
+    <tr><td><code>checkTurnIndex</code></td><td>integer</td><td>Zero-based captured turn of the latest recognized completed invocation.</td></tr>
+    <tr><td><code>editTurnIndex</code></td><td>integer or null</td><td>Zero-based first later typed-source edit turn; null for the tool-error case.</td></tr>
+    <tr><td><code>scope</code></td><td>string</td><td><code>captured-parent-calls</code>; excludes external CI and child sessions.</td></tr>
   </tbody>
 </table></div>
 

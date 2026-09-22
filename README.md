@@ -189,7 +189,7 @@ If you are an AI agent asked to install aireceipts, do the following:
 |---|---|
 | `aireceipts` | Receipt for the newest session (`--list` to pick another) |
 | `aireceipts --mini` | Six-line mini-receipt for the newest session |
-| `aireceipts --details` | Adds a DETAILS section — token composition, session shape, per-model split (classic template) |
+| `aireceipts --details` | Adds token composition, session shape, per-model split, and [recorded verification evidence](docs/guide/04-read-a-receipt.md#recorded-verification-evidence) (classic template) |
 | `aireceipts --template <name>` / `templates` | Render a receipt style (`classic`, `grocery`, `datavis`); `templates` previews each — [guide](docs/guide/10-templates.md) |
 | `aireceipts setup` | Found sessions, latest observable floor, week floor, and the integrations that fit your machine — [guide](docs/guide/01-getting-started.md) |
 | `aireceipts pr --post [--artifact]` | Attach the receipt of the sessions behind a PR as a comment; `--artifact` also publishes a durable receipt page — [guide](docs/pr-receipts.md) |

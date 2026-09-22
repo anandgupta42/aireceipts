@@ -73,7 +73,20 @@ legacy dollar scalars.
 | `priceRowsUsed` | array | Every dated price row consulted; see PriceRowUsed. |
 | `costShape` | CostShape | SPEC-0067 — cost-shape facts (standalone, never in savings math): `preEdit` (pre-edit cost/token share), `topTurns` (expensive-turn concentration, or null), `lateTurn` (neutral late-half/early-half cost ratio, low confidence, or null). |
 | `sameFileReReads` | SameFileReReads \| null | SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none. |
+| `verificationEvidence` | object, optional | Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see [verification evidence](guide/04-read-a-receipt.md#recorded-verification-evidence). Omitted when unsupported or incomplete. |
 | `subagents` | Subagents (optional) | SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths. |
+
+### VerificationEvidence
+
+JSON indices start at 0; text/SVG/PNG turn numbers start at 1.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `command` | string | Exactly `npx tsc --noEmit`; no inferred shell-command equivalence. |
+| `outcome` | enum | `tool-error` or `edit-after-tool-success`; adapter tool-result status, not compiler or project correctness. |
+| `checkTurnIndex` | integer | Zero-based captured turn of the latest recognized completed invocation. |
+| `editTurnIndex` | integer or null | Zero-based first later typed-source edit turn; null for the tool-error case. |
+| `scope` | string | `captured-parent-calls`; excludes external CI and child sessions. |
 
 ### Subagents object
 
