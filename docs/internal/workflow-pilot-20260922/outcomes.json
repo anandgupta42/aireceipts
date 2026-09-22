@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "scope": "controlled-engineering-pilot",
+  "protocolCommit": "e25ed66aec0ca797f6da4ddb37dd704636040ada",
+  "assignedAttempts": 4,
+  "acceptedAttempts": 4,
+  "savingsClaim": null,
+  "attempts": [
+    {
+      "attemptId": "A-baseline",
+      "task": "A",
+      "arm": "baseline",
+      "order": 1,
+      "snapshotSha256": "c35444419c2c1224bd6ca3e2f1b7ced0c5120048a56dcc746834b96b5d05e44f",
+      "startedAt": "2026-09-22T20:48:25.859266+00:00",
+      "endedAt": "2026-09-22T20:49:57.383371+00:00",
+      "elapsedSeconds": 91.523,
+      "processExit": 0,
+      "timedOut": false,
+      "checks": {
+        "task": "A",
+        "passed": 10,
+        "total": 10,
+        "accepted": true
+      },
+      "checkExit": 0,
+      "allowedFilesOnly": true,
+      "accepted": true,
+      "repairCount": 0,
+      "childCoverage": "unknown",
+      "children": null,
+      "outputSha256": "0a747380772bd15e07f0f7986ed3818adcda332ee09ae60596344a4d8fa08531",
+      "modelIds": [
+        "claude-fable-5-1"
+      ],
+      "receiptCoverage": "unpriced",
+      "observedTokens": {
+        "input": 66,
+        "output": 1521,
+        "cacheRead": 111740,
+        "cacheCreation": 60837,
+        "cacheCreation5m": 0,
+        "cacheCreation1h": 60837,
+        "total": 174164
+      },
+      "dollarSavings": null,
+      "costPerAcceptedTask": null,
+      "acceptanceArtifact": "results/A-baseline-acceptance.json",
+      "outputArtifact": "results/A-baseline.mjs",
+      "acceptanceEvidenceSha256": "a7313547078960af4e0b74431a68101b21579344a5ed0cbd0ac82b305ad17c61",
+      "interventionDelivery": "argv-constructed; sentence-not-observable-in-stored-user-text",
+      "joinEvidence": {
+        "resultSessionMatchesAssigned": true,
+        "transcriptSessionMatchesAssigned": true,
+        "transcriptWithinExecutionWindow": true,
+        "usageVectorMatchesReceipt": true
+      },
+      "resultSha256": "070605edda587f2657439ca9a5bb820748d0c12131ab8b824274a9ae36d7e7d2"
+    },
+    {
+      "attemptId": "A-targeted",
+      "task": "A",
+      "arm": "targeted",
+      "order": 2,
+      "snapshotSha256": "c35444419c2c1224bd6ca3e2f1b7ced0c5120048a56dcc746834b96b5d05e44f",
+      "startedAt": "2026-09-22T20:49:57.831374+00:00",
+      "endedAt": "2026-09-22T20:51:00.367870+00:00",
+      "elapsedSeconds": 62.536,
+      "processExit": 0,
+      "timedOut": false,
+      "checks": {
+        "task": "A",
+        "passed": 10,
+        "total": 10,
+        "accepted": true
+      },
+      "checkExit": 0,
+      "allowedFilesOnly": true,
+      "accepted": true,
+      "repairCount": 0,
+      "childCoverage": "unknown",
+      "children": null,
+      "outputSha256": "0a747380772bd15e07f0f7986ed3818adcda332ee09ae60596344a4d8fa08531",
+      "modelIds": [
+        "claude-fable-5-1"
+      ],
+      "receiptCoverage": "unpriced",
+      "observedTokens": {
+        "input": 66,
+        "output": 1857,
+        "cacheRead": 154820,
+        "cacheCreation": 18210,
+        "cacheCreation5m": 0,
+        "cacheCreation1h": 18210,
+        "total": 174953
+      },
+      "dollarSavings": null,
+      "costPerAcceptedTask": null,
+      "acceptanceArtifact": "results/A-targeted-acceptance.json",
+      "outputArtifact": "results/A-targeted.mjs",
+      "acceptanceEvidenceSha256": "a7313547078960af4e0b74431a68101b21579344a5ed0cbd0ac82b305ad17c61",
+      "interventionDelivery": "argv-constructed; sentence-not-observable-in-stored-user-text",
+      "joinEvidence": {
+        "resultSessionMatchesAssigned": true,
+        "transcriptSessionMatchesAssigned": true,
+        "transcriptWithinExecutionWindow": true,
+        "usageVectorMatchesReceipt": true
+      },
+      "resultSha256": "412982bbe25f42268b6ec44be260b49166626f88450572c2cfa9b1b039f90fe7"
+    },
+    {
+      "attemptId": "B-targeted",
+      "task": "B",
+      "arm": "targeted",
+      "order": 3,
+      "snapshotSha256": "ef94206b0c2e192d193743e821987a5cf98c08400e580d32e2a2069f9e582698",
+      "startedAt": "2026-09-22T20:51:00.706613+00:00",
+      "endedAt": "2026-09-22T20:52:08.636795+00:00",
+      "elapsedSeconds": 67.93,
+      "processExit": 0,
+      "timedOut": false,
+      "checks": {
+        "task": "B",
+        "passed": 11,
+        "total": 11,
+        "accepted": true
+      },
+      "checkExit": 0,
+      "allowedFilesOnly": true,
+      "accepted": true,
+      "repairCount": 0,
+      "childCoverage": "unknown",
+      "children": null,
+      "outputSha256": "16255d0fecc34e810f3b98c83e68f14feb7d9c96d9b681f04909317f663654ba",
+      "modelIds": [
+        "claude-fable-5-1"
+      ],
+      "receiptCoverage": "unpriced",
+      "observedTokens": {
+        "input": 66,
+        "output": 3128,
+        "cacheRead": 154755,
+        "cacheCreation": 19618,
+        "cacheCreation5m": 0,
+        "cacheCreation1h": 19618,
+        "total": 177567
+      },
+      "dollarSavings": null,
+      "costPerAcceptedTask": null,
+      "acceptanceArtifact": "results/B-targeted-acceptance.json",
+      "outputArtifact": "results/B-targeted.mjs",
+      "acceptanceEvidenceSha256": "d86754e2540af53084efdd2a8e3d33ded8092480ef51e5658cfaef1b87f91701",
+      "interventionDelivery": "argv-constructed; sentence-not-observable-in-stored-user-text",
+      "joinEvidence": {
+        "resultSessionMatchesAssigned": true,
+        "transcriptSessionMatchesAssigned": true,
+        "transcriptWithinExecutionWindow": true,
+        "usageVectorMatchesReceipt": true
+      },
+      "resultSha256": "9d849e8fa875d71d3f91399449246eaa5786b23fd9a3bda54aa7d090f72011ea"
+    },
+    {
+      "attemptId": "B-baseline",
+      "task": "B",
+      "arm": "baseline",
+      "order": 4,
+      "snapshotSha256": "ef94206b0c2e192d193743e821987a5cf98c08400e580d32e2a2069f9e582698",
+      "startedAt": "2026-09-22T20:52:08.836994+00:00",
+      "endedAt": "2026-09-22T20:53:11.415312+00:00",
+      "elapsedSeconds": 62.578,
+      "processExit": 0,
+      "timedOut": false,
+      "checks": {
+        "task": "B",
+        "passed": 11,
+        "total": 11,
+        "accepted": true
+      },
+      "checkExit": 0,
+      "allowedFilesOnly": true,
+      "accepted": true,
+      "repairCount": 0,
+      "childCoverage": "unknown",
+      "children": null,
+      "outputSha256": "e8cf9b7850ae0df15d24e8e22d1ea37535c9d0856b8361161668d4a0150df8d1",
+      "modelIds": [
+        "claude-fable-5-1"
+      ],
+      "receiptCoverage": "unpriced",
+      "observedTokens": {
+        "input": 66,
+        "output": 3182,
+        "cacheRead": 154870,
+        "cacheCreation": 19458,
+        "cacheCreation5m": 0,
+        "cacheCreation1h": 19458,
+        "total": 177576
+      },
+      "dollarSavings": null,
+      "costPerAcceptedTask": null,
+      "acceptanceArtifact": "results/B-baseline-acceptance.json",
+      "outputArtifact": "results/B-baseline.mjs",
+      "acceptanceEvidenceSha256": "d86754e2540af53084efdd2a8e3d33ded8092480ef51e5658cfaef1b87f91701",
+      "interventionDelivery": "argv-constructed; sentence-not-observable-in-stored-user-text",
+      "joinEvidence": {
+        "resultSessionMatchesAssigned": true,
+        "transcriptSessionMatchesAssigned": true,
+        "transcriptWithinExecutionWindow": true,
+        "usageVectorMatchesReceipt": true
+      },
+      "resultSha256": "bd24f98866ca1b5346c643051b1f0fca26e5601d08b68a041fa4bb05874f4cad"
+    }
+  ]
+}

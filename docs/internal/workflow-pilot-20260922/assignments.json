@@ -1,0 +1,38 @@
+{
+  "registeredAt": "2026-09-22T20:44:02.022058+00:00",
+  "model": "fable",
+  "effort": "high",
+  "maxSecondsPerAttempt": 480,
+  "assignments": [
+    {
+      "attemptId": "A-baseline",
+      "task": "A",
+      "arm": "baseline",
+      "order": 1
+    },
+    {
+      "attemptId": "A-targeted",
+      "task": "A",
+      "arm": "targeted",
+      "order": 2
+    },
+    {
+      "attemptId": "B-targeted",
+      "task": "B",
+      "arm": "targeted",
+      "order": 3
+    },
+    {
+      "attemptId": "B-baseline",
+      "task": "B",
+      "arm": "baseline",
+      "order": 4
+    }
+  ],
+  "treatment": "Before broad repository reads, inspect the named implementation and relevant files with focused searches and bounded output. Avoid dumping unrelated file contents.",
+  "snapshots": {
+    "A": "c35444419c2c1224bd6ca3e2f1b7ced0c5120048a56dcc746834b96b5d05e44f",
+    "B": "ef94206b0c2e192d193743e821987a5cf98c08400e580d32e2a2069f9e582698"
+  },
+  "acceptanceSha256": "e83db4c7bff4fc1ae96ea5fa84e4fdfe7efc96af5046db0795381925619851ad"
+}
