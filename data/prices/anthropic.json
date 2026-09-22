@@ -15,7 +15,7 @@
             {
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-02",
-              "excerpt": "Claude Fable 5 \u2014 Base Input Tokens $10 / MTok, 5m Cache Writes $12.50 / MTok, 1h Cache Writes $20 / MTok, Cache Hits & Refreshes $1 / MTok, Output Tokens $50 / MTok"
+              "excerpt": "Claude Fable 5 — Base Input Tokens $10 / MTok, 5m Cache Writes $12.50 / MTok, 1h Cache Writes $20 / MTok, Cache Hits & Refreshes $1 / MTok, Output Tokens $50 / MTok"
             }
           ]
         }
@@ -35,7 +35,7 @@
             {
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "Claude Opus 4.8 \u2014 Base Input $5 / MTok, Cache Hits & Refreshes $0.50 / MTok, 5m Cache Writes $6.25 / MTok, 1h Cache Writes $10 / MTok, Output $25 / MTok"
+              "excerpt": "Claude Opus 4.8 — Base Input $5 / MTok, Cache Hits & Refreshes $0.50 / MTok, 5m Cache Writes $6.25 / MTok, 1h Cache Writes $10 / MTok, Output $25 / MTok"
             }
           ]
         }
@@ -55,7 +55,7 @@
             {
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "Claude Sonnet 5 \u2014 introductory pricing through August 31, 2026: Base Input $2 / MTok, Cache Hits & Refreshes $0.20 / MTok, 5m Cache Writes $2.50 / MTok, 1h Cache Writes $4 / MTok, Output $10 / MTok"
+              "excerpt": "Claude Sonnet 5 — introductory pricing through August 31, 2026: Base Input $2 / MTok, Cache Hits & Refreshes $0.20 / MTok, 5m Cache Writes $2.50 / MTok, 1h Cache Writes $4 / MTok, Output $10 / MTok"
             },
             {
               "url": "https://platform.claude.com/docs/en/release-notes/overview#august-10-2026",
@@ -85,7 +85,7 @@
             {
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "Claude Haiku 4.5 \u2014 Base Input $1 / MTok, Cache Hits & Refreshes $0.10 / MTok, 5m Cache Writes $1.25 / MTok, 1h Cache Writes $2 / MTok, Output $5 / MTok"
+              "excerpt": "Claude Haiku 4.5 — Base Input $1 / MTok, Cache Hits & Refreshes $0.10 / MTok, 5m Cache Writes $1.25 / MTok, 1h Cache Writes $2 / MTok, Output $5 / MTok"
             }
           ]
         }
