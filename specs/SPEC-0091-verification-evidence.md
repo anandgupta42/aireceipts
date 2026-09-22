@@ -1,12 +1,12 @@
 ---
-id: SPEC-0085
+id: SPEC-0091
 title: "Verification evidence — recorded TypeScript check chronology"
 status: building
 milestone: M6
 depends: [SPEC-0054]
 ---
 
-# SPEC-0085: Verification evidence
+# SPEC-0091: Verification evidence
 
 ## Purpose
 
@@ -174,3 +174,7 @@ sidechain sessions so the emitted parent-call scope stays literal. Review found
 no model/network calls, invented dollars, path exposure, or prose-based verdicts.
 The final corrected commit is re-reviewed before publication; PR records carry
 its SHA and actual completed gate results.
+
+The lead reassigned this unchanged scope to SPEC-0091 after the cross-worktree
+inventory found another open PR reserving 0085–0088. This is identifier-only;
+prior review records retain their historical spec number and reviewed commit.

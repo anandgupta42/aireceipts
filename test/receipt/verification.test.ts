@@ -18,7 +18,7 @@ async function model() {
   return buildReceiptModel(session);
 }
 
-describe("SPEC-0085 verification evidence surfaces", () => {
+describe("SPEC-0091 verification evidence surfaces", () => {
   it("renders linked actual-workload evidence only in details, with byte-pinned shared text/SVG", async () => {
     const receipt = await model();
     const detailed = renderReceipt(receipt, { color: false, details: true });

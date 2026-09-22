@@ -1,7 +1,7 @@
 import type { VerificationEvidence } from "../analysis/verification.js";
 import type { Block } from "./blocks.js";
 
-/** Fable-authored SPEC-0085 design; one shared text/SVG/PNG presentation. */
+/** Fable-authored SPEC-0091 design; one shared text/SVG/PNG presentation. */
 export function verificationBlocks(evidence?: VerificationEvidence | null): Block[] {
   if (!evidence) return [];
   const result = evidence.outcome === "tool-error" ? "error" : "ok";

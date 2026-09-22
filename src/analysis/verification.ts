@@ -35,7 +35,7 @@ function isTypedEdit(call: ToolCall): boolean {
 }
 
 /**
- * SPEC-0085: intentionally one literal foreground command and one adapter.
+ * SPEC-0091: intentionally one literal foreground command and one adapter.
  * Output prose is never examined. All references address only captured calls.
  */
 export function verificationEvidence(session: Session): VerificationEvidence | null {

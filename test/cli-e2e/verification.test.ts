@@ -31,7 +31,7 @@ function cli(args: string[]) {
   return result.stdout;
 }
 
-describe("SPEC-0085 built CLI actual-workload replay", () => {
+describe("SPEC-0091 built CLI actual-workload replay", () => {
   it("renders details and strict JSON while keeping the default and handoff unchanged", () => {
     const details = cli(["--details"]);
     expect(details).toBe(readFileSync(path.join(root, "goldens/verification-evidence-details.txt"), "utf8"));

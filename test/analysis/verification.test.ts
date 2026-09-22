@@ -20,7 +20,7 @@ function session(calls: ToolCall[], patch: Partial<Session> = {}): Session {
   };
 }
 
-describe("SPEC-0085 recorded TypeScript check evidence", () => {
+describe("SPEC-0091 recorded TypeScript check evidence", () => {
   it("identifies the recorded check and subsequent typed edit without exporting the path", () => {
     expect(verificationEvidence(session([check(), edit()]))).toEqual({
       command: "npx tsc --noEmit", outcome: "edit-after-tool-success", checkTurnIndex: 0,
