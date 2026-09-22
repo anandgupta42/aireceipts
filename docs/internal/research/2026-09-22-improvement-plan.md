@@ -1,6 +1,6 @@
 # aireceipts improvement plan (2026-09-22, rev 2)
 
-Revision 2 applies the 21 findings of the Codex review. Short names for the sources: **deep-dive** (`2026-09-22-appinsights-deep-dive.md`), **mistakes** (`...-research-agent-failure-modes.md`), **levers** (`...-research-cost-levers.md`) and **telemetry** (`...-research-telemetry-program.md`) are in this folder. **landscape** (a survey of what other tools surface) and **parallel** (an independent deep-research report) name third-party products, so they are kept out of the public repo, in the maintainer's research vault under `Research/aireceipts-improvement-plan-2026-09/`.
+Revision 2 applies the 21 findings of the Codex review. The six evidence documents it cites are working papers that name third-party products and carry illustrative figures, so they are kept out of the public repo, in the maintainer's research vault under `Research/aireceipts-improvement-plan-2026-09/`: **deep-dive** (App Insights deep dive, 90 days of production telemetry), **mistakes** (agent failure modes and deterministic waste checks), **levers** (AI coding-agent cost levers), **landscape** (what other tools surface), **telemetry** (OSS CLI telemetry programs and Azure cost) and **parallel** (an independent deep-research report). Section references below point into those documents.
 
 **SPEC inventory.** 0085 is the next unused id locally.
 
