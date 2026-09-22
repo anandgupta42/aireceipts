@@ -15,7 +15,7 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 ## 1. Executive summary
 
 1. **Raise retention from 90 to 180 days first.** The purge starts about 2026-09-30, and nothing else here blocks it.
-2. **Decide the cheaper-model policy (decision 0) before merging the price PR.** The PR is commit 4fe98fd: 31 new ids (13 Anthropic, 10 OpenAI, 8 Google), drift down from 19 to 0.
+2. **Decide the cheaper-model policy (decision 0) alongside the price PR.** The PR is #359 (branch `chore/prices-2026-09-refresh`): 31 new ids (13 Anthropic, 10 OpenAI, 8 Google), drift down from 19 to 0. The PR defers the three sub-mini OpenAI rows, so it can merge under any option; the option decides when those rows land.
 3. **Ship a one-PR SPEC-0043 amendment before v0.12.0.** It adds `cliVersion` and `installHash` to `receipt_generated`. Without it, the release's coverage effect cannot be measured.
 4. **Cut v0.12.0 through the full release checklist,** then the maintainer publishes.
 5. **Ship a defensive install-id fix now; investigate the root cause separately.** Success is measured by identity preservation, not "zero churn."
@@ -45,14 +45,14 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 
 ### A. Price freshness and model coverage
 
-- **Price PR.** Commit 4fe98fd in this worktree does four things. The rolling-issue workflow in it is implemented and merges with the PR.
+- **Price PR.** PR #359 (four commits after three Codex review rounds) does four things. The rolling-issue workflow in it is implemented and merges with the PR.
   - Adds 31 ids.
   - Removes the cancelled Sonnet 5 rise.
   - Applies the GPT-5.6 cuts.
   - Closes DeepSeek's flat rows on 2026-08-15.
 - **Golden change.** Six Codex goldens change in the two lines that use `cheapestCurrentRow`: the "same tokens on" comparison and the trivial-spans `≈` estimate. The lowest current input rate is now `gpt-6-luna`, not `gpt-5.4-mini`.
 - **Deferred rows.** `gpt-5.4-nano`, `gpt-5-mini` and `gpt-5-nano` wait on decision 0.
-- **Discovery triage.** The first commit (4fe98fd) counted 94 by hiding dated snapshots, provider-prefixed aliases and anything with a `deprecation_date`. The review commit (498f90e) stops hiding: it counts 140 as of 2026-09-22T20:25Z, 133 new ids plus 7 dated snapshots of priced models, lists 35 retired ids without counting them, and excludes only `ft:` fine-tune rows and non-text modes (image, audio, embedding, realtime, moderation, ocr). Most of the 133 are legacy OpenAI chat ids (gpt-3.5, gpt-4, gpt-4o families) and Gemini previews. The `update-prices` loop owns triage, and the maintainer approves via button 2. Each discovery ends up supported with a cited row, omitted with a reason, or irrelevant.
+- **Discovery triage.** The first commit in #359 counted 94 by hiding dated snapshots, provider-prefixed aliases and anything with a `deprecation_date`. The review commits stop hiding: the final tripwire counts 122 (115 new ids plus 7 dated snapshots of priced models), lists ids the community dataset labels a non-text modality and ids whose deprecation date has passed without counting them, requires a canonical id to match the vendor's own id shape, and excludes only `ft:` fine-tune rows. Most of the 115 are legacy OpenAI chat ids (gpt-3.5, gpt-4, gpt-4o families) and Gemini previews. The `update-prices` loop owns triage, and the maintainer approves via button 2. Each discovery ends up supported with a cited row, omitted with a reason, or irrelevant.
 - **SPEC-0086.**
   - A cited `aliases` array per model row. An alias resolves only when a vendor page lists that id as the same model at the same price.
   - No suffix stripping. Provider-prefixed Bedrock and Vertex ids stay unresolved.
@@ -104,7 +104,7 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
   - In new versions, `installIdSource=existing` exceeds 99% of runs, and the `recovered_after_corrupt` rate is reported.
   - A test proves `parse_failure` has a caller.
   - The parity test is green.
-- **Invariants:** I4 holds, because all fields are bounded enums. `--telemetry-show` prints the new payloads, and the kill switches still win.
+- **Invariants:** I4 holds: every new field is a bounded enum or boolean, plus the salted `installHash` and the semver `cliVersion` that SPEC-0043 already permits on `cli_run`. `--telemetry-show` prints the new payloads, and the kill switches still win.
 
 ### C. New facts and checks (SPEC-0087, SPEC-0088, SPEC-0083 amendments)
 
@@ -128,14 +128,14 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 
 Descriptive metrics such as cache share are receipt facts, not warnings. They are golden-gated, not registry-promoted.
 
-**Dollar roles** (R10): *observed-attributed* allocates real spend, *observed-window* is real spend in a window with no avoidability claim, *same-token-reprice* is cited arithmetic on the same tokens, and *none* prints no dollar. Estimated tokens (chars/4) always carry `≈`. Overlapping findings are resolved by registry supersession before any subtotal. Unlike roles are never summed, and no number is labeled saved or avoidable.
+**Dollar roles** (R10): *observed-attributed* allocates real spend, *observed-window* is real spend in a window with no avoidability claim, *same-token-reprice* is cited arithmetic on the same tokens, *conditional-estimate* multiplies estimated tokens by later requests under a stated persistence assumption and is never added to an observed subtotal, and *none* prints no dollar. Estimated tokens (chars/4) always carry `≈`. Every receipt dollar is a Standard-API-equivalent floor (`≥`) or a labeled estimate (`≈`). Overlapping findings are resolved by registry supersession before any subtotal. Unlike roles are never summed, and no number is labeled saved or avoidable.
 
 | # | Item | Predicate (unknown states in brackets) | Role | Vehicle |
 |---|---|---|---|---|
 | 1 | Cache write after idle gap | Claude Code only. Codex only where `cache_write_input_tokens` exists; otherwise, and for Gemini: unavailable. For consecutive main-chain requests on one model, readable = prior request's input + cacheRead + cacheCreation + output, and missed = max(0, readable minus cacheRead). The rule fires when missed ≥ max(2,000, 5% of readable) and the gap exceeds the TTL. The TTL is 1h if only `cacheCreation1h`>0, 5m if only 5m. [Mixed or no split: TTL unknown. Compaction, model or version change: attributed to that cause, not idle.] Source: levers 1a, mistakes P3. | same-token-reprice: missed x (write rate minus read rate) | 0087 |
 | 2 | Cache read share | cacheRead / (input + cacheRead + cacheCreation), per model. [Fields absent: not shown.] Gemini shows read share only. | descriptive, none | 0087 |
 | 3 | TTL arithmetic | For 5m sessions: rebuilds after 5 to 60 min gaps against the 1h write premium. Both numbers shown, conditional. | same-token-reprice | 0087 |
-| 4 | Large tool result | Estimated output ≥10k tokens (≈). A truncation marker is a separate count that makes no size claim. Carry = estimate x later main-chain requests until compaction, at the read rate. Subagent contexts are separate. | observed-attributed, ≈ | 0088 |
+| 4 | Large tool result | Estimated output ≥10k tokens (≈). A truncation marker is a separate count that makes no size claim. Carry = estimate x later main-chain requests until compaction, at the read rate, assuming the prefix persisted. Subagent contexts are separate. | conditional-estimate, ≈ | 0088 |
 | 5 | Duplicate unchanged read | Read-class tools per vendor map; shell reads only via the SPEC-0083 R4 lexer. Same (path, offset, limit) and output hash, in the same context, with no compaction between. Post-compaction re-reads are a separate count. Extends SPEC-0068 and stays outside waste math. | none (tokens ≈) | 0088 |
 | 6 | First-request input | input + cacheRead + cacheCreation of the first main-chain request. This includes the first prompt. Carry = that x (requests minus 1) x read rate, conditional on the prefix persisting and stopping at compaction. [Usage absent: unavailable.] | same-token-reprice, conditional | 0088 |
 | 7 | Edit-fail retries | At least 3 edit-class calls (vendor map) on one present path with explicit `error` status within 10 flattened calls; `running` is not failure. Superseded by R6 `repeated-identical-error` when they overlap. | observed-attributed | registry amendment |
@@ -169,7 +169,7 @@ Each promoted registry entry's canonical `recommendation` must fit the slip's 48
 | last change unchecked | `Run the check again after the final edit` | 40 |
 
 - **Settings are optional experiments.** A setting such as `promptCacheTtl=1h` appears only in docs, beside the conditional TTL arithmetic.
-- **Model names are observed and priced, not tiered.** Any model mention uses the observed id and a cited price, for example `ran on claude-opus-5-5 ($4/$20 per MTok)`. It never uses tier words.
+- **Model names are observed and priced, not tiered.** Any model mention uses the observed id and the cited price row that priced the session, for example `ran on claude-opus-5-5 ($4 in / $20 out per MTok, anthropic.json row from 2026-09-22)`. It never uses tier words.
 - **Invariants:** I3 and I6.
 
 ### F. Growth and onboarding
@@ -209,7 +209,7 @@ Each promoted registry entry's canonical `recommendation` must fit the slip's 48
 
 ## 5. Maintainer decisions (recommended option first)
 
-0. **Cheaper-model candidate policy.** (a) Comparison-eligible rows kept as cited data per vendor family; the three deferred OpenAI rows land as coverage-only. (b) Today's rule: lowest current input rate. (c) Cheapest model the session's agent can select, which needs cited per-agent lists.
+0. **Cheaper-model candidate policy.** (a) Comparison-eligible rows kept as cited data per vendor family; the three deferred OpenAI rows land as coverage-only once SPEC-0086 ships the separation, and stay out until then. (b) Today's rule: lowest current input rate; the deferred rows then land immediately and the cheaper-model line follows them. (c) Cheapest model the session's agent can select, which needs cited per-agent lists.
 1. **DeepSeek time-of-day pricing.** (a) Tokens-only, as current policy requires. (b) An off-peak `≥` floor, a **proposed** amendment to the omitted-model policy in the price-table README that is not permitted today. (c) A `time_of_day_tiers` schema plus a cited holiday calendar (L).
 2. **v0.12.0 scope.** (a) Price PR, SPEC-0043 amendment and identity fix. (b) Also wait for SPEC-0084 R1.
 3. **Statusline telemetry.** (a) Hourly activity heartbeat, with performance gated by the local benchmark. (b) (a) plus a disclosed bucketed share of polls over 2s. (c) 1-in-50 sampling, which undercounts installs (telemetry B0).
