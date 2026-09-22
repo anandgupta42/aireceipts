@@ -9,6 +9,11 @@ permissions:
   contents: read
   issues: write
 
+# Serialize runs so two overlapping scans cannot both open a report.
+concurrency:
+  group: price-scan
+  cancel-in-progress: false
+
 jobs:
   tripwire:
     runs-on: ubuntu-latest
@@ -42,28 +47,63 @@ jobs:
 
           cat price-tripwire-report.md >> "$GITHUB_STEP_SUMMARY"
 
+          tripwire_status="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.status)")"
           drift_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.driftCount)")"
           discovery_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.discoveryCount)")"
 
           {
             echo "exit_code=$status"
+            echo "status=$tripwire_status"
             echo "drift_count=$drift_count"
             echo "discovery_count=$discovery_count"
           } >> "$GITHUB_OUTPUT"
 
-          if [ "$drift_count" -gt 0 ] || [ "$discovery_count" -gt 0 ]; then
-            echo "should_open=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_open=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Open drift/discovery issue
-        if: steps.tripwire.outputs.should_open == 'true'
+      # One rolling issue, not one per day. `drift`/`discovery`: refresh the open report
+      # (or open it). `clean`: close it. `warn` (dataset fetch failed): touch nothing,
+      # because zero counts on a failed fetch prove nothing.
+      - name: Upsert drift/discovery issue
+        if: steps.tripwire.outputs.status != 'warn'
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          TRIPWIRE_STATUS: ${{ steps.tripwire.outputs.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh issue create \
-            --title "prices: drift/discovery report" \
-            --label "enhancement" \
-            --body-file price-tripwire-report.md
+          title="prices: drift/discovery report"
+          # Exact title match over every open issue (paginated; pull requests excluded),
+          # ascending so the oldest report is canonical. GitHub search mangles ':' and
+          # '/' in titles, so the filter runs client-side.
+          matches="$(gh api --paginate "repos/$GH_REPO/issues?state=open&per_page=100" \
+            --jq "map(select(.pull_request == null and .title == \"$title\") | .number) | .[]" \
+            | sort -n)"
+          canonical="$(printf '%s\n' "$matches" | head -n 1)"
+          duplicates="$(printf '%s\n' "$matches" | tail -n +2)"
+
+          # Fold any duplicates (from older runs) into the canonical issue.
+          for dup in $duplicates; do
+            gh issue close "$dup" --reason "not planned" \
+              --comment "Duplicate of #$canonical, which is the rolling price tripwire report."
+          done
+
+          if [ "$TRIPWIRE_STATUS" = "clean" ]; then
+            if [ -n "$canonical" ]; then
+              gh issue close "$canonical" --comment "Tripwire is clean as of this run: $RUN_URL"
+            fi
+            exit 0
+          fi
+
+          {
+            cat price-tripwire-report.md
+            echo
+            echo "_Last refreshed by [this run]($RUN_URL). This issue is updated in place daily while drift or discovery persists._"
+          } > price-tripwire-issue.md
+
+          if [ -n "$canonical" ]; then
+            gh issue edit "$canonical" --body-file price-tripwire-issue.md
+          else
+            gh issue create \
+              --title "$title" \
+              --label "enhancement" \
+              --body-file price-tripwire-issue.md
+          fi
