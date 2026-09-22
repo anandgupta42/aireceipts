@@ -1,6 +1,6 @@
 # aireceipts improvement plan (2026-09-22, rev 2)
 
-Revision 2 applies the 21 findings of the Codex review. Short names for the sources in this folder: **deep-dive** (`2026-09-22-appinsights-deep-dive.md`), **mistakes** (`...-research-agent-failure-modes.md`), **levers** (`...-research-cost-levers.md`), **landscape** (`...-research-landscape.md`), **telemetry** (`...-research-telemetry-program.md`) and **parallel** (`...-research-deep-research-parallel.md`).
+Revision 2 applies the 21 findings of the Codex review. Short names for the sources: **deep-dive** (`2026-09-22-appinsights-deep-dive.md`), **mistakes** (`...-research-agent-failure-modes.md`), **levers** (`...-research-cost-levers.md`) and **telemetry** (`...-research-telemetry-program.md`) are in this folder. **landscape** (a survey of what other tools surface) and **parallel** (an independent deep-research report) name third-party products, so they are kept out of the public repo, in the maintainer's research vault under `Research/aireceipts-improvement-plan-2026-09/`.
 
 **SPEC inventory.** 0085 is the next unused id locally.
 
