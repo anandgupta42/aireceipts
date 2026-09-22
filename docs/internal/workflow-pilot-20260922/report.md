@@ -8,7 +8,7 @@ validates the local harness and outcome sidecar, not treatment effectiveness.
 
 | Task and assigned arm | Independent checks | Receipt tokens | Process wall seconds | Price coverage |
 |---|---:|---:|---:|---|
-| A baseline | 10/10 | 174,164 | 91.524 | unpriced |
+| A baseline | 10/10 | 174,164 | 91.523 | unpriced |
 | A focused-context | 10/10 | 174,953 | 62.536 | unpriced |
 | B focused-context | 11/11 | 177,567 | 67.930 | unpriced |
 | B baseline | 11/11 | 177,576 | 62.578 | unpriced |
@@ -26,11 +26,26 @@ proven. Recorded usage is the observable session ledger, not a complete invoice.
 Task A repairs an inclusive tariff-date resolver and its ambiguous-overlap case.
 The seeded implementation failed 3/10 checks. Task B repairs cached-input subset
 normalization and validation; its seeded implementation failed 9/11 checks.
-Both pairs began from byte-identical file snapshots and separate session IDs.
+The local launcher records say both pairs began from identical committed seed
+trees and separate session IDs.
+The two accepted Task A modules are also byte-identical. Their small canonical
+fix produced the same output; this observation does not establish whether either
+agent used the intended context strategy.
 The evaluator's hidden checks lived outside the execution directories and were
 run only after the model process ended. A metadata audit found no tool input
 referencing the hidden-check file. Final repaired modules and acceptance outputs
 are committed so the check results can be rerun independently.
+
+The preregistered `snapshotSha256` values establish paired equality in the
+recorded sidecar, but their original directory-hash recipe was not retained and
+cannot be recomputed from the published seeds. The independently reproducible
+seed identities are the Git tree objects in pre-execution commit `e25ed66`:
+Task A `8f80b16927f1b0cfada5afd9cfbbab1059def447` and Task B
+`022249df792ce43973c791c3fc9652a6c05f0166`. Reviewers can check both
+with `git rev-parse e25ed66:docs/internal/workflow-pilot-20260922/seed/A`
+and the corresponding `/seed/B` command, then compare them with the current
+tree objects. The validator checks the declared pair hashes; it does not prove
+that the private execution directories matched these committed trees.
 
 The two tasks are synthetic reproductions of meaningful accounting defects. They
 are actual executed coding work, not real-user product issues or a field study.
@@ -90,7 +105,10 @@ command or pricing engine was added.
 
 The protocol, assignments, seeded bugs and hidden checks were committed in
 `989eca9`; `e25ed66` clarified that self-checks must use inline Node commands,
-before any model execution. Both remain immutable. A Python launcher syntax error
+and changed the seed READMEs and snapshot hashes, before any model execution.
+The original `registeredAt` predates that amendment; the committed amendment is
+the final preregistered seed version. Both commits remain immutable. A Python
+launcher syntax error
 occurred before any process started and was corrected; no model attempt was
 launched or removed at that point. Four model invocations then ran in the declared
 A-baseline, A-targeted, B-targeted, B-baseline order.
