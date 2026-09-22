@@ -1,12 +1,12 @@
 ---
-id: SPEC-0086
+id: SPEC-0092
 title: Validate a local workflow-outcome sidecar with a controlled pilot
 status: building
 milestone: M4
 depends: [SPEC-0000, SPEC-0001]
 ---
 
-# SPEC-0086: Validate a local workflow-outcome sidecar
+# SPEC-0092: Validate a local workflow-outcome sidecar
 
 ## Purpose
 
@@ -15,7 +15,7 @@ two-task controlled coding pilot checks whether a local analyst sidecar retains
 all assigned attempts and independent acceptance evidence. No product command is
 added. See [preregistered protocol](../docs/internal/workflow-pilot-20260922/protocol.md).
 
-## Authorization and validation
+## Validation
 
 The maintainer explicitly authorized implementation of all five research-plan
 steps, real workloads and PRs on 2026-09-22. The lead bounded this step to two tasks,
@@ -70,18 +70,19 @@ population inference or success grade. No private user corpus and no price chang
 
 | Case | Expected |
 |---|---|
-| Four distinct preregistered assignments | Validate |
-| Missing/duplicate assignment | Reject |
-| Failed check labeled accepted | Reject |
-| Unknown price asserted as savings | Reject |
+| R1 Four distinct preregistered assignments | Validate |
+| R2 Missing/duplicate assignment | Reject |
+| R3 Failed check labeled accepted | Reject |
+| R5 Unknown price asserted as savings | Reject |
 | All assigned failures | Retain denominator; no cost/success ratio |
-| Invalid negative/nonfinite accounting/time count | Reject |
+| R4 Invalid negative/nonfinite accounting/time count | Reject |
 
 ## Success criteria
 
-- [ ] Protocol and assignments preregistered before model execution.
-- [ ] All four real model attempts retained with independent acceptance evidence.
-- [ ] Sidecar validator positive and negative checks pass.
-- [ ] Existing compare output and measured, explicitly limited report attached.
-- [ ] Acceptance testing performed; typecheck, lint, full tests, goldens,
-      determinism, spec lint and hygiene pass; CI green before handoff.
+- [x] Protocol and assignments preregistered before model execution.
+- [x] All four real model attempts retained with independent acceptance evidence.
+- [x] Sidecar validator positive and negative checks pass.
+- [x] Existing compare output and measured, explicitly limited report attached.
+- [x] Acceptance testing performed; typecheck, lint, full tests, goldens,
+      determinism, spec lint and hygiene pass.
+- [ ] Independent final review and CI green before handoff.

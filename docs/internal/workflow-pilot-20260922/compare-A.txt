@@ -1,0 +1,43 @@
+=== A-baseline ===
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                    AIRECEIPTS                    
+ “A-baseline”
+ Claude Code · Sep 22 2026 20:48:35 UTC · 1m 11s  
+              claude-fable-5-1 100%               
+         cache served 65% of input tokens         
+
+pre-edit: no named edit tool observed
+  (share before the first named edit tool)
+
+Bash........................113,030 tok  (2 calls)
+(thinking/reply)..............61,134 tok  (1 turn)
+--------------------------------------------------
+TOTAL..................................174,164 tok
+no price table matched
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                npx aireceipts-cli                
+         github.com/anandgupta42/receipts         
+- - - - - - - - - - - - - - - - - - - - - - - - -
+
+=== A-targeted ===
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                    AIRECEIPTS                    
+ “A-targeted”
+   Claude Code · Sep 22 2026 20:50:02 UTC · 49s   
+              claude-fable-5-1 100%               
+         cache served 89% of input tokens         
+
+pre-edit: no named edit tool observed
+  (share before the first named edit tool)
+
+Bash........................113,593 tok  (2 calls)
+(thinking/reply)..............61,360 tok  (1 turn)
+--------------------------------------------------
+TOTAL..................................174,953 tok
+no price table matched
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                npx aireceipts-cli                
+         github.com/anandgupta42/receipts         
+- - - - - - - - - - - - - - - - - - - - - - - - -
+
+A-baseline used 1.0× A-targeted's tokens (174,164 vs 174,953 tok)
