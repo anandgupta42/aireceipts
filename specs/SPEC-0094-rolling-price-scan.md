@@ -1,7 +1,7 @@
 ---
 id: SPEC-0094
 title: Maintain one advisory price-scan issue
-status: draft
+status: approved
 milestone: M2
 depends: [SPEC-0005]
 ---
@@ -73,7 +73,7 @@ vendor authority, a network call in the CLI product path, and per-run issues.
 
 ## Success criteria
 
-- [ ] Maintainer approves this draft before the rolling issue workflow merges.
+- [x] Maintainer approved this spec on 2026-09-22 before the rolling issue workflow merges.
 - [ ] Transition cases in the test matrix are validated with mocked GitHub
       issue operations; no live issue is created during tests.
 - [ ] `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`,
