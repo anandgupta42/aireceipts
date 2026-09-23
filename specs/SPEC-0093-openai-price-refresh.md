@@ -1,12 +1,12 @@
 ---
-id: SPEC-0092
+id: SPEC-0093
 title: Cite observed OpenAI prices and GPT-6 context tiers
 status: draft
 milestone: M2
 depends: [SPEC-0005]
 ---
 
-# SPEC-0092: Cite observed OpenAI prices and GPT-6 context tiers
+# SPEC-0093: Cite observed OpenAI prices and GPT-6 context tiers
 
 ## Purpose
 
