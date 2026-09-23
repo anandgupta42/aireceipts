@@ -10,7 +10,7 @@ import { addUsage, emptyUsage, sanitizeText } from "../parse/util.js";
 import { attributeByTool, METHODOLOGY } from "../pricing/attribution.js";
 import { computeCostShape, type CostShape } from "../pricing/costShape.js";
 import { defaultDataDir } from "../pricing/priceTable.js";
-import { isoDateOf, pricingUnitsForTurn, resolvePrice, vendorForTurn } from "../pricing/resolve.js";
+import { isoDateOf, pricingUnitsForTurn, resolvePrice, vendorForTurn, type UnpricedModelReason } from "../pricing/resolve.js";
 import type { ResolvedPrice } from "../pricing/types.js";
 import { detectContextThrash, detectSameFileReReads, detectStuckLoops, detectTrivialSpans, priceDeltaFootnote } from "../pricing/waste.js";
 import { detectTimeCaveats, type CaveatFinding } from "./caveats.js";
@@ -243,7 +243,7 @@ async function buildModelMix(session: Session, byModelUsd: { model: string; usd:
   const grandTotal = [...mixMap.values()].reduce((sum, t) => sum + t.total, 0);
   return [...mixMap.entries()]
     .map(([model, tokens]) => ({
-      model: sanitizeText(model),
+      model: usdMap.has(model) ? sanitizeText(model) : sanitizeText(model).replace(/\$/g, "?"),
       tokens,
       tokenShare: grandTotal > 0 ? tokens.total / grandTotal : 0,
       usd: usdMap.get(model) ?? null,
@@ -315,14 +315,17 @@ async function collectPriceRowsUsed(
 }
 
 export async function buildReceiptModel(session: Session, dataDir: string = defaultDataDir()): Promise<ReceiptModel> {
-  const attribution = await attributeByTool(session, dataDir);
+  const unpriced = new Map<string, UnpricedModelReason>();
+  const attribution = await attributeByTool(session, dataDir, (reason) => {
+    if (!unpriced.has(reason.id)) unpriced.set(reason.id, reason);
+  });
   const stuckLoops = await detectStuckLoops(session, dataDir);
-  const trivialSpans = await detectTrivialSpans(session, dataDir);
   const contextThrash = await detectContextThrash(session, dataDir);
   const priceDelta =
     attribution.totalUsd !== null && attribution.unpricedTokens.total === 0 && !attribution.costLowerBoundCacheTier
       ? await priceDeltaFootnote(session, attribution.totalTokens, attribution.totalUsd, dataDir)
       : null;
+  const trivialSpans = priceDelta ? await detectTrivialSpans(session, dataDir) : null;
 
   const modelMix = await buildModelMix(session, attribution.byModelUsd);
   const toolRows = sortToolRows(attribution.byTool);
@@ -368,6 +371,19 @@ export async function buildReceiptModel(session: Session, dataDir: string = defa
 
   const priceRowsUsed = await collectPriceRowsUsed(session, dataDir);
   const caveats = detectTimeCaveats(session);
+  for (const [rawId, reason] of unpriced) {
+    const id = sanitizeText(rawId);
+    const display = id.replace(/[^A-Za-z0-9._:/@+\[\]-]/g, "?");
+    const bounded = display.length > 64 ? `${display.slice(0, 64)}…` : display;
+    const text = reason.kind === "vendor-absent"
+      ? `caveat: model ${bounded} not in bundled ${reason.vendor} price table (latest citation ${reason.latestCitation}); tokens only`
+      : reason.kind === "bundle-absent"
+        ? `caveat: model ${bounded} not in bundled price tables (latest citation ${reason.latestCitation}); tokens only`
+        : reason.kind === "omitted"
+          ? `caveat: model ${bounded} omitted from bundled ${reason.vendor} price table; tokens only`
+          : `caveat: model ${bounded} has no bundled ${reason.vendor} price for ${reason.dateISO}; tokens only`;
+    caveats.push({ kind: "unpriced-model", text, detail: id, rawId });
+  }
   const unobservedCacheWriteTokens =
     session.source === "codex" &&
     attribution.totalUsd !== null &&

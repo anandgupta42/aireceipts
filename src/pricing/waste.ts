@@ -304,6 +304,7 @@ export async function detectTrivialSpans(session: Session, dataDir: string = def
       continue;
     }
     let identitiesEligible = true;
+    let actualUsd = 0;
     for (const unit of units) {
       const model = unit.model;
       const dateISO = isoDateOf(unit.timestamp);
@@ -313,20 +314,22 @@ export async function detectTrivialSpans(session: Session, dataDir: string = def
         break;
       }
       const row = await resolvePrice(vendor, model, dateISO, dataDir);
-      if (!row || !(cheapest.row.input < row.input)) {
+      if (!row) {
         identitiesEligible = false;
         break;
       }
+      actualUsd += costOf(unit.usage, row);
     }
     if (!identitiesEligible) {
       continue;
     }
-    eligibleTurnCount += 1;
-    tokens = addUsage(tokens, turn.usage);
     const repriced = costTurnAtRow(turn, cheapest.row);
-    if (repriced === null) {
+    if (repriced === null || !Number.isFinite(actualUsd)) {
       return null;
     }
+    if (!(repriced < actualUsd)) continue;
+    eligibleTurnCount += 1;
+    tokens = addUsage(tokens, turn.usage);
     usd += repriced;
     turnIndices.push(turn.index);
   }
@@ -563,6 +566,7 @@ export async function priceDeltaFootnote(
     }
     alternativeUsd = costOf(totalTokens, cheapest.row);
   }
+  if (!(alternativeUsd < actualUsd)) return null;
   return {
     cheaperModel: cheapest.model,
     usd: alternativeUsd,

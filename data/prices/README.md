@@ -21,7 +21,7 @@ at the rate that was live on the day it ran (I3, `AGENTS.md`).
           "input_cache_write_1h": 6.0,
           "from_date": "2026-05-01",
           "to_date": null,
-          "sources": [{ "url": "https://www.anthropic.com/pricing", "observed_at": "2026-07-01" }]
+          "sources": [{ "url": "https://www.anthropic.com/pricing", "observed_at": "2026-07-01", "excerpt": "Published rate for this model" }]
         }
       ]
     }
@@ -44,13 +44,12 @@ at the rate that was live on the day it ran (I3, `AGENTS.md`).
   tier). Every tier row carries complete rates; nothing is inherited from the base row.
 - `from_date` / `to_date` — ISO date the rate took effect / was superseded. `to_date:
   null` means the row is currently active.
-- `sources` — **required**, non-empty array of objects, each with a `url` (http/https) actually fetched and read, plus optional `observed_at` (YYYY-MM-DD) and `excerpt`. This is
+- `sources` — **required**, non-empty array of objects, each with a `url` (http/https) actually fetched and read, plus required `observed_at` (YYYY-MM-DD) and non-empty `excerpt`. This is
   the field the `block-price-edit-without-citation` hook checks for; a PR that touches
   this directory without a `sources` array is rejected mechanically before it ever
   reaches review. `scripts/cite-check.ts` additionally (a) fetches every `url` and
   requires it to be live (HTTP < 400 — enforced in CI, offline-tolerant locally, and
-  skippable with `--no-network`), and (b) **requires a non-empty `excerpt`** on any
-  source `observed_at` on/after `2026-07-02`, so a reviewer can verify the number
+  skippable with `--no-network`), and (b) **requires a non-empty `excerpt` and valid `observed_at`** on every source, so a reviewer can verify the number
   against the quoted page text without re-fetching (SPEC-0005 R3).
 
 ## Omitted models
@@ -83,3 +82,25 @@ stays current.
 Price tables are refreshed via the `update-prices` skill, one vendor per PR, each with a
 real cited source. Never hand-write a row from placeholder or remembered numbers — that
 violates I2 (never fabricate a dollar).
+
+## Aliases and comparison candidates
+
+Missing price coverage appears as `caveat: model <id> ...; tokens only` in
+receipts, with `caveat: +<n> more unpriced model ids` after three displayed ids.
+
+A model may list `aliases`: `{ "id", "from_date", "to_date", "sources" }`. An alias
+resolves only by exact id within its dated window. Each cited source must identify
+the alias as the same model at the same price. Every canonical price period that
+overlaps the alias window needs an alias citation observed on or after the
+earliest observation among that price row's sources. A scheduled future row
+can be covered by a citation observed before its billing window. A
+canonical id takes precedence if a table accidentally contains both; CI rejects
+that duplicate. Provider-prefixed and context-suffixed ids are not aliases.
+
+A top-level `comparison_candidates` array lists `{ "model", "reason", "sources" }`
+for models eligible for cheaper-model arithmetic. A canonical row can price
+sessions without being a comparison candidate. Only listed models with a current
+row are compared; an absent or empty array disables those comparisons. Both
+comparison lines are omitted unless the candidate's repriced floor is strictly
+below the observed floor. The
+initial entries preserve the pre-SPEC-0095 candidate set.

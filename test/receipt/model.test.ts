@@ -169,7 +169,7 @@ describe("buildReceiptModel — partial-priced-coverage caveat (SPEC-0054 R3)", 
     expect(model.caveats.some((c) => c.kind === "partial-priced-coverage")).toBe(false);
   });
 
-  it("keeps price-delta arithmetic for a fully priced three-tool turn", async () => {
+  it("omits price-delta arithmetic when a fully priced three-tool turn uses the cheapest candidate", async () => {
     const turns = [
       turn(0, {
         model: "claude-haiku-4-5",
@@ -180,7 +180,7 @@ describe("buildReceiptModel — partial-priced-coverage caveat (SPEC-0054 R3)", 
     const model = await buildReceiptModel(session({ turns }), dataDir);
 
     expect(model.totalTokens).toEqual(turns[0].usage);
-    expect(model.priceDelta).not.toBeNull();
+    expect(model.priceDelta).toBeNull();
   });
 
   it("suppresses repricing when a cited cache-write component rate is missing", async () => {

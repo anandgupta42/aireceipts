@@ -158,8 +158,16 @@ async function attachSubagentRollupWithRows(
     if (!agg) {
       return { model, rows, status: "complete" };
     }
+    const seen = new Set(model.caveats.filter((c) => c.kind === "unpriced-model").map((c) => c.rawId ?? c.detail));
+    const childModels: CaveatFinding[] = [];
+    for (const row of rows) for (const caveat of row.unpricedModelCaveats ?? []) {
+      const id = caveat.rawId ?? caveat.detail;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      childModels.push(caveat);
+    }
     return {
-      model: { ...model, subagents: agg, caveats: [...model.caveats, ...subagentCaveats(rows, agg, model.totalUsd !== null)] },
+      model: { ...model, subagents: agg, caveats: [...model.caveats, ...childModels, ...subagentCaveats(rows, agg, model.totalUsd !== null)] },
       rows,
       status: "complete",
     };

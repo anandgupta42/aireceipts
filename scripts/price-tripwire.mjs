@@ -5,6 +5,8 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 const DEFAULT_DATASET_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
@@ -132,23 +134,29 @@ function compareRows(tables, dataset, today) {
   const drift = [];
   const skipped = [];
   for (const table of tables) {
-    for (const { modelId, row } of currentRows(table, today)) {
-      const datasetRow = dataset[modelId];
+    const comparisons = currentRows(table, today).flatMap(({ modelId, row }) => [
+      { modelId, row, lookupId: modelId },
+      ...((table.models[modelId]?.aliases ?? []).filter((alias) => isActiveToday(alias, today)).map((alias) => ({ modelId, row, lookupId: alias.id }))),
+    ]);
+    for (const { modelId, row, lookupId } of comparisons) {
+      const label = lookupId === modelId ? `${table.vendor}/${modelId}` : `${table.vendor}/${modelId} via alias ${lookupId}`;
+      const datasetRow = dataset[lookupId];
       if (!datasetRow || typeof datasetRow !== "object") {
-        skipped.push(`${table.vendor}/${modelId}: not present in community dataset`);
+        skipped.push(`${label}: not present in community dataset`);
         continue;
       }
       for (const [field, datasetKeys] of PRICE_FIELDS) {
         if (typeof row[field] !== "number") continue;
         const communityValue = comparableField(datasetRow, datasetKeys);
         if (communityValue === null) {
-          skipped.push(`${table.vendor}/${modelId}.${field}: comparable community field absent`);
+          skipped.push(`${label}.${field}: comparable community field absent`);
           continue;
         }
         if (!nearlyEqual(row[field], communityValue)) {
           drift.push({
             vendor: table.vendor,
             modelId,
+            label,
             field,
             ours: row[field],
             community: communityValue,
@@ -191,6 +199,7 @@ function discoveryFeed(tables, dataset, today) {
   for (const table of tables) {
     const known = new Set([
       ...Object.keys(table.models ?? {}),
+      ...Object.values(table.models ?? {}).flatMap((entry) => (entry.aliases ?? []).map((alias) => alias.id)),
       ...(Array.isArray(table.omitted) ? table.omitted.map((entry) => entry.model) : []),
     ]);
     const idPattern = VENDOR_ID_PATTERNS[table.vendor];
@@ -249,7 +258,7 @@ function renderReport({ drift, discovery, skipped, status }) {
   } else {
     for (const entry of drift) {
       lines.push(
-        `- ${entry.vendor}/${entry.modelId}.${entry.field}: ours ${entry.ours} USD/MTok; community ${entry.community} USD/MTok`,
+        `- ${entry.label}.${entry.field}: ours ${entry.ours} USD/MTok; community ${entry.community} USD/MTok`,
       );
     }
   }
@@ -336,7 +345,11 @@ async function main() {
   if (drift.length > 0) process.exit(EXIT_DRIFT);
 }
 
-main().catch((e) => {
-  console.error(`price-tripwire: unexpected failure: ${e.message}`);
-  process.exit(1);
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => {
+    console.error(`price-tripwire: unexpected failure: ${e.message}`);
+    process.exit(1);
+  });
+}
+
+export { compareRows, discoveryFeed };

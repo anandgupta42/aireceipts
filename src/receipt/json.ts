@@ -94,6 +94,7 @@ function priceRowUsedJson(row: PriceRowUsed) {
   return {
     vendor: row.vendor,
     model: row.model,
+    ...(row.matched_id ? { matched_id: row.matched_id, alias_sources: row.alias_sources?.map((s) => ({ url: s.url, observed_at: s.observed_at, excerpt: s.excerpt ?? null })) } : {}),
     input: row.input,
     output: row.output,
     input_cached: row.input_cached ?? null,
@@ -167,7 +168,7 @@ function receiptBody(model: ReceiptModel) {
     combinedUnpricedTokensScope: "parent-session-plus-readable-subagents" as const,
     combinedPricingCoverage: combinedPricingCoverageOf(model),
     wasteLines: model.wasteLines.map(wasteLineJson),
-    caveats: model.caveats.map((c) => ({ kind: c.kind, text: c.text })),
+    caveats: model.caveats.map((c) => ({ kind: c.kind, text: c.text, ...(c.detail !== undefined ? { detail: c.detail } : {}) })),
     priceDelta: model.priceDelta
       ? {
           cheaperModel: model.priceDelta.cheaperModel,

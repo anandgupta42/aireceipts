@@ -10,6 +10,7 @@ import { loadById } from "../parse/load.js";
 import type { Session, TokenUsage } from "../parse/types.js";
 import { emptyUsage } from "../parse/util.js";
 import { buildReceiptModel } from "../receipt/model.js";
+import type { CaveatFinding } from "../receipt/caveats.js";
 
 export interface SubagentRow {
   /** Display name — the child's title if present, else its agent id. */
@@ -20,6 +21,7 @@ export interface SubagentRow {
   tokens: TokenUsage;
   /** Exact child tokens excluded from a partial `usd`; absent unless the child has both priced and unpriced turns. */
   unpricedTokens?: TokenUsage;
+  unpricedModelCaveats?: CaveatFinding[];
   /** The child transcript could not be parsed — usd/tokens are unknown. */
   unreadable: boolean;
   /** SPEC-0044 B3 — malformed records skipped in this child's transcript; `> 0` → its cost is a lower bound. */
@@ -106,6 +108,7 @@ export async function rollupChildren(
       usd: model.totalUsd,
       tokens: model.totalTokens,
       ...(model.unpricedTokens ? { unpricedTokens: model.unpricedTokens } : {}),
+      unpricedModelCaveats: model.caveats.filter((c) => c.kind === "unpriced-model"),
       unreadable: false,
       ...(((session.droppedRecords ?? 0) > 0) ? { droppedRecords: session.droppedRecords } : {}),
       ...(model.unobservedCacheWriteTokens ? { unobservedCacheWriteTokens: true } : {}),

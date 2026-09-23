@@ -1,7 +1,7 @@
 import type { Session, TokenUsage } from "../parse/types.js";
 import { addUsage, emptyUsage, scaleUsage } from "../parse/util.js";
 import { defaultDataDir } from "./priceTable.js";
-import { priceSessionTurn } from "./resolve.js";
+import { priceSessionTurn, type UnpricedModelReason } from "./resolve.js";
 
 const THINKING_REPLY = "(thinking/reply)";
 const UNATTRIBUTED_USAGE = "(unattributed usage)";
@@ -87,7 +87,7 @@ interface Accumulator {
  * session) contributes tokens with `usd: null` for that share, never a
  * guessed figure (I2).
  */
-export async function attributeByTool(session: Session, dataDir: string = defaultDataDir()): Promise<AttributionResult> {
+export async function attributeByTool(session: Session, dataDir: string = defaultDataDir(), onUnpriced?: (reason: UnpricedModelReason) => void): Promise<AttributionResult> {
   const acc = new Map<string, Accumulator>();
   let costLowerBoundCacheTier = false;
   const modelUsdAcc = new Map<string, number>();
@@ -120,7 +120,7 @@ export async function attributeByTool(session: Session, dataDir: string = defaul
   for (const turn of session.turns) {
     const units = turn.toolCalls.length > 0 ? turn.toolCalls.map((c) => c.name) : [THINKING_REPLY];
     const share = 1 / units.length;
-    const priced = await priceSessionTurn(session, turn, dataDir);
+    const priced = await priceSessionTurn(session, turn, dataDir, onUnpriced);
     const tokenShare: TokenUsage = turn.usage ? scaleUsage(turn.usage, share) : emptyUsage();
 
     if (turn.usage) {

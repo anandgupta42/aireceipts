@@ -26,7 +26,7 @@ import { join } from "node:path";
 
 interface PriceSource {
   url: string;
-  observed_at?: string;
+  observed_at: string;
   excerpt?: string;
 }
 
@@ -44,6 +44,26 @@ const PRICES_DIR = "data/prices";
 // Liveness fetch budget per URL.
 const LIVENESS_TIMEOUT_MS = 12_000;
 
+function validDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function checkSources(file: string, at: string, sources: unknown, errors: string[], urls: Map<string, string>): void {
+  if (!Array.isArray(sources) || sources.length === 0) {
+    fail(file, `${at}: sources must be a non-empty array`, errors);
+    return;
+  }
+  sources.forEach((source: Partial<PriceSource>, i: number) => {
+    const place = `${at}.sources[${i}]`;
+    if (typeof source?.url !== "string" || !/^https?:\/\//.test(source.url)) fail(file, `${place}: url (http/https) is required`, errors);
+    else urls.set(source.url, file);
+    if (!validDate(source?.observed_at)) fail(file, `${place}: valid observed_at is required`, errors);
+    if (typeof source?.excerpt !== "string" || !source.excerpt.trim()) fail(file, `${place}: non-empty excerpt required`, errors);
+  });
+}
+
 function fail(file: string, msg: string, errors: string[]): void {
   errors.push(`${file}: ${msg}`);
 }
@@ -57,7 +77,7 @@ function checkFile(file: string, errors: string[], urls: Map<string, string>): v
     fail(file, `invalid JSON — ${(e as Error).message}`, errors);
     return;
   }
-  const table = doc as { vendor?: unknown; models?: Record<string, { price_history?: unknown }> };
+  const table = doc as { vendor?: unknown; models?: Record<string, { price_history?: unknown; aliases?: unknown }>; comparison_candidates?: unknown };
   if (typeof table.vendor !== "string" || !table.vendor) {
     fail(file, `missing "vendor" string`, errors);
   }
@@ -79,25 +99,23 @@ function checkFile(file: string, errors: string[], urls: Map<string, string>): v
       if (typeof row.from_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(row.from_date)) {
         fail(file, `${at}: from_date must be YYYY-MM-DD`, errors);
       }
-      const sources = row.sources;
-      if (!Array.isArray(sources) || sources.length === 0) {
-        fail(file, `${at}: sources must be a non-empty array (I3 — no uncited prices)`, errors);
-        return;
-      }
-      sources.forEach((s: Partial<PriceSource>, j: number) => {
-        if (typeof s?.url !== "string" || !/^https?:\/\//.test(s.url)) {
-          fail(file, `${at}.sources[${j}]: url (http/https) is required`, errors);
-          return;
-        }
-        urls.set(s.url, file);
-        // R3: every cited source must quote the page, so a reviewer verifies the
-        // number without re-fetching. Unconditional — not gated on the optional
-        // observed_at, which a new row could omit/backdate to dodge the check.
-        if (typeof s.excerpt !== "string" || s.excerpt.trim() === "") {
-          fail(file, `${at}.sources[${j}]: non-empty excerpt required (R3 — quote the cited page)`, errors);
-        }
-      });
+      checkSources(file, at, row.sources, errors, urls);
     });
+    if (entry.aliases !== undefined && !Array.isArray(entry.aliases)) fail(file, `${model}.aliases must be an array`, errors);
+    for (const [i, alias] of (Array.isArray(entry.aliases) ? entry.aliases : []).entries()) {
+      const at = `${model}.aliases[${i}]`;
+      if (typeof alias?.id !== "string" || !alias.id) fail(file, `${at}: id is required`, errors);
+      if (!validDate(alias?.from_date) || !(alias?.to_date === null || validDate(alias?.to_date)) ||
+        (typeof alias?.to_date === "string" && alias.to_date < alias.from_date)) fail(file, `${at}: invalid date window`, errors);
+      checkSources(file, at, alias?.sources, errors, urls);
+    }
+  }
+  if (table.comparison_candidates !== undefined && !Array.isArray(table.comparison_candidates)) fail(file, `comparison_candidates must be an array`, errors);
+  for (const [i, candidate] of (Array.isArray(table.comparison_candidates) ? table.comparison_candidates : []).entries()) {
+    const at = `comparison_candidates[${i}]`;
+    if (typeof candidate?.model !== "string" || !table.models[candidate.model]) fail(file, `${at}: model must name a canonical entry`, errors);
+    if (typeof candidate?.reason !== "string" || !candidate.reason.trim()) fail(file, `${at}: reason is required`, errors);
+    checkSources(file, at, candidate?.sources, errors, urls);
   }
 }
 

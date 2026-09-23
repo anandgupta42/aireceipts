@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, copyFileSync, rmSync, readFileSync, writeFileSync, symlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,11 +8,13 @@ import { receiptJsonSchema } from "../../src/receipt/exportSchema.js";
 const root = path.resolve(import.meta.dirname, "../..");
 const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), "aireceipts-verification-cli-"));
 // A private build avoids cleaning dist while other CLI suites are executing it.
-const buildRoot = mkdtempSync(path.join(root, "node_modules", "aireceipts-verification-build-"));
+const buildRoot = mkdtempSync(path.join(os.tmpdir(), "aireceipts-verification-build-"));
 // Scope vendor discovery to this child process's disposable fixture directory.
 const env = { ...process.env, HOME: fixtureRoot, USERPROFILE: fixtureRoot, LOCALAPPDATA: path.join(fixtureRoot, "AppData", "Local"), AIRECEIPTS_HOME: fixtureRoot, AIRECEIPTS_TELEMETRY: "off", AIRECEIPTS_TELEMETRY_CONNECTION: "", DO_NOT_TRACK: "1", NO_COLOR: "1", TZ: "UTC" };
 
 beforeAll(() => {
+  symlinkSync(path.join(root, "node_modules"), path.join(buildRoot, "node_modules"), "dir");
+  symlinkSync(path.join(root, "data"), path.join(buildRoot, "data"), "dir");
   writeFileSync(path.join(buildRoot, "package.json"), JSON.stringify({ type: "module" }));
   const built = spawnSync(process.execPath, ["node_modules/tsup/dist/cli-default.js", "--out-dir", path.join(buildRoot, "dist")], { cwd: root, encoding: "utf8" });
   expect(built.status, built.stderr || built.stdout).toBe(0);

@@ -79,5 +79,6 @@
       "reason": "Legacy id served and billed as deepseek-flash, which is priced by time of day (see deepseek-flash). Tokens-only.",
       "source": "https://api-docs.deepseek.com/quick_start/pricing"
     }
-  ]
+  ],
+  "comparison_candidates": []
 }

@@ -2,6 +2,7 @@ import type { AgentSource, DirectPricingProvider, PricingUnit, Session, TokenUsa
 import { adapterFor } from "../parse/registry.js";
 import { addUsage, emptyUsage } from "../parse/util.js";
 import { defaultDataDir, loadPriceTable } from "./priceTable.js";
+import { readdir } from "node:fs/promises";
 import type { PriceRow, ResolvedPrice, TokenPriceRates } from "./types.js";
 
 /**
@@ -23,12 +24,17 @@ export async function resolvePrice(
   dataDir: string = defaultDataDir(),
 ): Promise<ResolvedPrice | null> {
   const table = await loadPriceTable(vendor, dataDir);
-  const history = table?.models[modelId]?.price_history;
+  const canonical = table?.models[modelId] ? modelId : Object.entries(table?.models ?? {}).find(([, entry]) =>
+    entry.aliases?.some((alias) => alias.id === modelId && alias.from_date <= dateISO && (alias.to_date === null || dateISO <= alias.to_date)),
+  )?.[0];
+  const history = canonical ? table?.models[canonical]?.price_history : undefined;
   if (!history) {
     return null;
   }
   const row = history.find((r) => r.from_date <= dateISO && (r.to_date === null || dateISO <= r.to_date));
-  return row ? { ...row, vendor, model: modelId } : null;
+  if (!row) return null;
+  const alias = canonical === modelId ? undefined : table?.models[canonical!]?.aliases?.find((a) => a.id === modelId);
+  return { ...row, vendor, model: canonical!, ...(alias ? { matched_id: modelId, alias_sources: alias.sources } : {}) };
 }
 
 function rate(perMillion: number, tokens: number): number {
@@ -203,7 +209,10 @@ export async function cheapestCurrentRow(
     return null;
   }
   let best: { model: string; row: PriceRow } | null = null;
-  for (const [model, entry] of Object.entries(table.models)) {
+  for (const candidate of table.comparison_candidates ?? []) {
+    const model = candidate.model;
+    const entry = table.models[model];
+    if (!entry) continue;
     const current = entry.price_history.find((r) => r.to_date === null);
     if (current && (!best || current.input < best.row.input)) {
       best = { model, row: current };
@@ -263,12 +272,47 @@ export function vendorForTurn(
   if (pricingProvider !== undefined) {
     return pricingProvider;
   }
+  if (modelId && (/^(?:us\.|anthropic\.|publishers\/)/.test(modelId) || /[:/@]/.test(modelId))) {
+    return undefined;
+  }
   return (modelId ? vendorForModel(modelId) : undefined) ?? vendorForSource(source);
 }
 
 /** `YYYY-MM-DD` for an epoch-milliseconds timestamp, or `undefined` if absent. */
 export function isoDateOf(epochMs: number | undefined): string | undefined {
   return epochMs === undefined ? undefined : new Date(epochMs).toISOString().slice(0, 10);
+}
+
+export interface UnpricedModelReason {
+  id: string;
+  kind: "vendor-absent" | "bundle-absent" | "omitted" | "no-dated-row";
+  vendor?: string;
+  dateISO: string;
+  latestCitation?: string;
+}
+
+function latestCitation(table: Awaited<ReturnType<typeof loadPriceTable>>): string | undefined {
+  return Object.values(table?.models ?? {}).flatMap((entry) => entry.price_history)
+    .flatMap((row) => row.sources.map((source) => source.observed_at)).sort().at(-1);
+}
+
+async function unpricedReason(vendor: string | undefined, id: string, dateISO: string, dataDir: string): Promise<UnpricedModelReason | null> {
+  if (vendor) {
+    const table = await loadPriceTable(vendor, dataDir);
+    if (!table) return null;
+    if (table.omitted?.some((entry) => entry.model === id)) return { id, vendor, dateISO, kind: "omitted" };
+    const known = Boolean(table.models[id]) || Object.values(table.models).some((entry) => entry.aliases?.some((alias) => alias.id === id));
+    if (known) return { id, vendor, dateISO, kind: "no-dated-row" };
+    const citation = latestCitation(table);
+    return citation ? { id, vendor, dateISO, kind: "vendor-absent", latestCitation: citation } : null;
+  }
+  let files: string[];
+  try { files = (await readdir(dataDir)).filter((file) => file.endsWith(".json")).sort(); } catch { return null; }
+  const tables = await Promise.all(files.map((file) => loadPriceTable(file.slice(0, -5), dataDir)));
+  if (tables.some((table) => table && (table.models[id] || table.omitted?.some((entry) => entry.model === id) ||
+    Object.values(table.models).some((entry) => entry.aliases?.some((alias) => alias.id === id))))) return null;
+  const citation = tables.map(latestCitation).filter((date): date is string => date !== undefined).sort().at(-1);
+  return citation ? { id, dateISO, kind: "bundle-absent", latestCitation: citation } : null;
 }
 
 function sameUsageComponents(a: TokenUsage, b: TokenUsage): boolean {
@@ -378,6 +422,7 @@ export async function priceSessionTurn(
   session: Pick<Session, "source" | "model" | "startedAt" | "unpriceable">,
   turn: Turn,
   dataDir: string,
+  onUnpriced?: (reason: UnpricedModelReason) => void,
 ): Promise<PricedSessionTurn | null> {
   const units = pricingUnitsForTurn(turn);
   if (!units) {
@@ -404,6 +449,10 @@ export async function priceSessionTurn(
     const vendor = session.unpriceable ? undefined : vendorForTurn(session.source, model, provider);
     const priced = await priceTurn(vendor, model, dateISO, unit.usage, dataDir);
     if (!priced) {
+      if (!session.unpriceable && provider !== null && unit.usage.total > 0 && isPriceableUsage(unit.usage)) {
+        const reason = await unpricedReason(vendor, model, dateISO, dataDir);
+        if (reason) onUnpriced?.(reason);
+      }
       unpricedUsage = addUsage(unpricedUsage, unit.usage);
       cacheReadCounterfactualComplete = false;
       continue;

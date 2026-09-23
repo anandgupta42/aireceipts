@@ -325,3 +325,17 @@ Missing read/write counters, missing TTL splits, incomplete request prices or
 unattributed/dropped records suppress the net text row; JSON `netCache` retains
 a reason. Codex cache-write counters remain unobserved, even when its normalized
 write count is zero. The existing gross read-repricing line remains separate.
+
+## Comparison candidate set
+
+An unpriced model is identified with a `caveat: model <id> ...; tokens only`
+line. When more than three ids are unpriced, text receipts end the list with
+`caveat: +<n> more unpriced model ids`.
+
+Cheaper-model arithmetic uses only current rows named in a vendor table's
+`comparison_candidates` array. Coverage rows can price sessions without changing
+the comparison. When the array is absent or no listed model has a current row,
+the price-delta footnote and trivial-spans estimate are omitted. They are also
+omitted when the candidate's repriced floor is not strictly below the observed
+floor. This is a cited
+maintainer set, not a model ranking.

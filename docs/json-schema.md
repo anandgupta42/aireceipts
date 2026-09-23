@@ -68,16 +68,31 @@ legacy dollar scalars.
 | `combinedUnpricedTokensScope` | literal `parent-session-plus-readable-subagents` | Explicit scope of `combinedUnpricedTokens`. |
 | `combinedPricingCoverage` | enum | Coverage of `combinedPricedUsd`: `full`, `partial`, or `unpriced`. Parent gaps, exact child unpriced usage, unreadable children, failed child discovery, dropped child records, and child cache-rate/write omissions make a priced combination `partial`. |
 | `wasteLines` | array | Legacy field name for detector-flagged heuristic patterns; a row is evidence to inspect, not proven waste or savings. See WasteLine. |
-| `caveats` | array | Confidence facts, never a ranking: `kind` (`time-mtime` \| `time-span` \| `cost-lower-bound-cache-tier` \| `unobserved-cache-write-tokens` \| `unattributed-aggregate-usage` \| `dropped-transcript-records` \| `partial-priced-coverage` \| `subagents-unreadable` \| `subagents-unpriced` \| `subagents-priced-tokens-only` \| `subagents-dropped-records` \| `subagent-rollup-unavailable`) + `text`. Never changes the arithmetic itself. Empty when nothing extra is known. |
+| `detail` | string, optional | Full sanitized transcript id for an `unpriced-model` caveat. |
+| `caveats` | array | Confidence facts, never a ranking: `kind` (`time-mtime` \| `time-span` \| `cost-lower-bound-cache-tier` \| `unobserved-cache-write-tokens` \| `unattributed-aggregate-usage` \| `dropped-transcript-records` \| `partial-priced-coverage` \| `unpriced-model` \| `subagents-unreadable` \| `subagents-unpriced` \| `subagents-priced-tokens-only` \| `subagents-dropped-records` \| `subagent-rollup-unavailable`) + `text`, and optional `detail` containing the full sanitized id for `unpriced-model`. Never changes the arithmetic itself. Empty when nothing extra is known. |
+
 | `budget` | array (optional) | Advisory budget lines (SPEC-0009); present only when `~/.aireceipts/budget.json` is configured. |
-| `priceDelta` | PriceDelta \| null | Cheapest-current-model arithmetic, or null in tokens-only mode. |
+| `priceDelta` | PriceDelta \| null | Candidate repricing when strictly below the observed floor; otherwise null. |
 | `methodology` | string | The attribution methodology string (I3). |
-| `priceRowsUsed` | array | Every dated price row consulted; see PriceRowUsed. |
+| `priceRowsUsed` | array | Every dated price row consulted; see PriceRowUsed. Alias matches add `matched_id` (the transcript id) and `alias_sources` (the cited id mapping); canonical matches omit both. |
 | `costShape` | CostShape | SPEC-0067 — cost-shape facts (standalone, never in savings math): `preEdit` (pre-edit cost/token share), `topTurns` (expensive-turn concentration, or null), `lateTurn` (neutral late-half/early-half cost ratio, low confidence, or null). |
 | `netCache` | NetCache (optional) | Parent-session signed same-token arithmetic. `usd` is hypothetical no-cache price minus observed cache price (positive = lower with cache), or null. `unavailableReason` is null or `unsupported-adapter`, `write-counters-unobserved`, `incomplete-cache-evidence`, `price-row-incomplete`, `unpriced-usage`, `no-cache-activity`. `scope` is `parent-session`; `interpretation` explicitly labels arithmetic, not a prediction. Never a floor, invoice, or savings estimate. |
 | `sameFileReReads` | SameFileReReads \| null | SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none. |
 | `verificationEvidence` | object, optional | Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see [verification evidence](guide/04-read-a-receipt.md#recorded-verification-evidence). Omitted when unsupported or incomplete. |
 | `subagents` | Subagents (optional) | SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths. |
+
+An `unpriced-model` caveat uses one of these exact text forms, with the
+transcript id bounded for display:
+
+```text
+caveat: model <id> not in bundled <vendor> price table (latest citation <date>); tokens only
+caveat: model <id> not in bundled price tables (latest citation <date>); tokens only
+caveat: model <id> omitted from bundled <vendor> price table; tokens only
+caveat: model <id> has no bundled <vendor> price for <session date>; tokens only
+```
+
+Text receipts show at most three such lines, followed by
+`caveat: +<n> more unpriced model ids` when more exist. JSON retains every caveat.
 
 ### NetCache object
 
@@ -232,6 +247,8 @@ Also carries `cheaperModel` (the cheapest current model), `usd` (the re-priced l
 | Field | Type | Notes |
 |---|---|---|
 | `vendor` | string | Price-table vendor. |
+| `matched_id` | string, optional | Transcript alias id that resolved to this canonical row. Omitted for canonical matches. |
+| `alias_sources` | array, optional | Cited sources for the exact alias mapping. Omitted for canonical matches. |
 | `input_cached` | number \| null | Cache-hit rate (USD per MTok), or null when the row cites none. |
 | `input_cache_write` | number \| null | Vendor-generic cache-write rate, or null. |
 | `input_cache_write_5m` | number \| null | 5-minute cache-write rate, or null. |

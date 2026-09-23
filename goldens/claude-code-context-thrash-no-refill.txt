@@ -11,8 +11,6 @@ pre-edit: no named edit tool observed
 --------------------------------------------------
 TOTAL....................................≥ $0.5599
 standard API-equivalent floor; not an invoice
-same tokens on claude-haiku-4-5..........≥ $0.5599
-  (arithmetic, not a prediction)
 - - - - - - - - - - - - - - - - - - - - - - - - -
                 npx aireceipts-cli                
          github.com/anandgupta42/receipts         

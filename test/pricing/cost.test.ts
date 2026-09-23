@@ -441,6 +441,7 @@ describe("cheapestCurrentRow", () => {
 
   const table: PriceTable = {
     vendor: "testvendor",
+    comparison_candidates: ["model-a", "model-b", "model-c", "model-expired-cheap"].map((model) => ({ model, reason: "fixture", sources: [] })),
     models: {
       "model-a": { price_history: [row({ input: 10, output: 40 })] },
       "model-b": { price_history: [row({ input: 4, output: 16 })] },
