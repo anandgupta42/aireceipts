@@ -18,19 +18,8 @@ import { DEFAULT_FORMAT, parseFormat, renderSegments, SEGMENT_NAMES } from "../s
 import { loadStatuslineFormatConfig } from "../statuslineConfig.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
-import type { InputModeValue, ResultValue } from "../../telemetry/schemas.js";
-
-export interface StatuslineTelemetryInfo {
-  inputMode: InputModeValue;
-  payloadValid: boolean;
-  result: ResultValue;
-  /** SPEC-0062 R5 — the invocation carried an explicit `--format` (boolean, never the format string). */
-  customFormat: boolean;
-  /** SPEC-0075 R6 — boolean only; the raw `--cwd` path must never enter a telemetry payload. */
-  scoped: boolean;
-  /** SPEC-0075 R6 — boolean only; config contents must never enter a telemetry payload. */
-  configFile: boolean;
-}
+import type { StatuslineTelemetryInfo } from "../../telemetry/index.js";
+import type { InputModeValue } from "../../telemetry/schemas.js";
 
 /**
  * R3a: read the whole of `stream`. TTY streams (interactive terminal, no pipe)
@@ -237,13 +226,15 @@ export async function runStatusline(
 }
 
 async function run(ctx: CommandContext): Promise<number> {
+  let telemetryInfo: StatuslineTelemetryInfo | undefined;
   const code = await runStatusline(
     ctx.stdin,
     loadFromDisk,
     (s) => ctx.stdout.write(s),
-    (info) => ctx.telemetry.recordIntegrationSurfaceRendered({ integration: "statusline", ...info }),
+    (info) => { telemetryInfo = info; },
     { format: ctx.options.format, cwd: ctx.options.cwd, writeError: (s) => ctx.stderr.write(s) },
   );
+  await ctx.telemetry.noteStatuslinePoll(telemetryInfo);
   if (code !== 0) {
     setExitClass(ctx, "invalid-arguments");
   }
@@ -254,9 +245,6 @@ export const command: CommandDef = {
   name: "statusline",
   priority: 90,
   matches: (options) => options.positional[0] === "statusline",
-  // SPEC-0075 R6 — `--cwd` is a polling integration: keep local counters and
-  // event recording, but do not turn a 15s prompt/tmux poll into a network send.
-  shouldFlushTelemetry: (options) => options.cwd === undefined,
   run,
   help: {
     order: 180,

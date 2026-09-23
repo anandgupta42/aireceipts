@@ -77,7 +77,7 @@ describe("SPEC-0054 --details CLI surface", () => {
           multiAgent: false,
           outputMode: "text",
           template: "none",
-          pricedRowCoverage: "none",
+          pricedRowCoverage: "n/a",
           hasStuckLoopWaste: false,
           hasTrivialSpansWaste: false,
           hasContextThrashWaste: false,

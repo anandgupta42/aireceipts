@@ -17,7 +17,7 @@ describe("R5: first-run disclosure notice", () => {
 
   it("shows the notice on the first run and persists that it was shown", async () => {
     const printed: string[] = [];
-    const shown = await ensureFirstRunNotice((text) => printed.push(text), homeDir);
+    const shown = await ensureFirstRunNotice((text) => printed.push(text), homeDir, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" });
 
     expect(shown).toBe(true);
     expect(printed).toEqual([FIRST_RUN_NOTICE]);
@@ -25,9 +25,9 @@ describe("R5: first-run disclosure notice", () => {
 
   it("stays silent on the second and third runs", async () => {
     const printed: string[] = [];
-    await ensureFirstRunNotice((text) => printed.push(text), homeDir);
-    const shownSecondRun = await ensureFirstRunNotice((text) => printed.push(text), homeDir);
-    const shownThirdRun = await ensureFirstRunNotice((text) => printed.push(text), homeDir);
+    await ensureFirstRunNotice((text) => printed.push(text), homeDir, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" });
+    const shownSecondRun = await ensureFirstRunNotice((text) => printed.push(text), homeDir, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" });
+    const shownThirdRun = await ensureFirstRunNotice((text) => printed.push(text), homeDir, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" });
 
     expect(shownSecondRun).toBe(false);
     expect(shownThirdRun).toBe(false);
@@ -44,7 +44,7 @@ describe("R5: first-run disclosure notice", () => {
     expect(printed).toEqual([]);
     await expect(access(join(homeDir, ".aireceipts", "telemetry.json"))).rejects.toThrow();
 
-    const shownAfterTelemetryEnabled = await ensureFirstRunNotice((text) => printed.push(text), homeDir);
+    const shownAfterTelemetryEnabled = await ensureFirstRunNotice((text) => printed.push(text), homeDir, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" });
     expect(shownAfterTelemetryEnabled).toBe(true);
     expect(printed).toEqual([FIRST_RUN_NOTICE]);
   });
@@ -65,7 +65,7 @@ describe("R5: first-run disclosure notice", () => {
   it("creates the ~/.aireceipts directory on demand when the home override doesn't exist yet", async () => {
     const printed: string[] = [];
     const missingHome = join(homeDir, "does", "not", "exist", "at", "all");
-    await expect(ensureFirstRunNotice((text) => printed.push(text), missingHome)).resolves.toBe(true);
+    await expect(ensureFirstRunNotice((text) => printed.push(text), missingHome, { AIRECEIPTS_TELEMETRY_CONNECTION: "InstrumentationKey=test;IngestionEndpoint=https://example.com/" })).resolves.toBe(true);
     expect(printed).toEqual([FIRST_RUN_NOTICE]);
   });
 });

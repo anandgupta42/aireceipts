@@ -29,7 +29,7 @@ subscriber. How every dollar is computed: [pricing](guide/13-pricing.md).
 ## Does aireceipts send anything off my machine?
 
 The product path is fully offline. The only network call is content-free telemetry
-from a fixed nine-event catalog — never transcript content, prompts, file paths,
+from a fixed ten-event catalog. It never sends transcript content, prompts, file paths,
 repo names, or dollar amounts. It is on by default; `aireceipts --telemetry-show`
 prints the exact payload the current run would send (and sends nothing; the
 receiving service additionally sees the sending IP and stores a coarse country

@@ -42,11 +42,9 @@ describe("CI default-on (2026-07-08 amendment): CI is enabled by default like an
 });
 
 describe("SC connection-string honesty: empty/unset/malformed all collapse to the same disabled shape", () => {
-  it("an unset connection string uses the shipped default key — enabled (docs/telemetry.md states the key openly)", () => {
+  it("a checkout with the shipped default connection is disabled", () => {
     const config = resolveTelemetryConfig({});
-    expect(config.enabled).toBe(true);
-    expect(config.instrumentationKey).toBe("394da360-a50c-4700-bcf9-87b8d9d6e0ee");
-    expect(config.ingestionEndpoint).toContain("eastus-8.in.applicationinsights.azure.com");
+    expect(config.enabled).toBe(false);
   });
 
   it("an explicitly empty connection string disables telemetry", () => {

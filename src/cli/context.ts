@@ -10,6 +10,7 @@ import { assembleHelp } from "./help.js";
 import {
   noteMilestone,
   noteReceiptGenerated,
+  noteStatuslinePoll,
   recordExportGenerated,
   recordHookConfigured,
   recordIntegrationSurfaceRendered,
@@ -59,6 +60,7 @@ export function createContext(options: CliOptions, commands: readonly CommandDef
       recordPrFlowCompleted,
       recordHookConfigured,
       recordIntegrationSurfaceRendered,
+      noteStatuslinePoll,
       noteMilestone,
     },
     renderHelp: () => assembleHelp(commands),

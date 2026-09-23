@@ -34,12 +34,13 @@ export interface CommandContext {
   prompt(question: string): Promise<boolean>;
   /** Telemetry surface a command may read (recording/flush stays in `main()` — R6). */
   readonly telemetry: {
-    showPayload(env: NodeJS.ProcessEnv): { enabled: boolean; events: readonly unknown[] };
+    showPayload(env: NodeJS.ProcessEnv): { enabled: boolean; events: readonly unknown[]; reason?: "development-build" };
     noteReceiptGenerated(input: Omit<RecordReceiptGeneratedInput, "receiptOrdinal">, command?: string): Promise<void>;
     recordExportGenerated(input: RecordExportGeneratedInput): void;
     recordPrFlowCompleted(input: RecordPrFlowCompletedInput): void;
     recordHookConfigured(input: RecordHookConfiguredInput): void;
     recordIntegrationSurfaceRendered(input: RecordIntegrationSurfaceRenderedInput): void;
+    noteStatuslinePoll(info?: import("../telemetry/index.js").StatuslineTelemetryInfo, err?: unknown): Promise<void>;
     noteMilestone(milestone: MilestoneValue, command: string): Promise<void>;
   };
   /** The assembled `--help` text (registry-driven), for the help command. */
@@ -65,8 +66,6 @@ export interface CommandDef {
   /** Higher `priority` is checked first; the first `matches` hit wins. receipt = 0 (default). */
   readonly priority: number;
   matches(options: CliOptions): boolean;
-  /** SPEC-0075 R6 — invocation-level network flush policy; local recording still runs. */
-  shouldFlushTelemetry?(options: CliOptions): boolean;
   run(ctx: CommandContext): number | Promise<number>;
   readonly help?: HelpEntry;
 }
