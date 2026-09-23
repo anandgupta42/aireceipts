@@ -9,6 +9,7 @@
 // refactor's no-regression proof); `grocery` and `datavis` reuse the same block
 // kinds with template-specific data. No template re-derives a number: every
 // dollar/token figure comes from the already-priced {@link ReceiptModel}.
+import { netCacheBlocks } from "./netCache.js";
 import {
   CONTEXT_THRASH_NOTE,
   PRICE_DELTA_NOTE,
@@ -453,6 +454,7 @@ export function detailsBlocks(model: ReceiptModel): Block[] {
     blocks.push({ kind: "row", label: "same reads at uncached input rate", value: formatUsdLowerBound(model.cacheReadAtInputRateUsd) });
     blocks.push({ kind: "note", text: PRICE_DELTA_NOTE, indent: 2, muted: true });
   }
+  blocks.push(...netCacheBlocks(model.netCache));
   if (model.totalUsd !== null && model.modelMix.length > 1) {
     blocks.push({ kind: "note", text: model.subagents ? "BY PARENT MODEL" : "BY MODEL" });
     blocks.push(...byModelRows(model));

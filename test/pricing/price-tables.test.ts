@@ -54,6 +54,12 @@ const tables: [string, PriceTable][] = [
   ["openai.json", loadTable("openai.json")],
 ];
 
+const CACHE_READ_MULTIPLIER_EXCEPTIONS: Record<string, number> = {
+  "claude-fable-5-1": 0.025,
+  "claude-mythos-5-1": 0.025,
+  "claude-opus-5-5": 0.05,
+};
+
 describe("seeded price tables — R2 cited seed tables", () => {
   for (const [file, table] of tables) {
     describe(file, () => {
@@ -131,9 +137,13 @@ describe("seeded price tables — R2 cited seed tables", () => {
             // column; OpenAI's "Cached input" column). We seeded every row
             // ourselves, so this checks *our own* arithmetic never drifted —
             // it does not assert this ratio holds for vendors in general.
+            // Anthropic's pricing page footnotes a lower cache-read multiplier for
+            // three models (0.025x on Fable 5.1 and Mythos 5.1, 0.05x on Opus 5.5);
+            // every other row on both vendors' pages documents 0.1x.
             if (row.input_cached !== undefined) {
-              it(`row from ${row.from_date}: input_cached is exactly 0.1x input (this table's own convention)`, () => {
-                expect(row.input_cached).toBeCloseTo(row.input * 0.1, 10);
+              const multiplier = CACHE_READ_MULTIPLIER_EXCEPTIONS[modelId] ?? 0.1;
+              it(`row from ${row.from_date}: input_cached is exactly ${multiplier}x input (vendor-documented multiplier)`, () => {
+                expect(row.input_cached).toBeCloseTo(row.input * multiplier, 10);
               });
             }
 

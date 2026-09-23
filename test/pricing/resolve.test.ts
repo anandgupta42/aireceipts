@@ -66,11 +66,12 @@ describe.skipIf(!resolvePrice)("price resolution (R2)", () => {
     expect((result as { output: number }).output).toBe(10.0);
   });
 
-  it("keeps Sonnet 5's unchanged rate after the cancelled September increase", async () => {
+  it("keeps claude-sonnet-5 at $2/$10 on/after 2026-09-01 (the announced rise to $3/$15 was cancelled)", async () => {
     const result = await resolvePrice!("anthropic", "claude-sonnet-5", "2026-09-01", dataDir);
     expect(result).not.toBeNull();
     expect((result as { input: number }).input).toBe(2.0);
     expect((result as { output: number }).output).toBe(10.0);
+    expect((result as { to_date: string | null }).to_date).toBeNull();
   });
 
   it("resolves the day-boundary correctly: 2026-08-31 still uses the introductory row", async () => {

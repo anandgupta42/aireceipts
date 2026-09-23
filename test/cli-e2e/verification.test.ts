@@ -14,6 +14,7 @@ const env = { ...process.env, HOME: fixtureRoot, USERPROFILE: fixtureRoot, LOCAL
 
 beforeAll(() => {
   symlinkSync(path.join(root, "node_modules"), path.join(buildRoot, "node_modules"), "dir");
+  symlinkSync(path.join(root, "data"), path.join(buildRoot, "data"), "dir");
   writeFileSync(path.join(buildRoot, "package.json"), JSON.stringify({ type: "module" }));
   const built = spawnSync(process.execPath, ["node_modules/tsup/dist/cli-default.js", "--out-dir", path.join(buildRoot, "dist")], { cwd: root, encoding: "utf8" });
   expect(built.status, built.stderr || built.stdout).toBe(0);

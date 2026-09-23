@@ -13,13 +13,15 @@ plainly. (SPEC-0028.)
 - **The dollar floors come from cited, dated price tables.** A `$` renders only when
   a `data/prices/<vendor>.json` row — carrying its `sources:` citations —
   matches the session's model and date. No matching row means tokens are shown
-  instead. Every computed amount is labeled `≥` and means "observable tokens at
+  instead. Every attributed spend amount is labeled `≥` and means "observable tokens at
   the Standard API list price," not "this was your invoice." The arithmetic can
   be audited back to the vendor page the row was copied from.
 - **The rendering is deterministic.** The same transcript and price tables
   produce a byte-identical receipt, on any machine (`--methodology` describes
   the attribution; goldens and a determinism gate enforce it in CI).
-- **Incompleteness is labeled.** Every dollar is a Standard API-equivalent floor.
+- **Incompleteness is labeled.** Observed-spend dollar amounts are Standard API-equivalent floors.
+  The optional net cache comparison is signed same-token arithmetic, labeled
+  `lower` or `higher`; it is not a floor or measured savings.
   A PR receipt that could not attribute every candidate session also counts the
   sessions it left out; missing price coverage stays in a separate token ledger.
 

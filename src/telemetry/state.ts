@@ -25,6 +25,7 @@ export interface StatuslineState {
 export interface StateUpdateResult {
   state: TelemetryState;
   recovered: boolean;
+  installIdSource: "existing" | "new" | "recovered_after_corrupt";
 }
 
 function freshState(): TelemetryState {
@@ -51,46 +52,30 @@ function validSurface(value: unknown): boolean {
   }
 }
 
-function parseState(raw: string): TelemetryState | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return undefined;
+function parseState(parsed: unknown): { state: TelemetryState; recovered: boolean } {
+  const state = freshState();
+  if (!isRecord(parsed)) return { state, recovered: true };
+  let recovered = parsed.schemaVersion !== 1;
+  for (const field of ["runCount", "receiptCount"] as const) {
+    const value = parsed[field];
+    if (typeof value === "number" && Number.isInteger(value) && value >= 0) state[field] = value;
+    else recovered = true;
   }
-  if (!isRecord(parsed) || parsed.schemaVersion !== 1) {
-    return undefined;
-  }
-  const runCount = parsed.runCount;
-  const receiptCount = parsed.receiptCount;
-  const milestones = parsed.milestones;
-  if (
-    typeof runCount !== "number" ||
-    !Number.isInteger(runCount) ||
-    runCount < 0 ||
-    typeof receiptCount !== "number" ||
-    !Number.isInteger(receiptCount) ||
-    receiptCount < 0 ||
-    !isRecord(milestones)
-  ) {
-    return undefined;
-  }
-  const cleanMilestones: Record<string, true> = {};
-  for (const [key, value] of Object.entries(milestones)) {
-    if (value === true) {
-      cleanMilestones[key] = true;
+  if (isRecord(parsed.milestones)) {
+    for (const [key, value] of Object.entries(parsed.milestones)) {
+      if (value === true) state.milestones[key] = true;
+      else recovered = true;
     }
-  }
-  const state: TelemetryState = { schemaVersion: 1, runCount, receiptCount, milestones: cleanMilestones };
+  } else recovered = true;
   // Only a v4-shaped UUID may persist as the install id: a corrupted or hand-edited
   // file could otherwise carry banned free text (a path, a hostname) into the salted
   // hash that goes on the wire (SPEC-0043 R6). Anything else is treated as absent.
-  if (typeof parsed.installId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsed.installId)) {
+  if (typeof parsed.installId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.installId)) {
     state.installId = parsed.installId;
-  }
+  } else if (parsed.installId !== undefined) recovered = true;
   if (typeof parsed.firstRunAt === "string") {
     state.firstRunAt = parsed.firstRunAt;
-  }
+  } else if (parsed.firstRunAt !== undefined) recovered = true;
   const statusline = parsed.statusline;
   if (isRecord(statusline) && typeof statusline.hour === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(statusline.hour) &&
     !Number.isNaN(Date.parse(`${statusline.hour}:00:00.000Z`)) &&
@@ -102,21 +87,51 @@ function parseState(raw: string): TelemetryState | undefined {
     Array.isArray(statusline.errorClasses) && statusline.errorClasses.every((v: unknown) => ERROR_CLASS_VALUES.includes(v as typeof ERROR_CLASS_VALUES[number]))) {
     state.statusline = statusline as unknown as StatuslineState;
   }
-  return state;
+  return { state, recovered };
 }
 
-async function readStateWithMeta(homeOverride?: string): Promise<{ state: TelemetryState; recovered: boolean }> {
+async function readStateWithMeta(homeOverride?: string): Promise<StateUpdateResult> {
+  const path = statePath(homeOverride);
+  let raw: string;
   try {
-    const raw = await readFile(statePath(homeOverride), "utf8");
-    const parsed = parseState(raw);
-    return parsed ? { state: parsed, recovered: false } : { state: freshState(), recovered: true };
-  } catch {
-    return { state: freshState(), recovered: false };
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { state: freshState(), recovered: false, installIdSource: "new" };
+    }
+    throw error;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    let movedAside = false;
+    try {
+      // pid + random suffix: two processes recovering in the same millisecond must
+      // not overwrite each other's backup (the same shape writeState uses for tmp files).
+      const stamp = new Date().toISOString().replace(/:/g, "");
+      await rename(path, `${path}.corrupt-${stamp}.${process.pid}.${Math.random().toString(16).slice(2)}`);
+      movedAside = true;
+    } catch { /* Best effort: state still starts fresh. */ }
+    return { state: freshState(), recovered: true, installIdSource: movedAside ? "recovered_after_corrupt" : "new" };
+  }
+  // A file written by a newer CLI (a pinned older hook can run beside a newer install)
+  // is never salvaged or rewritten: that would downgrade it. The run reports its
+  // identity as unavailable instead.
+  if (isRecord(parsed) && typeof parsed.schemaVersion === "number" && parsed.schemaVersion > 1) {
+    throw new Error(`unsupported state schemaVersion ${parsed.schemaVersion}`);
+  }
+  const result = parseState(parsed);
+  return { ...result, installIdSource: result.state.installId ? "existing" : "new" };
 }
 
+/** Read-only view for local surfaces such as `stats`: an unreadable file reads as fresh, never as an error. */
 export async function readState(homeOverride?: string): Promise<TelemetryState> {
-  return (await readStateWithMeta(homeOverride)).state;
+  try {
+    return (await readStateWithMeta(homeOverride)).state;
+  } catch {
+    return freshState();
+  }
 }
 
 async function writeState(path: string, state: TelemetryState): Promise<void> {
@@ -141,7 +156,7 @@ export async function updateStateWithMeta(
     const state = read.state;
     mutate(state);
     await writeState(statePath(homeOverride), state);
-    return { state, recovered: read.recovered };
+    return { state, recovered: read.recovered, installIdSource: read.installIdSource };
   } catch {
     return undefined;
   }

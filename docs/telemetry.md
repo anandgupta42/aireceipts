@@ -6,10 +6,11 @@
 
 - **On by default in installed builds**, but every event is one of a fixed 10-event catalog: `cli_run`, `cli_error`, `parse_failure`, `receipt_generated`, `export_generated`, `pr_flow_completed`, `hook_configured`, `integration_surface_rendered`, `activation_milestone`, `statusline_heartbeat`.
 - **Never sent**: transcript content, prompts, file paths, repo names, hostnames, usernames, session IDs, dollar amounts, raw model strings, raw counts, or session timestamps. (The App Insights wire format requires one client-stamped send time per envelope — the flush moment, nothing about your session's timeline; see "What is never sent".)
-- **Pseudonymous install identity**: when telemetry is enabled, a random install id is stored locally and sent only as a salted sha256 hash so events from the same install can be counted over time. Delete `~/.aireceipts/state.json` to reset it.
+- **Derived by the receiver, not sent by the CLI**: a coarse location (country and city) from the sending IP, which the shipped resource masks before storing; see "How sending works".
+- **Pseudonymous install identity**: when telemetry is enabled, a random install id is stored locally and sent only as a salted sha256 hash so events from the same install can be counted over time. Delete `~/.aireceipts/state.json` and any `state.json.corrupt-*` backups there to reset it.
 - **Disable anytime**: `AIRECEIPTS_TELEMETRY=off` (or `0`/`false`) or `DO_NOT_TRACK=1`. Either one results in **zero network calls** and prevents install-id creation on a fresh install.
 - **On by default in CI too**: `CI`/`GITHUB_ACTIONS` environments are treated the same as any other — telemetry is enabled by default there. Use a kill switch (`AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1`) to disable it in CI. (Before v0.7.0 it defaulted off in CI; reversed — see SPEC-0002.)
-- **Inspect before you decide**: `aireceipts --telemetry-show` prints exactly what the current run would send, and sends nothing.
+- **Inspect before you decide**: `aireceipts --telemetry-show` prints the exact application payload the current run would send, and sends nothing. It cannot show transport metadata (the flush time the wire format requires, the sending IP the receiver sees) or fields the receiver derives from them; those are described in "How sending works".
 - **Bounded and fail-safe**: sending is capped at 300ms and can never throw, hang the CLI, or change its exit code.
 
 ## Event catalog
@@ -38,6 +39,7 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 | `isCI` | boolean | | True when `CI` or `GITHUB_ACTIONS` is set and not false. Telemetry is enabled by default in CI, so this field distinguishes CI runs from human runs in the data. |
 | `installHash` | string | 64-hex sha256 or `unavailable` | Salted hash of the random local install id; raw id never leaves disk. |
 | `runOrdinalBucket` | enum | `1` \| `2-3` \| `4-10` \| `11-50` \| `>50` \| `unavailable` | Lifetime run ordinal bucket; never the raw count. |
+| `installIdSource` | enum | `existing` \| `new` \| `recovered_after_corrupt` \| `unavailable` | Whether the id came from state, was newly minted, followed recovery of unparseable state, or was unavailable. |
 | `handoffFormat` | enum (optional) | `text` \| `json` | SPEC-0042: emission mode, present only on handoff-command runs — never content. |
 
 ```json
@@ -51,6 +53,7 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
   "ok": true,
   "isCI": false,
   "installHash": "unavailable",
+  "installIdSource": "unavailable",
   "runOrdinalBucket": "1"
 }
 ```
@@ -285,7 +288,9 @@ On the first telemetry-enabled run, aireceipts creates a random UUID in `~/.aire
 sha256("aireceipts-install-v1:" + installId)
 ```
 
-That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json`. If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
+That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json` and any `~/.aireceipts/state.json.corrupt-*` backups (they keep the bytes of an unparseable state file, which can include the old raw id). If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
+
+An unparseable state file is moved aside as `state.json.corrupt-<stamp>.<pid>.<random>` rather than silently replaced.
 
 ## Local counters
 
@@ -347,7 +352,7 @@ SPEC-0002's 2026-07-08 amendment.)
 aireceipts --telemetry-show
 ```
 
-This prints whether telemetry is currently enabled and the exact events queued for the current run without sending anything. In a development build using the shipped connection, it reports `reason: "development-build"`. The command itself records nothing and skips the flush. It cannot preview a future hourly heartbeat; the validated event examples above show its shape.
+This prints whether telemetry is currently enabled and the exact events queued for the current run without sending anything. In a development build using the shipped connection, it reports `reason: "development-build"`. The command itself records nothing and skips the flush. It cannot preview a future hourly heartbeat; the validated event examples above show its shape. What it shows is the application payload, the `properties` of each event. It does not show the envelope's flush time or anything the receiving service sees or derives on its own (the sending IP and the coarse location derived from it, see "How sending works"), because those never exist inside the CLI.
 
 ## How sending works
 
@@ -356,6 +361,7 @@ This prints whether telemetry is currently enabled and the exact events queued f
 - Every failure mode is swallowed inside the telemetry module. Telemetry can never throw, block the CLI, or change its exit code.
 - The transport is Azure Application Insights, reached via a connection string (`InstrumentationKey=...;IngestionEndpoint=https://.../`) POSTed to `<ingestionEndpoint>/v2/track`.
 - The App Insights wire format requires a `time` field per envelope; the sender stamps it client-side at flush (`src/telemetry/sender.ts`). It records when the batch was sent — not when your session ran, started, or ended. The "no timestamps" rule covers aireceipts' own event payload fields (`properties`), which carry only coarse buckets and no time fields.
+- **Ingestion-side geolocation.** The receiving service sees the sending IP address. On the shipped Application Insights resource, Azure's default handling applies: the IP itself is masked (every stored row carries `0.0.0.0`) and a coarse location derived from it (country and city, sometimes state or province) is stored on the row before the address is discarded. aireceipts never sends, reads, or uses that field; it is not in the payload and `--telemetry-show` cannot show it, but it exists in the stored data. A custom resource set through `AIRECEIPTS_TELEMETRY_CONNECTION` follows that resource's own settings (Azure's `DisableIpMasking` option can retain the IP). If you do not want even a coarse location recorded, use a kill switch (`AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1`). Blanking the field at ingestion for the shipped resource is proposed in SPEC-0098; until that work ships, treat the coarse location as recorded.
 
 ## Connection-string honesty
 
