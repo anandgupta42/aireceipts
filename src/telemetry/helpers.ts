@@ -139,7 +139,13 @@ function packageRoot(): string {
   return dir;
 }
 
-export function isDevelopmentBuild(version: string = getCliVersion(), root: string = packageRoot()): boolean {
+let developmentBuildRootForTests: string | undefined;
+
+export function __setDevelopmentBuildRootForTests(root?: string): void {
+  developmentBuildRootForTests = root;
+}
+
+export function isDevelopmentBuild(version: string = getCliVersion(), root: string = developmentBuildRootForTests ?? packageRoot()): boolean {
   return version === "0.0.0" || existsSync(path.join(root, ".git"));
 }
 

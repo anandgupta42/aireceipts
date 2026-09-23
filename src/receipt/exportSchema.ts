@@ -157,6 +157,8 @@ const priceRowUsedSchema = z
   .object({
     vendor: z.string(),
     model: z.string(),
+    matched_id: z.string().optional(),
+    alias_sources: z.array(priceSourceSchema).optional(),
     input: z.number(),
     output: z.number(),
     input_cached: z.number().nullable(),
@@ -197,7 +199,7 @@ const receiptBodyShape = {
   combinedUnpricedTokensScope: z.literal("parent-session-plus-readable-subagents"),
   combinedPricingCoverage: pricingCoverageSchema,
   wasteLines: z.array(wasteLineSchema),
-  caveats: z.array(z.object({ kind: z.enum(["time-mtime", "time-span", "cost-lower-bound-cache-tier", "unobserved-cache-write-tokens", "unattributed-aggregate-usage", "dropped-transcript-records", "partial-priced-coverage", "subagents-unreadable", "subagents-unpriced", "subagents-priced-tokens-only", "subagents-dropped-records", "subagent-rollup-unavailable"]), text: z.string() }).strict()),
+  caveats: z.array(z.object({ kind: z.enum(["time-mtime", "time-span", "cost-lower-bound-cache-tier", "unobserved-cache-write-tokens", "unattributed-aggregate-usage", "dropped-transcript-records", "partial-priced-coverage", "unpriced-model", "subagents-unreadable", "subagents-unpriced", "subagents-priced-tokens-only", "subagents-dropped-records", "subagent-rollup-unavailable"]), text: z.string(), detail: z.string().optional() }).strict()),
   priceDelta: priceDeltaSchema.nullable(),
   methodology: z.string(),
   priceRowsUsed: z.array(priceRowUsedSchema),

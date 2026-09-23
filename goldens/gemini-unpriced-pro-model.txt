@@ -8,6 +8,8 @@ pre-edit: no named edit tool observed
   (share before the first named edit tool)
 
 read_file.....................31,600 tok  (1 call)
+
+caveat: model gemini-2.5-pro omitted from bundled google price table; tokens only
 --------------------------------------------------
 TOTAL...................................31,600 tok
 no price table matched

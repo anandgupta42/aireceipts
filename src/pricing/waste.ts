@@ -74,7 +74,7 @@ async function flattenCalls(session: Session, dataDir: string): Promise<FlatCall
       continue;
     }
     const priced = await priceSessionTurn(session, turn, dataDir);
-    const completeUsd = priced && priced.unpricedUsage.total === 0 ? priced.usd : null;
+    const completeUsd = priced?.usd != null && priced.unpricedUsage.total === 0 ? priced.usd : null;
     const share = 1 / turn.toolCalls.length;
     const tokenShare: TokenUsage = turn.usage ? scaleUsage(turn.usage, share) : emptyUsage();
     for (const call of turn.toolCalls) {
@@ -304,6 +304,7 @@ export async function detectTrivialSpans(session: Session, dataDir: string = def
       continue;
     }
     let identitiesEligible = true;
+    let actualUsd = 0;
     for (const unit of units) {
       const model = unit.model;
       const dateISO = isoDateOf(unit.timestamp);
@@ -313,20 +314,22 @@ export async function detectTrivialSpans(session: Session, dataDir: string = def
         break;
       }
       const row = await resolvePrice(vendor, model, dateISO, dataDir);
-      if (!row || !(cheapest.row.input < row.input)) {
+      if (!row) {
         identitiesEligible = false;
         break;
       }
+      actualUsd += costOf(unit.usage, row);
     }
     if (!identitiesEligible) {
       continue;
     }
-    eligibleTurnCount += 1;
-    tokens = addUsage(tokens, turn.usage);
     const repriced = costTurnAtRow(turn, cheapest.row);
-    if (repriced === null) {
+    if (repriced === null || !Number.isFinite(actualUsd)) {
       return null;
     }
+    if (!(repriced < actualUsd)) continue;
+    eligibleTurnCount += 1;
+    tokens = addUsage(tokens, turn.usage);
     usd += repriced;
     turnIndices.push(turn.index);
   }
@@ -469,7 +472,7 @@ export async function detectContextThrash(session: Session, dataDir: string = de
         pricingUnits: turn.pricingUnits?.map((unit) => ({ ...unit, usage: promptOnlyUsage(unit.usage) })),
       };
       const priced = await priceSessionTurn(session, slicedTurn, dataDir);
-      if (priced === null || priced.unpricedUsage.total > 0) {
+      if (priced?.usd == null || priced.unpricedUsage.total > 0) {
         usd = null;
       } else if (usd !== null) {
         usd += priced.usd;
@@ -563,6 +566,7 @@ export async function priceDeltaFootnote(
     }
     alternativeUsd = costOf(totalTokens, cheapest.row);
   }
+  if (!(alternativeUsd < actualUsd)) return null;
   return {
     cheaperModel: cheapest.model,
     usd: alternativeUsd,

@@ -441,6 +441,7 @@ describe("cheapestCurrentRow", () => {
 
   const table: PriceTable = {
     vendor: "testvendor",
+    comparison_candidates: ["model-a", "model-b", "model-c", "model-expired-cheap"].map((model) => ({ model, reason: "fixture", sources: [] })),
     models: {
       "model-a": { price_history: [row({ input: 10, output: 40 })] },
       "model-b": { price_history: [row({ input: 4, output: 16 })] },
@@ -498,15 +499,15 @@ describe("priceTurn", () => {
   };
   writeFileSync(path.join(invalidRateDir, "invalid-rate.json"), JSON.stringify(invalidRateTable));
 
-  it("returns null when vendor, modelId, dateISO, or usage is missing", async () => {
-    expect(await priceTurn(undefined, "claude-haiku-4-5", "2026-06-15", validUsage, realDataDir)).toBeNull();
+  it("returns null when modelId, dateISO, or usage is missing", async () => {
+    expect((await priceTurn(undefined, "claude-haiku-4-5", "2026-06-15", validUsage, realDataDir))?.usd).toBeNull();
     expect(await priceTurn("anthropic", undefined, "2026-06-15", validUsage, realDataDir)).toBeNull();
     expect(await priceTurn("anthropic", "claude-haiku-4-5", undefined, validUsage, realDataDir)).toBeNull();
     expect(await priceTurn("anthropic", "claude-haiku-4-5", "2026-06-15", undefined, realDataDir)).toBeNull();
   });
 
-  it("returns null when the model has no matching price row", async () => {
-    expect(await priceTurn("anthropic", "claude-unknown-model", "2026-06-15", validUsage, realDataDir)).toBeNull();
+  it("returns a reason when the model has no matching price row", async () => {
+    expect(await priceTurn("anthropic", "claude-unknown-model", "2026-06-15", validUsage, realDataDir)).toMatchObject({ usd: null, reason: { kind: "vendor-absent" } });
   });
 
   it("resolves and costs the turn against the real cited row on the happy path", async () => {
@@ -519,10 +520,10 @@ describe("priceTurn", () => {
     expect((await priceTurn("anthropic", "claude-haiku-4-5", "2026-06-15", zeroUsage, realDataDir))?.usd).toBe(0);
   });
 
-  it("returns null if a malformed row would make the computed dollar negative or non-finite", async () => {
-    expect(await priceTurn("invalid-rate", "negative", "2026-06-15", validUsage, invalidRateDir)).toBeNull();
+  it("returns no reason if a malformed row would make the computed dollar negative or non-finite", async () => {
+    expect(await priceTurn("invalid-rate", "negative", "2026-06-15", validUsage, invalidRateDir)).toMatchObject({ usd: null });
     const overflowUsage = usage({ input: 1_000_000, output: 1_000_000, cacheRead: 0, cacheCreation: 0 });
-    expect(await priceTurn("invalid-rate", "overflow", "2026-06-15", overflowUsage, invalidRateDir)).toBeNull();
+    expect(await priceTurn("invalid-rate", "overflow", "2026-06-15", overflowUsage, invalidRateDir)).toMatchObject({ usd: null });
   });
 
   it("carries cacheWriteLowerBound: false for a turn with no cache-write at all", async () => {

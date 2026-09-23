@@ -1,7 +1,7 @@
 import type { Session, TokenUsage } from "../parse/types.js";
 import { addUsage, emptyUsage, scaleUsage } from "../parse/util.js";
 import { defaultDataDir } from "./priceTable.js";
-import { priceSessionTurn } from "./resolve.js";
+import { priceSessionTurn, type PricingLookup, type UnpricedModelReason } from "./resolve.js";
 
 const THINKING_REPLY = "(thinking/reply)";
 const UNATTRIBUTED_USAGE = "(unattributed usage)";
@@ -87,7 +87,8 @@ interface Accumulator {
  * session) contributes tokens with `usd: null` for that share, never a
  * guessed figure (I2).
  */
-export async function attributeByTool(session: Session, dataDir: string = defaultDataDir()): Promise<AttributionResult> {
+export async function attributeByTool(session: Session, dataDir: string = defaultDataDir(), onUnpriced?: (reason: UnpricedModelReason) => void): Promise<AttributionResult> {
+  const lookup: PricingLookup = { tables: new Map() };
   const acc = new Map<string, Accumulator>();
   let costLowerBoundCacheTier = false;
   const modelUsdAcc = new Map<string, number>();
@@ -120,7 +121,7 @@ export async function attributeByTool(session: Session, dataDir: string = defaul
   for (const turn of session.turns) {
     const units = turn.toolCalls.length > 0 ? turn.toolCalls.map((c) => c.name) : [THINKING_REPLY];
     const share = 1 / units.length;
-    const priced = await priceSessionTurn(session, turn, dataDir);
+    const priced = await priceSessionTurn(session, turn, dataDir, onUnpriced, lookup);
     const tokenShare: TokenUsage = turn.usage ? scaleUsage(turn.usage, share) : emptyUsage();
 
     if (turn.usage) {
@@ -128,7 +129,7 @@ export async function attributeByTool(session: Session, dataDir: string = defaul
     }
     if (turn.usage && turn.usage.total > 0) {
       usageTurnCount++;
-      if (priced === null) {
+      if (priced?.usd == null) {
         unpricedUsageTurnCount++;
         unpricedTokens = addUsage(unpricedTokens, turn.usage);
       } else if (priced.unpricedUsage.total > 0) {
@@ -136,17 +137,17 @@ export async function attributeByTool(session: Session, dataDir: string = defaul
         unpricedTokens = addUsage(unpricedTokens, priced.unpricedUsage);
       }
     }
-    if (priced !== null && priced.cacheRateLowerBound) {
+    if (priced?.usd != null && priced.cacheRateLowerBound) {
       costLowerBoundCacheTier = true;
     }
-    if (priced !== null) {
+    if (priced?.usd != null) {
       for (const modelCost of priced.byModelUsd) {
         modelUsdAcc.set(modelCost.model, (modelUsdAcc.get(modelCost.model) ?? 0) + modelCost.usd);
       }
     }
 
     if (turn.usage && turn.usage.cacheRead > 0) {
-      if (priced?.cacheReadAtInputRateUsd !== null && priced?.cacheReadAtInputRateUsd !== undefined) {
+      if (priced?.usd != null && priced.cacheReadAtInputRateUsd !== null) {
         cacheReadAtInputRateUsd += priced.cacheReadAtInputRateUsd;
       } else {
         cacheReadCounterfactualComplete = false;
@@ -157,7 +158,7 @@ export async function attributeByTool(session: Session, dataDir: string = defaul
       const entry = acc.get(tool) ?? { usd: 0, priced: false, tokens: emptyUsage(), callCount: 0 };
       entry.tokens = addUsage(entry.tokens, tokenShare);
       entry.callCount += 1;
-      if (priced !== null) {
+      if (priced?.usd != null) {
         entry.usd += priced.usd * share;
         entry.priced = true;
       }

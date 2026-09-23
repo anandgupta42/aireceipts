@@ -1,5 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveTelemetryConfig } from "./config.js";
+import { __setDevelopmentBuildRootForTests } from "./helpers.js";
 
 const VALID_CONN = "InstrumentationKey=abc-123;IngestionEndpoint=https://example.in.applicationinsights.azure.com/";
 
@@ -43,8 +47,16 @@ describe("CI default-on (2026-07-08 amendment): CI is enabled by default like an
 
 describe("SC connection-string honesty: empty/unset/malformed all collapse to the same disabled shape", () => {
   it("a checkout with the shipped default connection is disabled", () => {
-    const config = resolveTelemetryConfig({});
-    expect(config.enabled).toBe(false);
+    const root = mkdtempSync(join(tmpdir(), "aireceipts-dev-build-"));
+    try {
+      mkdirSync(join(root, ".git"));
+      __setDevelopmentBuildRootForTests(root);
+      const config = resolveTelemetryConfig({});
+      expect(config.enabled).toBe(false);
+    } finally {
+      __setDevelopmentBuildRootForTests();
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("an explicitly empty connection string disables telemetry", () => {

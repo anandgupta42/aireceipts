@@ -10,6 +10,7 @@ import { loadById } from "../parse/load.js";
 import type { Session, TokenUsage } from "../parse/types.js";
 import { emptyUsage } from "../parse/util.js";
 import { buildReceiptModel } from "../receipt/model.js";
+import type { CaveatFinding } from "../receipt/caveats.js";
 
 export interface SubagentRow {
   /** Display name — the child's title if present, else its agent id. */
@@ -26,9 +27,15 @@ export interface SubagentRow {
   droppedRecords?: number;
   /** Child priced GPT-5.6 Codex usage whose trace omitted cache-write tokens. */
   unobservedCacheWriteTokens?: boolean;
-  /** Child priced cached usage whose applicable read/write rate is uncited. */
-  costLowerBoundCacheTier?: boolean;
   filePath: string;
+}
+
+export interface ChildRollup {
+  rows: SubagentRow[];
+  /** Session-only caveats in the same order as their child rows. */
+  childCaveats: CaveatFinding[];
+  /** Count of readable children with uncited cache rates. */
+  childCacheTierGapCount: number;
 }
 
 /** How much of the parent is rendered, kept explicit so a timeless slice never masquerades as the whole session. */
@@ -66,7 +73,8 @@ function childOverlaps(session: Session, window: RollupWindow): boolean {
  * Discover and roll up the parent's subagent sessions. Returns one row per
  * child transcript that is either included by window overlap or unreadable
  * (unreadable rows are always listed so the count stays honest). Deterministic
- * order (children are discovered in sorted path order).
+ * order (children are discovered in sorted path order). Child caveats stay
+ * separate from rows, which are serialized into PR receipt refs.
  */
 export async function rollupChildren(
   parentFilePath: string,
@@ -74,10 +82,12 @@ export async function rollupChildren(
   deps: Partial<RollupDeps> = {},
   /** SPEC-0038 R3 dedup — children independently credited as contributors are skipped here (filePath key), so no token counts twice. */
   excluded?: ReadonlySet<string>,
-): Promise<SubagentRow[]> {
+): Promise<ChildRollup> {
   const { discover, load } = { ...defaultDeps, ...deps };
   const childFiles = await discover(parentFilePath);
   const rows: SubagentRow[] = [];
+  const childCaveats: CaveatFinding[] = [];
+  let childCacheTierGapCount = 0;
   for (const childFile of childFiles) {
     if (excluded?.has(childFile)) {
       continue;
@@ -97,6 +107,8 @@ export async function rollupChildren(
       continue;
     }
     const model = await buildReceiptModel(session);
+    childCaveats.push(...model.caveats.filter((c) => c.kind === "unpriced-model"));
+    if (model.costLowerBoundCacheTier) childCacheTierGapCount += 1;
     // A markup-shaped title (fork boilerplate, injected XML) is machine noise,
     // not a name — same rule the receipt masthead applies to its title line.
     const title = session.title?.replace(/\s+/g, " ").trim();
@@ -109,9 +121,8 @@ export async function rollupChildren(
       unreadable: false,
       ...(((session.droppedRecords ?? 0) > 0) ? { droppedRecords: session.droppedRecords } : {}),
       ...(model.unobservedCacheWriteTokens ? { unobservedCacheWriteTokens: true } : {}),
-      ...(model.costLowerBoundCacheTier ? { costLowerBoundCacheTier: true } : {}),
       filePath: childFile,
     });
   }
-  return rows;
+  return { rows, childCaveats, childCacheTierGapCount };
 }

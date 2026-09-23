@@ -467,7 +467,17 @@ export function detailsBlocks(model: ReceiptModel): Block[] {
 
 /** SPEC-0028 R3 — muted time-integrity caveat notes; empty for consistent sessions so existing renders stay byte-identical (I5). */
 function caveatBlocks(model: ReceiptModel): Block[] {
-  return model.caveats.map((c, i): Block => ({ kind: "note", text: c.text, muted: true, spaceBefore: i === 0 }));
+  let shown = 0;
+  const blocks: Block[] = [];
+  const unpricedCount = model.caveats.filter((caveat) => caveat.kind === "unpriced-model").length;
+  for (const caveat of model.caveats) {
+    if (caveat.kind === "unpriced-model" && ++shown > 3) continue;
+    blocks.push({ kind: "note", text: caveat.text, muted: true, spaceBefore: blocks.length === 0 });
+    if (caveat.kind === "unpriced-model" && shown === 3 && unpricedCount > 3) {
+      blocks.push({ kind: "note", text: `caveat: +${unpricedCount - 3} more unpriced model ids`, muted: true });
+    }
+  }
+  return blocks;
 }
 
 /**

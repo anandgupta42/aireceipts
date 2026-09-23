@@ -24,12 +24,16 @@ export interface CaveatFinding {
     | "unattributed-aggregate-usage"
     | "dropped-transcript-records"
     | "partial-priced-coverage"
+    | "unpriced-model"
     | "subagents-unreadable"
     | "subagents-unpriced"
     | "subagents-priced-tokens-only"
     | "subagents-dropped-records"
     | "subagent-rollup-unavailable";
   text: string;
+  detail?: string;
+  /** Internal transcript identity for deduplicating child caveats; never exported. */
+  rawId?: string;
 }
 
 export type StatMtime = (filePath: string) => number | undefined;

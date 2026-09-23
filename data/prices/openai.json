@@ -13,7 +13,7 @@
             {
               "url": "https://developers.openai.com/api/docs/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "gpt-5.3-codex \u2014 Standard tier: Input $1.75 / 1M tokens, Cached input $0.175 / 1M tokens, Output $14.00 / 1M tokens"
+              "excerpt": "gpt-5.3-codex — Standard tier: Input $1.75 / 1M tokens, Cached input $0.175 / 1M tokens, Output $14.00 / 1M tokens"
             }
           ]
         }
@@ -31,7 +31,7 @@
             {
               "url": "https://developers.openai.com/api/docs/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "gpt-5.4-mini \u2014 Standard tier: Input $0.75 / 1M tokens, Cached input $0.075 / 1M tokens, Output $4.50 / 1M tokens"
+              "excerpt": "gpt-5.4-mini — Standard tier: Input $0.75 / 1M tokens, Cached input $0.075 / 1M tokens, Output $4.50 / 1M tokens"
             }
           ]
         }
@@ -161,6 +161,52 @@
       "model": "gpt-5.5",
       "reason": "The official model page says the >272K input multiplier applies to the full session. aireceipts prices individual observed requests and PR/session slices, so it cannot select that billing scope soundly without a session-level pricing model. It stays tokens-only rather than emit an unsound dollar floor (SPEC-0005 R1, I2).",
       "source": "https://developers.openai.com/api/docs/models/gpt-5.5"
+    }
+  ],
+  "comparison_candidates": [
+    {
+      "model": "gpt-5.3-codex",
+      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
+      "sources": [
+        {
+          "url": "https://developers.openai.com/api/docs/pricing",
+          "observed_at": "2026-07-01",
+          "excerpt": "gpt-5.3-codex — Standard tier: Input $1.75 / 1M tokens, Cached input $0.175 / 1M tokens, Output $14.00 / 1M tokens"
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.4-mini",
+      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
+      "sources": [
+        {
+          "url": "https://developers.openai.com/api/docs/pricing",
+          "observed_at": "2026-07-01",
+          "excerpt": "gpt-5.4-mini — Standard tier: Input $0.75 / 1M tokens, Cached input $0.075 / 1M tokens, Output $4.50 / 1M tokens"
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
+      "sources": [
+        {
+          "url": "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+          "observed_at": "2026-07-10",
+          "excerpt": "Input $2.50; cached input $0.25; output $15.00. Above 272K: 2x input, 1.5x output. Cache writes: 1.25x input."
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
+      "sources": [
+        {
+          "url": "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+          "observed_at": "2026-07-10",
+          "excerpt": "Input $1.00; cached input $0.10; output $6.00. Above 272K: 2x input, 1.5x output. Cache writes: 1.25x input."
+        }
+      ]
     }
   ]
 }

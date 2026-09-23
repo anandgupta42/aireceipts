@@ -383,11 +383,11 @@ footer{
     <tr><td><code>combinedUnpricedTokensScope</code></td><td>literal <code>parent-session-plus-readable-subagents</code></td><td>Explicit scope of <code>combinedUnpricedTokens</code>.</td></tr>
     <tr><td><code>combinedPricingCoverage</code></td><td>enum</td><td>Coverage of <code>combinedPricedUsd</code>: <code>full</code>, <code>partial</code>, or <code>unpriced</code>. Parent gaps, exact child unpriced usage, unreadable children, failed child discovery, dropped child records, and child cache-rate/write omissions make a priced combination <code>partial</code>.</td></tr>
     <tr><td><code>wasteLines</code></td><td>array</td><td>Legacy field name for detector-flagged heuristic patterns; a row is evidence to inspect, not proven waste or savings. See WasteLine.</td></tr>
-    <tr><td><code>caveats</code></td><td>array</td><td>Confidence facts, never a ranking: <code>kind</code> (<code>time-mtime</code> | <code>time-span</code> | <code>cost-lower-bound-cache-tier</code> | <code>unobserved-cache-write-tokens</code> | <code>unattributed-aggregate-usage</code> | <code>dropped-transcript-records</code> | <code>partial-priced-coverage</code> | <code>subagents-unreadable</code> | <code>subagents-unpriced</code> | <code>subagents-priced-tokens-only</code> | <code>subagents-dropped-records</code> | <code>subagent-rollup-unavailable</code>) + <code>text</code>. Never changes the arithmetic itself. Empty when nothing extra is known.</td></tr>
+    <tr><td><code>caveats</code></td><td>array</td><td>Confidence facts, never a ranking: <code>kind</code> (<code>time-mtime</code> | <code>time-span</code> | <code>cost-lower-bound-cache-tier</code> | <code>unobserved-cache-write-tokens</code> | <code>unattributed-aggregate-usage</code> | <code>dropped-transcript-records</code> | <code>partial-priced-coverage</code> | <code>unpriced-model</code> | <code>subagents-unreadable</code> | <code>subagents-unpriced</code> | <code>subagents-priced-tokens-only</code> | <code>subagents-dropped-records</code> | <code>subagent-rollup-unavailable</code>) + <code>text</code>, and optional <code>detail</code> containing the full sanitized id for <code>unpriced-model</code>. Never changes the arithmetic itself. Empty when nothing extra is known.</td></tr>
     <tr><td><code>budget</code></td><td>array (optional)</td><td>Advisory budget lines (SPEC-0009); present only when <code>~/.aireceipts/budget.json</code> is configured.</td></tr>
-    <tr><td><code>priceDelta</code></td><td>PriceDelta | null</td><td>Cheapest-current-model arithmetic, or null in tokens-only mode.</td></tr>
+    <tr><td><code>priceDelta</code></td><td>PriceDelta | null</td><td>Candidate repricing when strictly below the observed floor; otherwise null.</td></tr>
     <tr><td><code>methodology</code></td><td>string</td><td>The attribution methodology string (I3).</td></tr>
-    <tr><td><code>priceRowsUsed</code></td><td>array</td><td>Every dated price row consulted; see PriceRowUsed.</td></tr>
+    <tr><td><code>priceRowsUsed</code></td><td>array</td><td>Every dated price row consulted; see PriceRowUsed. Alias matches add <code>matched_id</code> (the transcript id) and <code>alias_sources</code> (the cited id mapping); canonical matches omit both.</td></tr>
     <tr><td><code>costShape</code></td><td>CostShape</td><td>SPEC-0067 — cost-shape facts (standalone, never in savings math): <code>preEdit</code> (pre-edit cost/token share), <code>topTurns</code> (expensive-turn concentration, or null), <code>lateTurn</code> (neutral late-half/early-half cost ratio, low confidence, or null).</td></tr>
     <tr><td><code>netCache</code></td><td>NetCache (optional)</td><td>Parent-session signed same-token arithmetic. <code>usd</code> is hypothetical no-cache price minus observed cache price (positive = lower with cache), or null. <code>unavailableReason</code> is null or <code>unsupported-adapter</code>, <code>write-counters-unobserved</code>, <code>incomplete-cache-evidence</code>, <code>price-row-incomplete</code>, <code>unpriced-usage</code>, <code>no-cache-activity</code>. <code>scope</code> is <code>parent-session</code>; <code>interpretation</code> explicitly labels arithmetic, not a prediction. Never a floor, invoice, or savings estimate.</td></tr>
     <tr><td><code>sameFileReReads</code></td><td>SameFileReReads | null</td><td>SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none.</td></tr>
@@ -395,6 +395,17 @@ footer{
     <tr><td><code>subagents</code></td><td>Subagents (optional)</td><td>SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths.</td></tr>
   </tbody>
 </table></div>
+
+<p>An <code>unpriced-model</code> caveat uses one of these exact text forms, with the transcript id bounded for display (for the same reason, an unpriced model's label in <code>modelMix</code> has every <code>$</code> replaced by <code>?</code>; priced labels are unchanged):</p>
+
+<pre class="doc-code"><code class="language-text">caveat: model &lt;id&gt; not in bundled &lt;vendor&gt; price table (latest citation &lt;date&gt;); tokens only
+caveat: model &lt;id&gt; not in bundled price tables (latest citation &lt;date&gt;); tokens only
+caveat: model &lt;id&gt; omitted from bundled &lt;vendor&gt; price table; tokens only
+caveat: model &lt;id&gt; has no bundled &lt;vendor&gt; price for &lt;session date&gt;; tokens only</code></pre>
+
+<p>The bundle-wide absence line appears only when every discovered price table loads successfully. A missing or unreadable table suppresses the line.</p>
+
+<p>Text receipts show at most three such lines, followed by <code>caveat: +&lt;n&gt; more unpriced model ids</code> when more exist. JSON retains every caveat.</p>
 
 <h3 id="netcache-object">NetCache object</h3>
 
@@ -538,6 +549,7 @@ footer{
   <tbody>
     <tr><td><code>kind</code></td><td>enum</td><td>Includes <code>time-mtime</code>, <code>time-span</code>, <code>cost-lower-bound-cache-tier</code> (observed cached reads/writes had no cited applicable rate and contributed zero), <code>unobserved-cache-write-tokens</code> (the Codex GPT-5.6 trace has no cache-write bucket, so any write premium is absent from the floor), and <code>unattributed-aggregate-usage</code>. The last kind covers several no-trustworthy-join cases distinguished by <code>text</code>: Claude id-less usage is one coherent unpriced envelope; an unreconciled Codex cumulative stream disables request-level pricing and preserves the local envelope as tokens; a componentwise-dominating OpenCode aggregate yields an unpriced bucket on a full receipt and is excluded from a partial slice; crossed aggregate/itemized vectors keep itemized totals and expose only positive aggregate-only components as conflicting evidence excluded from totals and floor.</td></tr>
     <tr><td><code>text</code></td><td>string</td><td>The rendered caveat line, verbatim.</td></tr>
+    <tr><td><code>detail</code></td><td>string, optional</td><td>Full sanitized transcript id for an <code>unpriced-model</code> caveat.</td></tr>
   </tbody>
 </table></div>
 
@@ -573,7 +585,7 @@ footer{
   </tbody>
 </table></div>
 
-<p>Also carries <code>cheaperModel</code> (the cheapest current model), <code>usd</code> (the re-priced lower-bound scalar), and <code>costEstimate</code> (its structured lower-bound semantics).</p>
+<p>Also carries <code>cheaperModel</code> (the cheapest listed comparison candidate, emitted only when strictly cheaper for the session), <code>usd</code> (the re-priced lower-bound scalar), and <code>costEstimate</code> (its structured lower-bound semantics).</p>
 
 <h3 id="pricerowused">PriceRowUsed</h3>
 
@@ -581,6 +593,8 @@ footer{
   <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
   <tbody>
     <tr><td><code>vendor</code></td><td>string</td><td>Price-table vendor.</td></tr>
+    <tr><td><code>matched_id</code></td><td>string, optional</td><td>Transcript alias id that resolved to this canonical row. Omitted for canonical matches.</td></tr>
+    <tr><td><code>alias_sources</code></td><td>array, optional</td><td>Cited sources for the exact alias mapping. Omitted for canonical matches.</td></tr>
     <tr><td><code>input_cached</code></td><td>number | null</td><td>Cache-hit rate (USD per MTok), or null when the row cites none.</td></tr>
     <tr><td><code>input_cache_write</code></td><td>number | null</td><td>Vendor-generic cache-write rate, or null.</td></tr>
     <tr><td><code>input_cache_write_5m</code></td><td>number | null</td><td>5-minute cache-write rate, or null.</td></tr>

@@ -54,7 +54,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
 
   it("includes a straddling child (launched in-slice, finished after)", async () => {
     const straddle = childSession("straddle", start + 10, end + 5_000);
-    const rows = await rollupChildren(PARENT, window, {
+    const { rows } = await rollupChildren(PARENT, window, {
       discover: async () => ["straddle"],
       load: async () => straddle,
     });
@@ -66,7 +66,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
   it("includes a child whose result lands in-window and excludes one fully outside", async () => {
     const resultIn = childSession("resultIn", start - 500, start + 50);
     const before = childSession("before", start - 5_000, start - 4_000);
-    const rows = await rollupChildren(PARENT, window, {
+    const { rows } = await rollupChildren(PARENT, window, {
       discover: async () => ["resultIn", "before"],
       load: async (f) => (f === "resultIn" ? resultIn : before),
     });
@@ -75,7 +75,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
 
   it("includes a child whose interval spans the entire parent range", async () => {
     const spanning = childSession("spanning", start - 500, end + 500);
-    const rows = await rollupChildren(PARENT, window, {
+    const { rows } = await rollupChildren(PARENT, window, {
       discover: async () => ["spanning"],
       load: async () => spanning,
     });
@@ -85,7 +85,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
 
   it("lists an unreadable child and keeps the count honest", async () => {
     const good = childSession("good", start + 1, start + 2);
-    const rows = await rollupChildren(PARENT, window, {
+    const { rows } = await rollupChildren(PARENT, window, {
       discover: async () => ["good", "broken"],
       load: async (f) => (f === "good" ? good : null),
     });
@@ -97,7 +97,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
 
   it("full-session render includes every child", async () => {
     const anytime = childSession("x", 42, 99);
-    const rows = await rollupChildren(PARENT, { kind: "full" }, {
+    const { rows } = await rollupChildren(PARENT, { kind: "full" }, {
       discover: async () => ["x"],
       load: async () => anytime,
     });
@@ -107,7 +107,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
   it("an unknown slice window excludes readable child usage but preserves unreadable evidence", async () => {
     const pricedStart = Date.UTC(2026, 5, 15, 10, 0, 0);
     const readable = childSession("readable", pricedStart, pricedStart + 1);
-    const rows = await rollupChildren(PARENT, { kind: "unknown" }, {
+    const { rows } = await rollupChildren(PARENT, { kind: "unknown" }, {
       discover: async () => ["readable", "broken"],
       load: async (file) => (file === "readable" ? readable : null),
     });
@@ -129,7 +129,7 @@ describe("R1c rollup (window overlap + honest count)", () => {
     child.totals.tokens = withTotal({ ...emptyUsage(), input: 800, output: 175, cacheRead: 25 });
     child.totals.turnCount = 2;
 
-    const rows = await rollupChildren(PARENT, { kind: "range", start: mixedStart, end: mixedStart + 2 }, {
+    const { rows } = await rollupChildren(PARENT, { kind: "range", start: mixedStart, end: mixedStart + 2 }, {
       discover: async () => ["mixed"],
       load: async () => child,
     });
@@ -148,13 +148,14 @@ describe("R1c rollup (window overlap + honest count)", () => {
     child.turns[0].usage = withTotal({ ...emptyUsage(), input: 500, output: 100, cacheCreation: 25 });
     child.totals.tokens = child.turns[0].usage;
 
-    const rows = await rollupChildren(PARENT, { kind: "full" }, {
+    const { rows, childCacheTierGapCount } = await rollupChildren(PARENT, { kind: "full" }, {
       discover: async () => ["cache-gap"],
       load: async () => child,
     });
 
     expect(rows).toHaveLength(1);
     expect(rows[0].usd).not.toBeNull();
-    expect(rows[0].costLowerBoundCacheTier).toBe(true);
+    expect(childCacheTierGapCount).toBe(1);
+    expect(rows[0]).not.toHaveProperty("costLowerBoundCacheTier");
   });
 });

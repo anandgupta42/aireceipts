@@ -451,6 +451,12 @@ footer{
 <p>When every Claude Code request carries complete explicit cache counters and its dated cited rates resolve, <code>cache vs uncached</code> compares the observed reads and TTL-specific writes with pricing those same tokens as ordinary uncached input. It subtracts write premiums from the read discount. A positive result renders <code>$X lower</code>, a negative result <code>$X higher</code>; it can round to <code>$0.00</code>. This signed arithmetic has no lower-bound direction and never carries <code>≥</code>. It concerns only the parent session and is excluded from totals, budgets, waste and PR rollups. It is not an invoice or evidence that the task would have cost less.</p>
 
 <p>Missing read/write counters, missing TTL splits, incomplete request prices or unattributed/dropped records suppress the net text row; JSON <code>netCache</code> retains a reason. Codex cache-write counters remain unobserved, even when its normalized write count is zero. The existing gross read-repricing line remains separate.</p>
+
+<h2 id="comparison-candidate-set">Comparison candidate set</h2>
+
+<p>An unpriced model is identified with a <code>caveat: model &lt;id&gt; ...; tokens only</code> line. When more than three ids are unpriced, text receipts end the list with <code>caveat: +&lt;n&gt; more unpriced model ids</code>.</p>
+
+<p>Cheaper-model arithmetic uses only current rows named in a vendor table's <code>comparison_candidates</code> array. Coverage rows can price sessions without changing the comparison. When the array is absent or no listed model has a current row, the price-delta footnote and trivial-spans estimate are omitted. They are also omitted when the candidate's repriced floor is not strictly below the observed floor. This is a cited maintainer set, not a model ranking.</p>
     </article>
   </main>
   <footer>

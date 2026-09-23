@@ -176,7 +176,8 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   absent set is visible at a glance. **Compatibility seed:** the implementing PR lists
   every model that has a current row today, with `reason: "compatibility seed:
   pre-SPEC-0095 comparison set"` and the row's own price source, so `cheapestCurrentRow`
-  returns the same row per vendor and existing goldens stay byte-identical. Narrowing
+  returns the same row per vendor. The strictly-cheaper rule deliberately removed
+  four self-comparison lines from context-thrash goldens (I5). Narrowing
   that set is a later, separately cited button-2 change. The three deferred OpenAI rows
   (`gpt-5.4-nano`, `gpt-5-mini`, `gpt-5-nano`) then land in their own button-2 price PR
   as coverage-only, absent from `comparison_candidates`. Rejected alternatives:
@@ -469,3 +470,5 @@ start the build (R1 to R5; R6 stays a maintainer question, Q4).
 - P1, the cheapest listed candidate can cost more than the session's model once
   coverage-only rows exist: R4 requires a strictly lower repriced floor, otherwise both
   comparison lines and `cheaperModel` are omitted; matrix row and scenario added.
+- Build note: the seed itself keeps the same row per vendor. The strictly-cheaper
+  rule removed four self-comparison lines from context-thrash goldens (I5).

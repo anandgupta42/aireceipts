@@ -172,7 +172,7 @@ describe("buildReceiptModel — partial-priced-coverage caveat (SPEC-0054 R3)", 
   it("keeps price-delta arithmetic for a fully priced three-tool turn", async () => {
     const turns = [
       turn(0, {
-        model: "claude-haiku-4-5",
+        model: "claude-opus-4-8",
         usage: usage({ input: 5400, output: 420, cacheRead: 3200 }),
         toolCalls: [call("Bash"), call("Read"), call("Grep")],
       }),
@@ -181,6 +181,21 @@ describe("buildReceiptModel — partial-priced-coverage caveat (SPEC-0054 R3)", 
 
     expect(model.totalTokens).toEqual(turns[0].usage);
     expect(model.priceDelta).not.toBeNull();
+  });
+
+  it("omits price-delta arithmetic for the cheapest candidate", async () => {
+    const turns = [turn(0, { model: "claude-haiku-4-5", usage: usage({ input: 5400, output: 420, cacheRead: 3200 }), toolCalls: [call("Bash"), call("Read"), call("Grep")] })];
+    expect((await buildReceiptModel(session({ turns }), dataDir)).priceDelta).toBeNull();
+  });
+  it("keeps a Haiku trivial-span comparison with an unpriced tool turn", async () => {
+    const turns = [
+      turn(0, { model: "claude-opus-4-8", usage: usage({ input: 1000, output: 10 }) }),
+      turn(1, { model: "claude-opus-4-8", usage: usage({ input: 1000, output: 10 }) }),
+      turn(2, { model: "claude-unknown-id", usage: usage({ input: 1000, output: 10 }), toolCalls: [call("Read")] }),
+    ];
+    const model = await buildReceiptModel(session({ turns }), dataDir);
+    expect(model.priceDelta).toBeNull();
+    expect(model.wasteLines.find((line) => line.kind === "trivial-spans")).toMatchObject({ eligibleTurnCount: 2, cheaperModel: "claude-haiku-4-5" });
   });
 
   it("suppresses repricing when a cited cache-write component rate is missing", async () => {

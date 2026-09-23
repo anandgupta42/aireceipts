@@ -10,6 +10,8 @@ pre-edit: no named edit tool observed
 (thinking/reply)...............1,230 tok  (1 turn)
 Bash...........................1,155 tok  (1 call)
 Read.............................940 tok  (1 call)
+
+caveat: model claude-opus-4-legacy not in bundled anthropic price table (latest citation 2026-09-22); tokens only
 --------------------------------------------------
 TOTAL....................................3,325 tok
 no price table matched

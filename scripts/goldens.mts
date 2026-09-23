@@ -6,6 +6,7 @@
 // enforces it).
 import { loadById } from "../src/index.js";
 import type { AgentSource } from "../src/index.js";
+import type { Session } from "../src/parse/types.js";
 import { buildReceiptModel } from "../src/receipt/model.js";
 import type { ReceiptModel } from "../src/receipt/model.js";
 import { attachSubagentRollup } from "../src/receipt/subagents.js";
@@ -83,6 +84,18 @@ for (const theme of ["light", "dark"] as const) {
 }
 const loopModel = await modelFor(LOOP.source, LOOP.path);
 check(`goldens/svg/compare-${nameOf(PRICED.path)}-vs-${nameOf(LOOP.path)}.svg`, renderCompareSvg(pricedModel, loopModel));
+
+// SPEC-0095: a bounded, unpriced model id must wrap inside the SVG card.
+const unpricedUsage = { input: 100, output: 0, cacheRead: 0, cacheCreation: 0, total: 100 };
+const unpricedSession: Session = {
+  id: "unpriced-model-64",
+  source: "codex",
+  filePath: "/nonexistent",
+  totals: { tokens: unpricedUsage, turnCount: 1, toolCallCount: 0 },
+  turns: [{ index: 0, timestamp: Date.parse("2026-03-01T00:00:00Z"), model: `gpt-${"x".repeat(60)}`,
+    toolCalls: [], usage: unpricedUsage }],
+};
+check("goldens/svg/unpriced-model-64.svg", renderReceiptSvg(await buildReceiptModel(unpricedSession)));
 
 // SPEC-0042 R1/R2 — the resume packet's state-header + coverage wording is
 // golden-pinned on the loop fixture (has waste, so the packet renders).

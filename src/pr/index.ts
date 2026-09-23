@@ -105,7 +105,7 @@ export function defaultPrDeps(overrides: Partial<PrDeps> = {}): PrDeps {
     loadSession: async (summary) => (await import("../parse/load.js")).loadSession(summary),
     runGit: defaultRunner,
     runGh: defaultRunner,
-    rollup: (parentFilePath, window, excluded) => rollupChildren(parentFilePath, window, {}, excluded),
+    rollup: async (parentFilePath, window, excluded) => (await rollupChildren(parentFilePath, window, {}, excluded)).rows,
     cwd: process.cwd(),
     out: (s) => process.stdout.write(`${s}\n`),
     err: (s) => process.stderr.write(`${s}\n`),

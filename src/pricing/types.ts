@@ -8,7 +8,7 @@
 /** A citation for a `PriceRow` — the receipt never prints a `$` that can't be traced here (I3). */
 export interface PriceSource {
   url: string;
-  observed_at?: string;
+  observed_at: string;
   excerpt?: string;
 }
 
@@ -64,14 +64,30 @@ export interface OmittedModel {
   source?: string;
 }
 
+export interface PriceAlias {
+  id: string;
+  from_date: string;
+  to_date: string | null;
+  sources: PriceSource[];
+}
+
+export interface ComparisonCandidate {
+  model: string;
+  reason: string;
+  sources: PriceSource[];
+}
+
 export interface PriceTable {
   vendor: string;
-  models: Record<string, { price_history: PriceRow[] }>;
+  models: Record<string, { price_history: PriceRow[]; aliases?: PriceAlias[] }>;
   omitted?: OmittedModel[];
+  comparison_candidates?: ComparisonCandidate[];
 }
 
 /** A resolved row plus the vendor/model it was resolved for, so callers never need to re-thread that context. */
 export interface ResolvedPrice extends PriceRow {
   vendor: string;
   model: string;
+  matched_id?: string;
+  alias_sources?: PriceSource[];
 }

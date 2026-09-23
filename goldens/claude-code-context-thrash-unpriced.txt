@@ -12,6 +12,8 @@ pre-edit: no named edit tool observed
 
 ≈ context thrash: 3 compactions (4t)...700,000 tok
   context refilled ≥80% of peak within 5 turns
+
+caveat: model claude-unknown-model-zzz not in bundled anthropic price table (latest citation 2026-09-22); tokens only
 --------------------------------------------------
 TOTAL................................1,354,000 tok
 no price table matched

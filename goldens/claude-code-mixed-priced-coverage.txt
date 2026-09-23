@@ -11,6 +11,7 @@ Read...........................≥ $0.0071  (1 call)
 (thinking/reply)...............2,335 tok  (1 turn)
 Bash...........................2,160 tok  (1 call)
 
+caveat: model claude-opus-4-legacy not in bundled anthropic price table (latest citation 2026-09-22); tokens only
 caveat: 2 of 3 usage turns include unpriced tokens — TOTAL excludes those tokens
 --------------------------------------------------
 KNOWN PRICED SUBTOTAL....................≥ $0.0071

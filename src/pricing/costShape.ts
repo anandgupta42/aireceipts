@@ -83,7 +83,7 @@ async function perTurnCosts(session: Session, dataDir: string): Promise<TurnCost
       continue;
     }
     const priced = await priceSessionTurn(session, turn, dataDir);
-    const completeUsd = priced && priced.unpricedUsage.total === 0 ? priced.usd : null;
+    const completeUsd = priced?.usd != null && priced.unpricedUsage.total === 0 ? priced.usd : null;
     out.push({ index: turn.index, usd: completeUsd, tokens: turn.usage.total });
   }
   return out;

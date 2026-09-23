@@ -62,7 +62,7 @@ export async function computeNetCache(
       // instead of rereading the price table once per request.
       const row = resolvedRows === undefined
         ? await resolvePrice(vendor, unit.model, date, dataDir)
-        : resolvedRows.find((candidate) => candidate.vendor === vendor && candidate.model === unit.model
+        : resolvedRows.find((candidate) => candidate.vendor === vendor && (candidate.matched_id ?? candidate.model) === unit.model
           && candidate.from_date <= date && (candidate.to_date === null || date <= candidate.to_date));
       if (!row) return result(null, "unpriced-usage");
       const delta = netCacheAtRow(unit.usage, row);
