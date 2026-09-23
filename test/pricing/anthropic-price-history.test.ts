@@ -31,9 +31,19 @@ it("uses Sonnet 4.6's cited standard rate throughout its 1M context window", asy
 it.each([
   "claude-fable-5-1", "claude-mythos-5-1", "claude-mythos-5", "claude-opus-5-5",
   "claude-opus-5", "claude-opus-4-7", "claude-opus-4-6", "claude-opus-4-5",
-  "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-haiku-4-5-20251001",
+  "claude-sonnet-4-6", "claude-sonnet-4-5",
   "claude-opus-4-5-20251101", "claude-sonnet-4-5-20250929",
 ])("does not backfill today's observed rate for %s to its launch date", async (model) => {
   expect(await resolvePrice("anthropic", model, "2026-09-21", dataDir)).toBeNull();
   expect(await resolvePrice("anthropic", model, "2026-09-22", dataDir)).not.toBeNull();
+});
+
+it("resolves the Haiku snapshot through the bare model's priced history", async () => {
+  const snapshot = "claude-haiku-4-5-20251001";
+  expect(await resolvePrice("anthropic", snapshot, "2025-12-31", dataDir)).toBeNull();
+  expect(await resolvePrice("anthropic", snapshot, "2026-08-10", dataDir)).toMatchObject({
+    model: "claude-haiku-4-5",
+    matched_id: snapshot,
+    from_date: "2026-01-01",
+  });
 });
