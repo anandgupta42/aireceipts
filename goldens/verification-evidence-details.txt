@@ -4,15 +4,18 @@
               claude-fable-5-1 100%               
          cache served 66% of input tokens         
 
-pre-edit: 66% of tokens (2/3 turns)
+pre-edit: 92% of priced floor (2/3 turns)
   (share before the first named edit tool)
 
-Edit...........................7,815 tok  (1 call)
-Bash...........................7,571 tok  (1 call)
-Read...........................7,394 tok  (1 call)
+Read...........................≥ $0.1517  (1 call)
+Edit...........................≥ $0.0148  (1 call)
+Bash...........................≥ $0.0101  (1 call)
 --------------------------------------------------
-TOTAL...................................22,780 tok
-no price table matched
+TOTAL....................................≥ $0.1766
+standard API-equivalent floor; not an invoice
+same tokens on claude-haiku-4-5..........≥ $0.0187
+  (89% lower observable floor)
+  (arithmetic, not a prediction)
 
 DETAILS
 tokens in / out...........................66 / 416
@@ -20,6 +23,9 @@ cache read / write......................15k / 7.6k
   writes: 5m 0 · 1h 7.6k
 turns / tool calls...........................3 / 3
 peak turn........................7.8k tok (turn 3)
+top 3 turns.....................100% (turns 1,2,3)
+same reads at uncached input rate........≥ $0.1435
+  (arithmetic, not a prediction)
 
 VERIFICATION EVIDENCE
 npx tsc --noEmit...........tool result ok (turn 2)
