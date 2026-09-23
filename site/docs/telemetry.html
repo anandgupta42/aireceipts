@@ -496,7 +496,7 @@ footer{
 
 <pre class="doc-code"><code class="language-text">sha256(&quot;aireceipts-install-v1:&quot; + installId)</code></pre>
 
-<p>That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete <code>~/.aireceipts/state.json</code>. If <code>AIRECEIPTS_TELEMETRY=off</code> or <code>DO_NOT_TRACK=1</code> is active on a fresh install, no install id is created.</p>
+<p>That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete <code>~/.aireceipts/state.json</code> and any <code>~/.aireceipts/state.json.corrupt-*</code> backups (they keep the bytes of an unparseable state file, which can include the old raw id). If <code>AIRECEIPTS_TELEMETRY=off</code> or <code>DO_NOT_TRACK=1</code> is active on a fresh install, no install id is created.</p>
 
 <p>An unparseable state file is moved aside as <code>state.json.corrupt-&lt;timestamp&gt;</code> rather than silently replaced.</p>
 

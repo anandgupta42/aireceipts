@@ -74,7 +74,10 @@ async function readStateWithMeta(homeOverride?: string): Promise<StateUpdateResu
   } catch {
     let movedAside = false;
     try {
-      await rename(path, `${path}.corrupt-${new Date().toISOString().replace(/:/g, "")}`);
+      // pid + random suffix: two processes recovering in the same millisecond must
+      // not overwrite each other's backup (the same shape writeState uses for tmp files).
+      const stamp = new Date().toISOString().replace(/:/g, "");
+      await rename(path, `${path}.corrupt-${stamp}.${process.pid}.${Math.random().toString(16).slice(2)}`);
       movedAside = true;
     } catch { /* Best effort: state still starts fresh. */ }
     return { state: freshState(), recovered: true, installIdSource: movedAside ? "recovered_after_corrupt" : "new" };
@@ -83,8 +86,13 @@ async function readStateWithMeta(homeOverride?: string): Promise<StateUpdateResu
   return { ...result, installIdSource: result.state.installId ? "existing" : "new" };
 }
 
+/** Read-only view for local surfaces such as `stats`: an unreadable file reads as fresh, never as an error. */
 export async function readState(homeOverride?: string): Promise<TelemetryState> {
-  return (await readStateWithMeta(homeOverride)).state;
+  try {
+    return (await readStateWithMeta(homeOverride)).state;
+  } catch {
+    return freshState();
+  }
 }
 
 async function writeState(path: string, state: TelemetryState): Promise<void> {

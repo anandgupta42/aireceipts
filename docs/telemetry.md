@@ -143,7 +143,7 @@ On the first telemetry-enabled run, aireceipts creates a random UUID in `~/.aire
 sha256("aireceipts-install-v1:" + installId)
 ```
 
-That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json`. If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
+That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json` and any `~/.aireceipts/state.json.corrupt-*` backups (they keep the bytes of an unparseable state file, which can include the old raw id). If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
 
 An unparseable state file is moved aside as `state.json.corrupt-<timestamp>` rather than silently replaced.
 

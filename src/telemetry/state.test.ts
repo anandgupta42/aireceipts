@@ -88,10 +88,22 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     expect(parsed.schemaVersion).toBe(1);
   });
 
-  it("concurrent fresh writers leave one valid v4 install id", async () => {
+  it("concurrent writers recovering the same corrupt file leave one parseable state and keep every backup", async () => {
+    await mkdir(join(home, ".aireceipts"), { recursive: true });
+    await writeFile(path(), "{bad", "utf8");
     await Promise.all([0, 1].map(() => updateStateWithMeta((state) => { ensureInstallId(state, true); }, home)));
     const parsed = JSON.parse(await readFile(path(), "utf8")) as { installId?: string };
     expect(parsed.installId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    const entries = await readdir(join(home, ".aireceipts"));
+    expect(entries.filter((name) => name === "state.json")).toHaveLength(1);
+    const backups = entries.filter((name) => name.startsWith("state.json.corrupt-"));
+    expect(backups.length).toBeGreaterThanOrEqual(1);
+    for (const name of backups) {
+      const bytes = await readFile(join(home, ".aireceipts", name), "utf8");
+      // The original corrupt bytes always survive; a racing recovery may also move
+      // aside a sibling's freshly written valid state (last-write-wins, SPEC-0043 R7).
+      expect(bytes === "{bad" || JSON.parse(bytes).schemaVersion === 1).toBe(true);
+    }
   });
 
   it("creates a random install id only when telemetry is enabled", async () => {

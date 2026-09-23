@@ -159,7 +159,7 @@ any conversion intervention.
 
 ### Amendment — 2026-09-22 · install identity preservation
 
-Valid JSON with a bad state field now retains any valid UUID-shaped `installId`, string
+Valid JSON with a bad state field now retains any v4 UUID `installId`, string
 `firstRunAt`, and individually valid non-negative integer counters while resetting
 invalid fields. Recovery still marks the run ordinal unavailable. Unparseable state is
 moved aside as `state.json.corrupt-<timestamp>` before a fresh id is minted when
