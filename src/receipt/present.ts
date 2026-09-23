@@ -23,6 +23,7 @@ import { combinedPricedUsd, type ModelMixEntry, type ReceiptModel, type ToolRow,
 import type { TokenUsage } from "../parse/types.js";
 import { INSTALL_FOOTER_TEXT, REPOSITORY_DISPLAY } from "./branding.js";
 import { combinedPricingCoverageOf, knownCombinedUnpricedTokens } from "./pricingCoverage.js";
+import { verificationBlocks } from "./verification.js";
 
 export type { ReceiptView } from "./blocks.js";
 export { PRICE_DELTA_NOTE, TRIVIAL_SPANS_LABEL } from "./blocks.js";
@@ -456,6 +457,7 @@ export function detailsBlocks(model: ReceiptModel): Block[] {
     blocks.push({ kind: "note", text: model.subagents ? "BY PARENT MODEL" : "BY MODEL" });
     blocks.push(...byModelRows(model));
   }
+  blocks.push(...verificationBlocks(model.verificationEvidence));
   return blocks;
 }
 

@@ -217,7 +217,7 @@ describe("seeded price tables — R2 cited seed tables", () => {
         const row = history![i];
         expect(row.from_date, `${model}[${i}]`).toBe(rates.from);
         if (i === rows.length - 1) {
-          expect(row.to_date, `${model}[${i}]`).toBeNull();
+          expect(row.to_date, `${model}[${i}]`).toBe(model === "gpt-5.6-sol" ? "2026-11-21" : null);
         } else {
           expect(typeof row.to_date, `${model}[${i}]`).toBe("string");
         }

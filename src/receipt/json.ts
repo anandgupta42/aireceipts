@@ -212,6 +212,7 @@ function receiptBody(model: ReceiptModel) {
       : null,
     // SPEC-0061 R5 — aggregate only (counts + sums); child ids/titles/paths never export.
     ...(model.subagents ? { subagents: subagentAggregateJson(model) } : {}),
+    ...(model.verificationEvidence ? { verificationEvidence: model.verificationEvidence } : {}),
   };
 }
 
