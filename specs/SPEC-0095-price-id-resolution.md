@@ -1,7 +1,7 @@
 ---
 id: SPEC-0095
 title: "Price-id resolution: cited aliases, a named unpriced-model line, comparison candidates"
-status: draft
+status: approved
 milestone: M6
 depends: [SPEC-0005, SPEC-0043, SPEC-0054]
 ---
@@ -30,10 +30,14 @@ price PRs alone cannot, and that recur at every model launch:
 
 1. **Exact-id lookup misses documented synonyms.** `resolvePrice` matches only the
    canonical key (`src/pricing/resolve.ts:26`), so a vendor-documented snapshot id such
-   as `claude-haiku-4-5-20251001` stays tokens-only even though Anthropic lists it as
+   as `claude-haiku-4-5-20251001` stayed tokens-only even though Anthropic lists it as
    the `claude-haiku-4-5` model. In the maintainer's own last-30-days Claude Code
    transcripts that id appears on 136 transcript records (records, not sessions or
-   users), all unpriced today.
+   users), all unpriced before PR #369. That PR worked around the gap by adding the
+   snapshot id as a second canonical entry in `anthropic.json` whose only row starts on
+   2026-09-22 (its observation date), so sessions before that date are still unpriced
+   and the two entries can drift apart at the next price change. R1 replaces that
+   duplicate with a cited alias whose window covers the canonical row's history.
 2. **Tokens-only is silent.** A reader cannot tell "this model is newer than the
    bundled tables" from "aireceipts is broken". The receipt should name the model, the
    table that was checked, and how recent that table's newest price citation is.
@@ -66,7 +70,14 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   the snapshot differently closes the alias with `to_date`. `resolvePrice`
   (`src/pricing/resolve.ts:19`) tries the canonical key first, then an alias in the same
   vendor table whose window contains the session date, then prices the canonical
-  model's row for that date. The resolved price keeps the canonical `model` and carries
+  model's row for that date. A canonical entry always shadows an alias: R2(a) makes an
+  id that is both a CI failure, so the price PR that introduces an alias for an id that
+  already has a canonical entry removes that entry in the same change. The first such
+  migration is `claude-haiku-4-5-20251001`: its duplicate entry from PR #369 (one row
+  from 2026-09-22) becomes an alias of `claude-haiku-4-5` with `from_date` equal to the
+  start of that model's priced history (`2026-01-01` today) and `to_date: null`, cited
+  from Anthropic's models page, so sessions before 2026-09-22 price too and the two ids
+  can no longer drift apart. The resolved price keeps the canonical `model` and carries
   the matched alias id and the alias's `sources`. `priceRowsUsed` in `--json`
   (`src/receipt/json.ts:93`) emits them as `matched_id` and `alias_sources`, so the
   dollar traces to the transcript id, the cited mapping and the cited row (I3).
@@ -121,8 +132,21 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   `buildReceiptModel` next to the partial-coverage caveat (`src/receipt/model.ts:427`),
   rendered on every surface that already renders caveats, and exported as an additive
   enum value (`src/receipt/exportSchema.ts:199`) documented in `docs/json-schema.md`. No
-  new surface renders it. The id passes through `sanitizeText`, as model-mix labels
-  already do (`src/receipt/model.ts:244`), and is never truncated.
+  new surface renders it. **Display id.** The transcript id is untrusted text, so the
+  line carries a bounded display form and `--json` carries the raw id: the caveat's
+  `detail` holds the id after `sanitizeText` (`src/parse/util.ts:112`), whole; the line
+  text uses that value with every character outside `[A-Za-z0-9._:/@+\[\]-]` replaced
+  by `?` and then capped at 64 characters with a trailing `…`. The replacement keeps
+  dollar-shaped text (`$100` inside an id) out of an unpriced receipt, where
+  `validateReceiptBlocks` rejects any `$` (`src/receipt/blocks.ts:276`), and the cap
+  keeps the SVG note, which renders as one unwrapped `<text>` element
+  (`src/receipt/svg.ts:326`), inside the card. The `+<n> more` overflow line and the
+  cap of three apply after this bounding. **Subagent rollup.** A full-session receipt
+  names unpriced ids from rolled-up child transcripts too: `rollupChildren`
+  (`src/pr/rollup.ts:99`) copies each child's `unpriced-model` caveats onto its
+  `SubagentRow`, and `attachSubagentRollup` merges them into the parent's list, deduped
+  by raw id, parent ids first and then children in row order, before the cap. The
+  generic `subagents-unpriced` caveat stays as it is. `--json` lists every merged id.
 - **R4. Coverage eligibility vs comparison eligibility.** A vendor table may carry a
   top-level `comparison_candidates` array in the `omitted` shape with a required
   citation: `{ model, reason, sources }`. A row in `models` prices sessions (coverage).
@@ -166,12 +190,19 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   in `["session_before_table", "0-7d", "8-30d", "31-90d", ">90d", "unavailable"]`. The
   question it answers: are zero-priced receipts sessions that postdate their bundled
   price evidence (a stale bundle), or sessions within it (a missing model or an old
-  install, split further by `cliVersion`)? Value: whole days from the R3 latest-citation
-  date to the session's UTC start date. With several vendors, use the oldest latest
-  citation among vendors the units resolved to; with no resolved vendor, the bundle-wide
-  date. For a multi-session receipt (a PR receipt), use the earliest session start and
-  the oldest latest citation across all sessions. `unavailable` when no start date
-  exists. Computed from bundled data and the transcript, never the wall clock. It ships
+  install, split further by `cliVersion`)? Value: whole days from the session's
+  applicable latest-citation date to the session's UTC start date, computed per session
+  and only for sessions whose pricing path actually checked a bundled table. Per
+  session: with several resolved vendors, the oldest latest citation among them; with
+  no resolved vendor but at least one unit that reached the no-vendor lookup (the R3
+  bundle-wide branch), the bundle-wide date; a session whose units all carry
+  `pricingProvider === null` or that is `unpriceable`, or that has no start date, has no
+  age. For a multi-session receipt (a PR receipt), each session's age is computed from
+  its own start and its own citation date, and the receipt reports the largest age
+  (the most stale pair); pairing the earliest start with the oldest citation across
+  sessions was rejected because it can name an age no session has. `unavailable` when no
+  session has an age. Computed from bundled data and the transcript, never the wall
+  clock. It ships
   with the SPEC-0043 disclosure in the same PR: `docs/telemetry.md`,
   `--telemetry-show`, and the schema test (`src/telemetry/schemas.test.ts`). A model id
   or vendor family field (the plan's `unpricedModelFamily`) is rejected under I4 by
@@ -181,13 +212,21 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
 
 ## Scenarios
 
-- **Given** a Claude Code session whose Haiku subagent turns record
-  `claude-haiku-4-5-20251001` and `anthropic.json` cites that id as an alias of
-  `claude-haiku-4-5`, **when** the receipt renders, **then** those turns price at the
-  `claude-haiku-4-5` row for their date, the model label reads
-  `claude-haiku-4-5-20251001`, and `--json` `priceRowsUsed` carries
-  `model: "claude-haiku-4-5"`, `matched_id: "claude-haiku-4-5-20251001"` and the
-  alias's `alias_sources`.
+- **Given** a Claude Code session dated 2026-08-10 whose Haiku subagent turns record
+  `claude-haiku-4-5-20251001`, and `anthropic.json` has replaced that id's duplicate
+  canonical entry with a cited alias of `claude-haiku-4-5` windowed from 2026-01-01,
+  **when** the receipt renders, **then** those turns price at the `claude-haiku-4-5` row
+  for their date, the model label reads `claude-haiku-4-5-20251001`, and `--json`
+  `priceRowsUsed` carries `model: "claude-haiku-4-5"`,
+  `matched_id: "claude-haiku-4-5-20251001"` and the alias's `alias_sources`. With the
+  duplicate entry still present, CI fails R2(a) naming both entries.
+- **Given** a full-session receipt whose child transcript alone runs an id no table
+  knows, **when** the receipt renders, **then** the parent's text and `--json` name that
+  id in an `unpriced-model` line next to the existing `subagents-unpriced` caveat.
+- **Given** an unpriced id containing `$100` or 200 characters, **when** the receipt
+  renders, **then** the line shows `?100` or the first 64 characters plus `…`,
+  `validateReceiptBlocks` reports no `dollar-in-unpriced` violation, the SVG stays
+  inside the card, and `--json` carries the whole sanitized id.
 - **Given** a canonical price change on date D and an alias whose sources were all
   observed before D, **when** CI runs, **then** R2(g) fails; with a source observed on or
   after D it passes, and sessions on both sides of D price at their own row.
@@ -264,7 +303,8 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
 | R3 | reason source | a unit unpriced for each resolver reason | line text chosen from the reason `priceSessionTurn` returned, not a second lookup |
 | R3 | suppressed | `unpriceable`; router provider; no vendor but id known elsewhere; missing timestamp; malformed usage; zero-usage unit; unreadable table | no line; bytes equal to the pre-change golden |
 | R3 | cap and order | five distinct unpriced ids | text: three lines in first-appearance order plus `+2 more unpriced model ids`; `--json`: all five |
-| R3 | hostile id | very long id; id with control characters | printed whole after existing sanitizing; no layout break in goldens |
+| R3 | hostile id | 200-character id; id with control characters; id containing `$100`; id with a `<text>` fragment | line shows the bounded display form (64 characters plus `…`; `?` for each disallowed character, so no `$`); `validateReceiptBlocks` passes; SVG golden stays inside the card; `--json` `detail` carries the whole sanitized id |
+| R3 | subagent rollup | parent priced; one child on an unknown id; two children sharing an unknown id | parent text and `--json` name each id once, parent ids first; `subagents-unpriced` still present |
 | R3 | latest citation | fixture tables whose alias or candidate sources are newer than any row source | date uses row sources only; per vendor; bundle-wide max for the no-vendor branch |
 | R3 | determinism | the R3 goldens | `determinism-check --runs=10` byte-identical |
 | R4 | candidate filter | fixture with a cheaper non-candidate row | `cheapestCurrentRow` returns the cheapest listed candidate |
@@ -276,14 +316,16 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
 | R5 | tripwire discovery | dataset lists a cited alias id | alias id absent from the discovery feed |
 | R5 | tripwire drift | dataset alias rate differs from the canonical row | drift entry `via alias`; exit 3 |
 | R6 | bucket math | session start vs latest citation at -1, 0, 7, 8, 30, 31, 90, 91 days; no start date | `session_before_table`, `0-7d`, `0-7d`, `8-30d`, `8-30d`, `31-90d`, `31-90d`, `>90d`, `unavailable` |
-| R6 | aggregation | two vendors with different dates; a two-session PR receipt | oldest latest citation and earliest start win |
+| R6 | aggregation | one session on two vendors with different dates; a PR receipt with a January session against a September citation and a September session against a January citation | per session the oldest citation wins; the PR receipt reports `>90d` (the September session's own pair), never `0-7d` |
+| R6 | not applicable | all units `pricingProvider === null`; an `unpriceable` session; a PR receipt whose only session with a start date is router-only | `unavailable` |
 | R6 | disclosure | `--telemetry-show`; schema test | field shown; enum-only; no model or vendor string in the payload |
 
 ## Success criteria
 
-- [ ] `claude-haiku-4-5-20251001` resolves in a real Claude Code session only after a
-      button-2 PR cites Anthropic's models page for the mapping; before that PR it shows
-      the R3 vendor-scoped absent line.
+- [ ] A real Claude Code session dated before 2026-09-22 on `claude-haiku-4-5-20251001`
+      prices only after a button-2 PR replaces PR #369's duplicate canonical entry with
+      an alias cited from Anthropic's models page; before that PR it shows the R3
+      no-price-for-date line, and CI rejects the alias while the duplicate remains.
 - [ ] Local corpus check: in the maintainer's 30-day corpus, every unpriced unit that
       falls in an R3 line-producing reason appears in `--json` caveats, and every other
       unpriced unit maps to one of the named suppression reasons. Zero units are
@@ -379,3 +421,22 @@ not aliases. `claude-fable-5-1[1m]` appears 10 times and stays unresolved by des
   path, the cut order is R6, then R5's drift half, then R3.
 
 **S4.** `node scripts/spec-lint.mjs` on this file: pass.
+
+**2026-09-23 · S5 (Codex GitHub review of PR #378, six findings, all accepted).**
+- P1, `claude-haiku-4-5-20251001` is already a canonical entry since PR #369, so the
+  motivating alias could never fire and R2(a) would reject it: Purpose, R1, the first
+  scenario and the first success criterion now describe the duplicate and require the
+  alias PR to remove it in the same change.
+- P1, a `$`-shaped id would put a dollar string into an unpriced receipt: R3 gains a
+  bounded display form (`?` for disallowed characters) with the raw id in `--json`.
+- P2, an unbounded id breaks the single-line SVG note: the same display form caps at
+  64 characters; the hostile-id matrix row now lists the four inputs and the SVG check.
+- P2, R6 pairing the earliest start with the oldest citation across sessions names an
+  age no session has: ages are per session and the PR receipt reports the largest.
+- P2, router-only and `unpriceable` sessions were assigned a bundle-wide age: they are
+  `unavailable`, and the bundle-wide date applies only to sessions that reached the
+  no-vendor lookup.
+- P2, `rollupChildren` drops child caveats: R3 propagates child `unpriced-model`
+  caveats through `SubagentRow`, deduped by raw id, with a matrix row.
+Status moved to `approved` on the maintainer's instruction to address the review and
+start the build (R1 to R5; R6 stays a maintainer question, Q4).
