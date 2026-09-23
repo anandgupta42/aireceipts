@@ -5,7 +5,7 @@
 ## tl;dr
 
 - **On by default**, but every event is one of a fixed nine-event catalog: `cli_run`, `cli_error`, `parse_failure`, `receipt_generated`, `export_generated`, `pr_flow_completed`, `hook_configured`, `integration_surface_rendered`, `activation_milestone`.
-- **Never sent**: transcript content, prompts, file paths, repo names, hostnames, usernames, session IDs, dollar amounts, raw model strings, raw counts, or session timestamps. (The App Insights wire format requires one client-stamped send time per envelope — the flush moment, nothing about your session's timeline; see "What is never sent".)
+- **Never sent**: transcript content, prompts, file paths, repo names, hostnames, usernames, session IDs, dollar amounts, raw model strings, raw counts, or session timestamps. (The App Insights wire format requires one client-stamped send time per envelope — the flush moment, nothing about your session's timeline; see "What is never sent". The receiving service also derives a coarse country and city from the sending IP before discarding the address; see "How sending works".)
 - **Pseudonymous install identity**: when telemetry is enabled, a random install id is stored locally and sent only as a salted sha256 hash so events from the same install can be counted over time. Delete `~/.aireceipts/state.json` to reset it.
 - **Disable anytime**: `AIRECEIPTS_TELEMETRY=off` (or `0`/`false`) or `DO_NOT_TRACK=1`. Either one results in **zero network calls** and prevents install-id creation on a fresh install.
 - **On by default in CI too**: `CI`/`GITHUB_ACTIONS` environments are treated the same as any other — telemetry is enabled by default there. Use a kill switch (`AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1`) to disable it in CI. (Before v0.7.0 it defaulted off in CI; reversed — see SPEC-0002.)
@@ -212,6 +212,7 @@ This prints whether telemetry is currently enabled and the exact events queued f
 - Every failure mode is swallowed inside the telemetry module. Telemetry can never throw, block the CLI, or change its exit code.
 - The transport is Azure Application Insights, reached via a connection string (`InstrumentationKey=...;IngestionEndpoint=https://.../`) POSTed to `<ingestionEndpoint>/v2/track`.
 - The App Insights wire format requires a `time` field per envelope; the sender stamps it client-side at flush (`src/telemetry/sender.ts`). It records when the batch was sent — not when your session ran, started, or ended. The "no timestamps" rule covers aireceipts' own event payload fields (`properties`), which carry only coarse buckets and no time fields.
+- **Ingestion-side geolocation.** Like every Application Insights sink, the receiving service sees the sending IP address. Azure's default handling masks the IP itself (it is stored as `0.0.0.0`) but derives and stores a coarse country and city on each row before discarding the address. aireceipts never sends, reads, or uses that field; it is not in the payload and `--telemetry-show` cannot show it, but it exists in the stored data. If you do not want even a coarse location recorded, use a kill switch (`AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1`). Blanking the field at ingestion is planned (SPEC-0085).
 
 ## Connection-string honesty
 
