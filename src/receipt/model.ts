@@ -3,6 +3,7 @@
 // exporter (SPEC-0003 R4) — neither renderer recomputes pricing/attribution;
 // they only format what's already here.
 import type { AgentSource, Session, TokenUsage } from "../parse/types.js";
+import { verificationEvidence, type VerificationEvidence } from "../analysis/verification.js";
 import { SOURCE_LABELS } from "../parse/types.js";
 import { addUsage, emptyUsage, sanitizeText } from "../parse/util.js";
 import { attributeByTool, METHODOLOGY } from "../pricing/attribution.js";
@@ -86,6 +87,7 @@ export interface SubagentAggregate {
 }
 
 export interface ReceiptModel {
+  verificationEvidence?: VerificationEvidence | null;
   agentLabel: string;
   source: AgentSource;
   sessionId: string;
@@ -444,6 +446,7 @@ export async function buildReceiptModel(session: Session, dataDir: string = defa
 
   return {
     agentLabel: SOURCE_LABELS[session.source],
+    verificationEvidence: verificationEvidence(session),
     source: session.source,
     sessionId: session.id,
     title: session.title,

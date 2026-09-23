@@ -18,6 +18,7 @@ import { renderPrArtifactHtml } from "../src/pr/html.js";
 import { renderPerCommitLines } from "../src/pr/perCommit.js";
 import type { ContributorView } from "../src/pr/body.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { verificationGoldens } from "./verification-goldens.mjs";
 
 const update = process.argv.includes("--update");
 const corpus = JSON.parse(readFileSync("eval/corpus.json", "utf8")).entries as
@@ -73,6 +74,7 @@ const nameOf = (path: string): string => path.split("/").pop()!.replace(/\.jsonl
 
 // SVG export — a priced fixture in both themes, plus a two-card compare (SPEC-0003).
 mkdirSync("goldens/svg", { recursive: true });
+await verificationGoldens(check);
 const PRICED = { source: "claude-code" as AgentSource, path: "test/fixtures/claude-code/clean-multi-tool-2-models.jsonl" };
 const LOOP = { source: "claude-code" as AgentSource, path: "test/fixtures/claude-code/loop-bash-5x.jsonl" };
 const pricedModel = await modelFor(PRICED.source, PRICED.path);
