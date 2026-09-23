@@ -49,7 +49,7 @@ function filesUnder(relDir, predicate) {
 }
 
 function sourceRelFiles() {
-  sourceRelFilesCache ??= ["scripts/goldens.mts", ...filesUnder("src", (path) => path.endsWith(".ts"))].sort();
+  sourceRelFilesCache ??= ["scripts/goldens.mts", "scripts/verification-goldens.mts", ...filesUnder("src", (path) => path.endsWith(".ts"))].sort();
   return sourceRelFilesCache;
 }
 

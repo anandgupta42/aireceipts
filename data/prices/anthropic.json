@@ -61,6 +61,11 @@
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-09-22",
               "excerpt": "The $2/$10 per million input/output token pricing for Claude Sonnet 5, announced at launch as introductory pricing through August 31, 2026, is now the standard price. The previously scheduled increase to $3/$15 per million input/output tokens on September 1, 2026 will not occur."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "Claude Sonnet 5 | $2 / MTok | $2.50 / MTok | $4 / MTok | $0.20 / MTok | $10 / MTok"
             }
           ]
         }
@@ -321,6 +326,11 @@
               "url": "https://platform.claude.com/docs/en/models/sonnet-4-6/overview",
               "observed_at": "2026-09-22",
               "excerpt": "**Legacy.** Released February 17, 2026."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Claude 4.6 and later models include the full 1M token context window at standard pricing."
             }
           ]
         }
@@ -346,6 +356,11 @@
               "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
               "observed_at": "2026-09-22",
               "excerpt": "**Legacy.** Released September 29, 2025."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
             }
           ]
         }
@@ -421,6 +436,11 @@
               "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
               "observed_at": "2026-09-22",
               "excerpt": "**Legacy.** Released September 29, 2025."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
             }
           ]
         }

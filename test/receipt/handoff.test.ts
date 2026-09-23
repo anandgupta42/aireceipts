@@ -71,7 +71,7 @@ const trivialSpans: TrivialSpansWasteLine = {
 };
 
 const STUCK_LOOP_LINE =
-  "When a command fails, do not re-run it unchanged more than twice — change the command, add logging, or stop and summarize the failure.";
+  "Before repeating a tool call with identical input, check whether the earlier result already answers it. If it does and is still current, reuse it.";
 const TRIVIAL_SPANS_LINE =
   "For short acknowledgments and single-line replies, keep responses minimal — do not restate context.";
 
@@ -147,7 +147,7 @@ describe("renderHandoff v2 (SPEC-0013 R3/R5)", () => {
       "",
       "⚠ Bash loop ×5.............................≥ $0.50",
       "  at turns 2-6",
-      "  → change or stop after two identical failures",
+      "  → check whether repeated calls were needed",
       "≈ re-priced eligible trivial spans.........≈ $0.02",
       "  (4 tiny turns, priced at a cheaper model)",
       "  → route short replies to a cheaper model",
@@ -175,7 +175,7 @@ describe("renderHandoff v2 (SPEC-0013 R3/R5)", () => {
         "",
         "⚠ Bash loop ×5.............................≥ $0.50",
         "  at turns 2-6",
-        "  → change or stop after two identical failures",
+        "  → check whether repeated calls were needed",
         "",
         "suggested CLAUDE.md rules (recurring across recent sessions — paste manually):",
         `- ${STUCK_LOOP_LINE}`,
