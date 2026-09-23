@@ -99,7 +99,7 @@
           "input_cached": 0.25,
           "input_cache_write_5m": 12.5,
           "input_cache_write_1h": 20,
-          "from_date": "2026-09-01",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -129,7 +129,7 @@
           "input_cached": 0.25,
           "input_cache_write_5m": 12.5,
           "input_cache_write_1h": 20,
-          "from_date": "2026-09-01",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -159,7 +159,7 @@
           "input_cached": 1,
           "input_cache_write_5m": 12.5,
           "input_cache_write_1h": 20,
-          "from_date": "2026-06-09",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -214,7 +214,7 @@
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
           "input_cache_write_1h": 10,
-          "from_date": "2026-07-24",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -239,7 +239,7 @@
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
           "input_cache_write_1h": 10,
-          "from_date": "2026-04-16",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -264,7 +264,7 @@
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
           "input_cache_write_1h": 10,
-          "from_date": "2026-02-05",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -289,7 +289,7 @@
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
           "input_cache_write_1h": 10,
-          "from_date": "2025-11-24",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -314,7 +314,7 @@
           "input_cached": 0.3,
           "input_cache_write_5m": 3.75,
           "input_cache_write_1h": 6,
-          "from_date": "2026-02-17",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -344,7 +344,7 @@
           "input_cached": 0.3,
           "input_cache_write_5m": 3.75,
           "input_cache_write_1h": 6,
-          "from_date": "2025-09-29",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -374,7 +374,7 @@
           "input_cached": 0.1,
           "input_cache_write_5m": 1.25,
           "input_cache_write_1h": 2,
-          "from_date": "2025-10-15",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -399,7 +399,7 @@
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
           "input_cache_write_1h": 10,
-          "from_date": "2025-11-24",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
@@ -424,7 +424,7 @@
           "input_cached": 0.3,
           "input_cache_write_5m": 3.75,
           "input_cache_write_1h": 6,
-          "from_date": "2025-09-29",
+          "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {

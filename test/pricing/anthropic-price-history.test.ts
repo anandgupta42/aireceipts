@@ -27,3 +27,13 @@ it("uses Sonnet 4.6's cited standard rate throughout its 1M context window", asy
   const usage = { input: 250_000, output: 10_000, cacheRead: 0, cacheCreation: 0, total: 260_000 };
   expect((await priceTurn("anthropic", "claude-sonnet-4-6", "2026-09-22", usage, dataDir))?.usd).toBeCloseTo(0.9, 12);
 });
+
+it.each([
+  "claude-fable-5-1", "claude-mythos-5-1", "claude-mythos-5", "claude-opus-5-5",
+  "claude-opus-5", "claude-opus-4-7", "claude-opus-4-6", "claude-opus-4-5",
+  "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-haiku-4-5-20251001",
+  "claude-opus-4-5-20251101", "claude-sonnet-4-5-20250929",
+])("does not backfill today's observed rate for %s to its launch date", async (model) => {
+  expect(await resolvePrice("anthropic", model, "2026-09-21", dataDir)).toBeNull();
+  expect(await resolvePrice("anthropic", model, "2026-09-22", dataDir)).not.toBeNull();
+});
