@@ -24,6 +24,33 @@ import {
 
 const INSTALL_HASH = "a".repeat(64);
 
+function assertDocumentedEvent(doc: string, event: typeof EVENT_NAMES[number], schema: z.ZodObject<z.ZodRawShape>): void {
+  const section = doc.split(`### \`${event}\``)[1]?.split(/\n### |\n## /)[0];
+  expect(section, `missing section for ${event}`).toBeDefined();
+  const shape = schema.shape as Record<string, z.ZodTypeAny>;
+  const rows = [...(section ?? "").matchAll(/^\| `([^`]+)` \|[^\n]*$/gm)];
+  const documentedFields = rows.map((row) => row[1]);
+  const missingFields = Object.keys(shape).filter((field) => !documentedFields.includes(field));
+  const extraFields = documentedFields.filter((field) => !(field in shape));
+  expect(documentedFields.sort(), `${event} field mismatch: ${[...missingFields, ...extraFields].join(", ")}`).toEqual(Object.keys(shape).sort());
+  for (const row of rows) {
+    const field = row[1]!;
+    const parts = row[0].split(/(?<!\\)\|/);
+    const type = parts[2]?.trim() ?? "";
+    const fieldSchema = shape[field]!;
+    const enumSchema = fieldSchema instanceof z.ZodOptional ? fieldSchema.unwrap() : fieldSchema;
+    if (type.startsWith("enum")) expect(enumSchema, `${event}.${field} is documented as enum`).toBeInstanceOf(z.ZodEnum);
+    if (!(enumSchema instanceof z.ZodEnum)) continue;
+    expect(type, `${event}.${field} must be documented as enum`).toMatch(/^enum/);
+    const documented = [...(parts[3] ?? "").matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    expect(documented.sort(), `${event}.${field} enum mismatch`).toEqual([...enumSchema.options].sort());
+  }
+  const examples = [...(section ?? "").matchAll(/```json\n([\s\S]*?)\n```/g)];
+  expect(examples.length, `${event} needs one JSON example`).toBe(1);
+  const payload = JSON.parse(examples[0]![1]!) as unknown;
+  expect(schema.safeParse(payload).success, `${event} example fails schema`).toBe(true);
+}
+
 describe("SPEC-0094 R4: schema, docs, and example parity", () => {
   const doc = readFileSync(resolve(process.cwd(), "docs/telemetry.md"), "utf8");
 
@@ -36,29 +63,20 @@ describe("SPEC-0094 R4: schema, docs, and example parity", () => {
   });
 
   it.each(EVENT_NAMES)("documents %s fields, enums and a valid literal example", (event) => {
-    const section = doc.split(`### \`${event}\``)[1]?.split(/\n### |\n## /)[0];
-    expect(section, `missing section for ${event}`).toBeDefined();
-    const schema = PROPERTIES_SCHEMA_BY_EVENT_NAME[event];
-    const shape = schema.shape as Record<string, z.ZodTypeAny>;
-    const rows = [...(section ?? "").matchAll(/^\| `([^`]+)` \|[^\n]*$/gm)];
-    const documentedFields = rows.map((row) => row[1]);
-    expect(documentedFields.sort(), `${event} field mismatch`).toEqual(Object.keys(shape).sort());
-    for (const row of rows) {
-      const field = row[1]!;
-      const parts = row[0].split(/(?<!\\)\|/);
-      const type = parts[2]?.trim() ?? "";
-      const fieldSchema = shape[field]!;
-      const enumSchema = fieldSchema instanceof z.ZodOptional ? fieldSchema.unwrap() : fieldSchema;
-      if (type.startsWith("enum")) expect(enumSchema, `${event}.${field} is documented as enum`).toBeInstanceOf(z.ZodEnum);
-      if (!(enumSchema instanceof z.ZodEnum)) continue;
-      expect(type, `${event}.${field} must be documented as enum`).toMatch(/^enum/);
-      const documented = [...(parts[3] ?? "").matchAll(/`([^`]+)`/g)].map((match) => match[1]);
-      expect(documented.sort(), `${event}.${field} enum mismatch`).toEqual([...enumSchema.options].sort());
-    }
-    const examples = [...(section ?? "").matchAll(/```json\n([\s\S]*?)\n```/g)];
-    expect(examples.length, `${event} needs one JSON example`).toBe(1);
-    const payload = JSON.parse(examples[0]![1]!) as unknown;
-    expect(schema.safeParse(payload).success, `${event} example fails schema`).toBe(true);
+    assertDocumentedEvent(doc, event, PROPERTIES_SCHEMA_BY_EVENT_NAME[event]);
+  });
+
+  it("names the event and field when a doc enum changes", () => {
+    const changed = doc.replace("| `hourOffset` | enum | `1`", "| `hourOffset` | enum | `wrong`");
+    expect(changed).not.toBe(doc);
+    expect(() => assertDocumentedEvent(changed, "statusline_heartbeat", PROPERTIES_SCHEMA_BY_EVENT_NAME.statusline_heartbeat))
+      .toThrow(/statusline_heartbeat\.hourOffset enum mismatch/);
+  });
+
+  it("names the event and field when a schema changes", () => {
+    const changed = integrationSurfaceRenderedPropertiesSchema.extend({ inventedField: z.boolean() });
+    expect(() => assertDocumentedEvent(doc, "integration_surface_rendered", changed))
+      .toThrow(/integration_surface_rendered field mismatch: inventedField/);
   });
 });
 

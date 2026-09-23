@@ -40,7 +40,7 @@ export interface CommandContext {
     recordPrFlowCompleted(input: RecordPrFlowCompletedInput): void;
     recordHookConfigured(input: RecordHookConfiguredInput): void;
     recordIntegrationSurfaceRendered(input: RecordIntegrationSurfaceRenderedInput): void;
-    noteStatuslinePoll(info?: import("./commands/statusline.js").StatuslineTelemetryInfo, err?: unknown): Promise<void>;
+    noteStatuslinePoll(info?: import("../telemetry/index.js").StatuslineTelemetryInfo, err?: unknown): Promise<void>;
     noteMilestone(milestone: MilestoneValue, command: string): Promise<void>;
   };
   /** The assembled `--help` text (registry-driven), for the help command. */
@@ -66,8 +66,6 @@ export interface CommandDef {
   /** Higher `priority` is checked first; the first `matches` hit wins. receipt = 0 (default). */
   readonly priority: number;
   matches(options: CliOptions): boolean;
-  /** SPEC-0075 R6 — invocation-level network flush policy; local recording still runs. */
-  shouldFlushTelemetry?(options: CliOptions): boolean;
   run(ctx: CommandContext): number | Promise<number>;
   readonly help?: HelpEntry;
 }

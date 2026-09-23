@@ -85,7 +85,13 @@ function parseState(parsed: unknown): { state: TelemetryState; recovered: boolea
     (statusline.failedPollCount as number) <= (statusline.pollCount as number) &&
     Array.isArray(statusline.surfaces) && statusline.surfaces.every(validSurface) &&
     Array.isArray(statusline.errorClasses) && statusline.errorClasses.every((v: unknown) => ERROR_CLASS_VALUES.includes(v as typeof ERROR_CLASS_VALUES[number]))) {
-    state.statusline = statusline as unknown as StatuslineState;
+    state.statusline = {
+      hour: statusline.hour as string,
+      pollCount: statusline.pollCount as number,
+      failedPollCount: statusline.failedPollCount as number,
+      surfaces: statusline.surfaces as string[],
+      errorClasses: statusline.errorClasses as string[],
+    };
   }
   return { state, recovered };
 }

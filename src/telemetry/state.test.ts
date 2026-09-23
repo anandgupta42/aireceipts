@@ -23,6 +23,15 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     await expect(readState(home)).resolves.toEqual({ schemaVersion: 1, runCount: 0, receiptCount: 0, milestones: {} });
   });
 
+  it("drops unknown statusline keys while preserving its five known fields", async () => {
+    await mkdir(join(home, ".aireceipts"));
+    const statusline = { hour: "2026-09-22T21", pollCount: 2, failedPollCount: 1, surfaces: [], errorClasses: [], injected: "discard" };
+    await writeFile(path(), JSON.stringify({ schemaVersion: 1, runCount: 2, receiptCount: 0, milestones: {}, statusline }));
+    expect((await readState(home)).statusline).toEqual({ hour: statusline.hour, pollCount: 2, failedPollCount: 1, surfaces: [], errorClasses: [] });
+    await updateState(() => {}, home);
+    expect(JSON.parse(await readFile(path(), "utf8")).statusline).not.toHaveProperty("injected");
+  });
+
   it("corrupt state self-heals on the next successful update", async () => {
     await writeFile(path(), "{not json", "utf8").catch(async () => {
       await updateState(() => {}, home);

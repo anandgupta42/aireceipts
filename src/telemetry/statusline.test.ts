@@ -60,7 +60,16 @@ describe("SPEC-0094 R1 statusline", () => {
   it("reports both alternating surface tuples once", async () => {
     for (let i = 0; i < 30; i++) await noteStatuslinePoll({ ...SURFACE, scoped: i % 2 === 0 }, undefined, ENV, BASE + i);
     expect(rows("integration_surface_rendered")).toHaveLength(2);
-    expect(rows("integration_surface_rendered")[0]?.properties).toMatchObject({ cliVersion: expect.any(String), installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: expect.any(Boolean) });
+    expect(rows("integration_surface_rendered")[0]?.properties).toMatchObject({ cliVersion: expect.any(String), installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: false });
+  });
+
+  it.each([true, false])("uses CI=%s on surface and heartbeat rows", async (ci) => {
+    const env = { ...ENV, CI: ci ? "true" : "", GITHUB_ACTIONS: "" };
+    await noteStatuslinePoll(SURFACE, undefined, env, BASE);
+    await noteStatuslinePoll(SURFACE, undefined, env, BASE + 3_600_000);
+    for (const name of ["integration_surface_rendered", "statusline_heartbeat"]) {
+      expect(rows(name)[0]?.properties).toMatchObject({ isCI: ci, cliVersion: expect.any(String), installHash: expect.stringMatching(/^[0-9a-f]{64}$/) });
+    }
   });
 
   it.each([[1,"1"],[10,"2-10"],[11,"11-50"],[200,"51-200"],[201,">200"]] as const)("buckets %i polls", async (count, bucket) => {
@@ -77,14 +86,27 @@ describe("SPEC-0094 R1 statusline", () => {
     expect(rows("statusline_heartbeat")[0]?.properties).toMatchObject({ failedPollCountBucket: bucket });
   });
 
-  it.each([[1,"1"],[3,"3"],[24,"24"],[72,">24"]] as const)("uses closed offset for %i completed hours", async (hours, offset) => {
+  it.each([[1,"1"],[2,"2"],[24,"24"],[25,">24"],[72,">24"]] as const)("uses closed offset for %i completed hours", async (hours, offset) => {
     await noteStatuslinePoll(undefined, undefined, ENV, BASE);
     await noteStatuslinePoll(undefined, undefined, ENV, BASE + hours * 3_600_000);
     const payload = rows("statusline_heartbeat")[0]?.properties;
     expect(payload).toMatchObject({ hourOffset: offset });
+    if (hours <= 24) {
+      const arrivalHour = Math.floor((BASE + hours * 3_600_000) / 3_600_000);
+      expect(arrivalHour - Number((payload as Record<string, unknown> | undefined)?.hourOffset)).toBe(Math.floor(BASE / 3_600_000));
+    }
     expect(payload).not.toHaveProperty("hour");
     expect(payload).not.toHaveProperty("date");
     expect(payload).not.toHaveProperty("durationBucket");
+  });
+
+  it("counts a backwards-clock poll into the stored hour without a heartbeat", async () => {
+    await noteStatuslinePoll(undefined, undefined, ENV, BASE + 3_600_000);
+    await noteStatuslinePoll(undefined, undefined, ENV, BASE);
+    expect(rows("statusline_heartbeat")).toHaveLength(0);
+    expect((await readState(home)).statusline).toMatchObject({ hour: "2026-09-22T22", pollCount: 2 });
+    await noteStatuslinePoll(undefined, undefined, ENV, BASE + 2 * 3_600_000);
+    expect(rows("statusline_heartbeat")[0]?.properties).toMatchObject({ hourOffset: "1", pollCountBucket: "2-10" });
   });
 
   it("dedupes thrown classes, counts every throw, resets at rollover", async () => {
@@ -98,10 +120,12 @@ describe("SPEC-0094 R1 statusline", () => {
     expect(rows("statusline_heartbeat")[0]?.properties).toMatchObject({ failedPollCountBucket: "2-10" });
   });
 
-  it("keeps disabled state untouched and sends no request", async () => {
+  it("tracks first run locally while keeping disabled statusline and install id absent", async () => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     for (let i = 0; i < 50; i++) await noteStatuslinePoll(SURFACE, undefined, { ...ENV, DO_NOT_TRACK: "1" }, BASE + i);
     expect((await readState(home)).statusline).toBeUndefined();
+    expect(await readState(home)).toMatchObject({ firstRunAt: "2026-09-22", milestones: { first_run: true }, runCount: 50 });
+    expect((await readState(home)).installId).toBeUndefined();
     await flushTelemetry({ env: { ...ENV, DO_NOT_TRACK: "1" } });
     expect(fetch).not.toHaveBeenCalled();
   });

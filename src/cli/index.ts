@@ -5,7 +5,7 @@
 // exactly the telemetry lifecycle (R6): parse → select → first-run notice → run →
 // record → bounded flush. The re-exports keep the statusline and handoff test
 // entry points importable from `src/cli/index.js` across the refactor.
-import { ensureFirstRunNotice, flushTelemetry, noteRunStart, noteStatuslinePoll, recordCliError, recordCliRun, showTelemetryPayload } from "../telemetry/index.js";
+import { ensureFirstRunNotice, flushTelemetry, noteRunStart, noteStatuslinePoll, peekQueuedEvents, recordCliError, recordCliRun } from "../telemetry/index.js";
 import { parseOptions } from "./options.js";
 import { loadCommands, selectCommand } from "./registry.js";
 import { createContext } from "./context.js";
@@ -59,7 +59,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     }
     return isSilentHook ? 0 : 1;
   } finally {
-    if (!skipTelemetry && (command.name !== "statusline" || showTelemetryPayload().events.length > 0)) {
+    if (!skipTelemetry && (command.name !== "statusline" || peekQueuedEvents().length > 0)) {
       await flushTelemetry();
     }
   }

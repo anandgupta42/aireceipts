@@ -1,5 +1,5 @@
 import type { AgentSource } from "../parse/types.js";
-import { resolveTelemetryConfig } from "./config.js";
+import { killSwitchActive, resolveTelemetryConfig } from "./config.js";
 import {
   bucketCount,
   bucketDuration,
@@ -23,7 +23,6 @@ import {
   updateStateWithMeta,
 } from "./state.js";
 import { peekQueuedEvents, recordEvent, flushTelemetry } from "./sender.js";
-import type { StatuslineTelemetryInfo } from "../cli/commands/statusline.js";
 import { hashSignature } from "./signature.js";
 import type {
   ExportFormatValue,
@@ -52,8 +51,17 @@ import type {
  * `AGENTS.md`/SPEC-0002/SPEC-0043 for the invariants this module upholds.
  */
 
-export { flushTelemetry, ensureFirstRunNotice, FIRST_RUN_NOTICE, readState };
+export { flushTelemetry, ensureFirstRunNotice, FIRST_RUN_NOTICE, readState, peekQueuedEvents };
 export type { TelemetryState };
+
+export interface StatuslineTelemetryInfo {
+  inputMode: InputModeValue;
+  payloadValid: boolean;
+  result: ResultValue;
+  customFormat: boolean;
+  scoped: boolean;
+  configFile: boolean;
+}
 
 export interface RunStartTelemetry {
   installHash: string;
@@ -262,7 +270,12 @@ export interface RecordIntegrationSurfaceRenderedInput {
 }
 
 export function recordIntegrationSurfaceRendered(input: RecordIntegrationSurfaceRenderedInput): void {
-  recordEvent({ name: "integration_surface_rendered", properties: input });
+  recordEvent({ name: "integration_surface_rendered", properties: {
+    cliVersion: getCliVersion(),
+    installHash: currentRunIdentity?.installHash ?? "unavailable",
+    isCI: currentRunIdentity?.isCI ?? isCiEnv(),
+    ...input,
+  } });
 }
 
 function pollBucket(count: number): "1" | "2-10" | "11-50" | "51-200" | ">200" {
@@ -287,7 +300,11 @@ export async function noteStatuslinePoll(
   now: number = Date.now(),
 ): Promise<void> {
   if (!resolveTelemetryConfig(env).enabled) {
-    await updateStateWithMeta((state) => { state.runCount += 1; });
+    await updateStateWithMeta((state) => {
+      state.firstRunAt ??= isoDate(now);
+      state.runCount += 1;
+      state.milestones.first_run = true;
+    });
     return;
   }
   const hour = new Date(now).toISOString().slice(0, 13);
@@ -305,7 +322,7 @@ export async function noteStatuslinePoll(
       state.milestones.first_run = true;
       firstRun = true;
     }
-    if (state.statusline?.hour !== hour) {
+    if (state.statusline === undefined || state.statusline.hour < hour) {
       completed = state.statusline;
       state.statusline = { hour, pollCount: 0, failedPollCount: 0, surfaces: [], errorClasses: [] };
     }
@@ -337,7 +354,7 @@ export async function noteStatuslinePoll(
       runOrdinalBucket: result.recovered ? "unavailable" : bucketOrdinal(result.state.runCount),
       pollCountBucket: pollBucket(completed.pollCount),
       failedPollCountBucket: failedPollBucket(completed.failedPollCount),
-      hourOffset: offset >= 1 && offset <= 24 ? String(offset) as (typeof import("./schemas.js").HOUR_OFFSET_VALUES)[number] : ">24",
+      hourOffset: offset <= 24 ? String(offset) as (typeof import("./schemas.js").HOUR_OFFSET_VALUES)[number] : ">24",
     } });
   }
   if (newSurface && info) recordIntegrationSurfaceRendered({ integration: "statusline", ...info, ...identity });
@@ -466,8 +483,7 @@ export async function noteMilestone(milestone: MilestoneValue, command: string, 
  */
 export function showTelemetryPayload(env: NodeJS.ProcessEnv = process.env): { enabled: boolean; events: readonly unknown[]; reason?: "development-build" } {
   const config = resolveTelemetryConfig(env);
-  const telemetrySetting = env.AIRECEIPTS_TELEMETRY?.trim().toLowerCase();
-  const killed = telemetrySetting === "off" || telemetrySetting === "0" || telemetrySetting === "false" || env.DO_NOT_TRACK === "1";
+  const killed = killSwitchActive(env);
   return { enabled: config.enabled, events: peekQueuedEvents(),
     ...(!config.enabled && !killed && env.AIRECEIPTS_TELEMETRY_CONNECTION === undefined && isDevelopmentBuild()
       ? { reason: "development-build" as const } : {}) };

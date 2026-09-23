@@ -51,7 +51,7 @@ function explicitTelemetryValue(env: NodeJS.ProcessEnv): "on" | "off" | undefine
   return undefined;
 }
 
-function killSwitchActive(env: NodeJS.ProcessEnv): boolean {
+export function killSwitchActive(env: NodeJS.ProcessEnv): boolean {
   if (explicitTelemetryValue(env) === "off") {
     return true;
   }

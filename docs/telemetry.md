@@ -212,12 +212,12 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 | `customFormat` | boolean (optional) | | statusline only (SPEC-0062): an explicit `--format` was passed. The boolean only — never the format string. |
 | `scoped` | boolean (optional) | | statusline only (SPEC-0075 R6): `--cwd` was supplied. The boolean only — never the path. |
 | `configFile` | boolean (optional) | | statusline only (SPEC-0075 R6): a valid `statusline.json` supplied the item order. The boolean only — never the items. |
-| `cliVersion` | string (optional) | semver | Present on statusline rows. |
-| `installHash` | string (optional) | 64-hex sha256 or `unavailable` | Present on statusline rows. |
-| `isCI` | boolean (optional) | | Present on statusline rows. |
+| `cliVersion` | string (optional) | semver | Present on statusline and quota rows. |
+| `installHash` | string (optional) | 64-hex sha256 or `unavailable` | Present on statusline and quota rows. |
+| `isCI` | boolean (optional) | | Present on statusline and quota rows. |
 | `result` | enum | `success` \| `no_data` \| `invalid_args` \| `declined` \| `external_missing` \| `external_failed` \| `write_failed` \| `internal_error` | |
 
-Scoped and unscoped statusline polls use the same rule: the queue is flushed only when non-empty. A statusline surface tuple is reported at most once per UTC hour in sequential execution. Quota rows retain their prior shape and per-run behavior; the identity trio is optional in the shared schema because quota does not provide it.
+Scoped and unscoped statusline polls use the same rule: the queue is flushed only when non-empty. A statusline surface tuple is reported at most once per UTC hour in sequential execution. Quota rows are reported per run and carry the current run's identity trio. The trio remains optional in the shared schema for older payloads.
 
 ```json
 {

@@ -218,20 +218,55 @@ describe("SPEC-0043 command-path telemetry", () => {
   });
 
   it("enabled scoped and unscoped statuslines flush only when the queue has an event", async () => {
-    process.env.AIRECEIPTS_TELEMETRY = "on";
-    process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
-    const transcriptPath = join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl");
-    const poll = (args: string[]) => withStdinPayload(JSON.stringify({ transcript_path: transcriptPath }), () => main(args));
-    expect(await poll(["statusline", "--cwd", home])).toBe(0);
-    expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(1);
-    expect(peekQueuedEvents().filter((event) => event.name === "cli_run")).toHaveLength(0);
-    __resetQueueForTests(); // The mocked flush does not drain its queue.
-    expect(await poll(["statusline", "--cwd", home])).toBe(0);
-    expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(1);
-    expect(await poll(["statusline"])).toBe(0);
-    expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(2);
-    delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
-    process.env.AIRECEIPTS_TELEMETRY = "off";
+    const priorConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    const priorTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T21:30:00Z"));
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      const transcriptPath = join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl");
+      const poll = (args: string[]) => withStdinPayload(JSON.stringify({ transcript_path: transcriptPath }), () => main(args));
+      expect(await poll(["statusline", "--cwd", home])).toBe(0);
+      expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(1);
+      expect(peekQueuedEvents().filter((event) => event.name === "cli_run")).toHaveLength(0);
+      __resetQueueForTests(); // The mocked flush does not drain its queue.
+      expect(await poll(["statusline", "--cwd", home])).toBe(0);
+      expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(1);
+      expect(await poll(["statusline"])).toBe(0);
+      expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(2);
+      __resetQueueForTests();
+      expect(await poll(["statusline"])).toBe(0);
+      expect(telemetry.flushTelemetry).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+      if (priorConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = priorConnection;
+      if (priorTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = priorTelemetry;
+    }
+  });
+
+  it.each([true, false])("quota surface carries run identity with CI=%s", async (ci) => {
+    const priorCI = process.env.CI;
+    const priorActions = process.env.GITHUB_ACTIONS;
+    const priorConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    const priorTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    try {
+      process.env.CI = ci ? "true" : "";
+      process.env.GITHUB_ACTIONS = "";
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      const payload = JSON.stringify({ rate_limits: { five_hour: { used_percentage: 20 } } });
+      expect(await withStdinPayload(payload, () => main(["--quota"]))).toBe(0);
+      const surface = peekQueuedEvents().find((event) => event.name === "integration_surface_rendered");
+      expect(surface?.properties).toMatchObject({ integration: "quota", cliVersion: expect.any(String), installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: ci });
+    } finally {
+      for (const [key, value] of [["CI", priorCI], ["GITHUB_ACTIONS", priorActions], ["AIRECEIPTS_TELEMETRY_CONNECTION", priorConnection], ["AIRECEIPTS_TELEMETRY", priorTelemetry]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
   });
 
   // SPEC-0054 R8 — detailsView is true only for renders that carry the DETAILS

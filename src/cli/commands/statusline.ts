@@ -18,19 +18,8 @@ import { DEFAULT_FORMAT, parseFormat, renderSegments, SEGMENT_NAMES } from "../s
 import { loadStatuslineFormatConfig } from "../statuslineConfig.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
-import type { InputModeValue, ResultValue } from "../../telemetry/schemas.js";
-
-export interface StatuslineTelemetryInfo {
-  inputMode: InputModeValue;
-  payloadValid: boolean;
-  result: ResultValue;
-  /** SPEC-0062 R5 — the invocation carried an explicit `--format` (boolean, never the format string). */
-  customFormat: boolean;
-  /** SPEC-0075 R6 — boolean only; the raw `--cwd` path must never enter a telemetry payload. */
-  scoped: boolean;
-  /** SPEC-0075 R6 — boolean only; config contents must never enter a telemetry payload. */
-  configFile: boolean;
-}
+import type { StatuslineTelemetryInfo } from "../../telemetry/index.js";
+import type { InputModeValue } from "../../telemetry/schemas.js";
 
 /**
  * R3a: read the whole of `stream`. TTY streams (interactive terminal, no pipe)
