@@ -90,6 +90,9 @@ caveat: model <id> omitted from bundled <vendor> price table; tokens only
 caveat: model <id> has no bundled <vendor> price for <session date>; tokens only
 ```
 
+The bundle-wide absence line appears only when every discovered price table loads
+successfully. A missing or unreadable table suppresses the line.
+
 Text receipts show at most three such lines, followed by
 `caveat: +<n> more unpriced model ids` when more exist. JSON retains every caveat.
 

@@ -329,6 +329,7 @@ async function unpricedReason(vendor: string | undefined, id: string, dateISO: s
   const tables = lookup ? await lookup.bundle! : await readdir(dataDir)
     .then((files) => Promise.all(files.filter((file) => file.endsWith(".json")).sort()
       .map((file) => loadPriceTable(file.slice(0, -5), dataDir)))).catch(() => []);
+  if (tables.some((table) => !table)) return null;
   if (tables.some((table) => table && (Object.hasOwn(table.models, id) || table.omitted?.some((entry) => entry.model === id) ||
     Object.values(table.models).some((entry) => entry.aliases?.some((alias) => alias.id === id))))) return null;
   const citation = tables.map(latestCitation).filter((date): date is string => date !== undefined).sort().at(-1);

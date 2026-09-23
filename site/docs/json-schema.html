@@ -403,6 +403,8 @@ caveat: model &lt;id&gt; not in bundled price tables (latest citation &lt;date&g
 caveat: model &lt;id&gt; omitted from bundled &lt;vendor&gt; price table; tokens only
 caveat: model &lt;id&gt; has no bundled &lt;vendor&gt; price for &lt;session date&gt;; tokens only</code></pre>
 
+<p>The bundle-wide absence line appears only when every discovered price table loads successfully. A missing or unreadable table suppresses the line.</p>
+
 <p>Text receipts show at most three such lines, followed by <code>caveat: +&lt;n&gt; more unpriced model ids</code> when more exist. JSON retains every caveat.</p>
 
 <h3 id="netcache-object">NetCache object</h3>

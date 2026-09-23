@@ -168,6 +168,22 @@ describe("SPEC-0095 price ids", () => {
     writeFileSync(path.join(dir, "openai.json"), "{");
     expect((await buildReceiptModel(base, dir)).caveats.some((c) => c.kind === "unpriced-model")).toBe(false);
   });
+  it("suppresses a no-vendor reason when any bundled table is unreadable", async () => {
+    const bundleDir = mkdtempSync(path.join(tmpdir(), "price-id-bundle-"));
+    try {
+      const valid: PriceTable = { vendor: "openai", models: { "gpt-a": { price_history: [row] } } };
+      writeFileSync(path.join(bundleDir, "openai.json"), JSON.stringify(valid));
+      const malformedPath = path.join(bundleDir, "anthropic.json");
+      writeFileSync(malformedPath, "{");
+      const unknown = session(["us.anthropic.x:0"]);
+      expect((await buildReceiptModel(unknown, bundleDir)).caveats.some((c) => c.kind === "unpriced-model")).toBe(false);
+      rmSync(malformedPath);
+      expect((await buildReceiptModel(unknown, bundleDir)).caveats.find((c) => c.kind === "unpriced-model")?.text)
+        .toBe("caveat: model us.anthropic.x:0 not in bundled price tables (latest citation 2026-02-01); tokens only");
+    } finally {
+      rmSync(bundleDir, { recursive: true, force: true });
+    }
+  });
   it("filters candidates and disables comparisons when no current candidate exists", async () => {
     table({ models: { "gpt-a": { price_history: [row] }, "gpt-cheaper": { price_history: [{ ...row, input: 0.1 }] } } });
     expect((await cheapestCurrentRow("openai", dir))?.model).toBe("gpt-a");
