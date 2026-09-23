@@ -75,8 +75,8 @@ function comparableField(row, keys) {
 // are grouped separately and not counted.
 const TEXT_MODES = new Set(["chat", "responses"]);
 
-// A canonical id must look like one of the vendor's own ids; otherwise it is a
-// third-party model the vendor merely hosts (`vertex_ai/xai/grok-4.6`).
+// When the dataset names a provider, trust that evidence. For unlabeled rows,
+// accept only ids with a recognized vendor prefix.
 const VENDOR_ID_PATTERNS = {
   anthropic: /^claude-/,
   deepseek: /^deepseek-/,
@@ -199,7 +199,12 @@ function discoveryFeed(tables, dataset, today) {
       const modelId = canonicalId(rawId);
       // `ft:<base>` rows are fine-tuning price entries, not vendor model ids.
       if (modelId.startsWith("ft:") || known.has(modelId)) continue;
-      if (idPattern && !idPattern.test(modelId)) continue;
+      if (table.vendor === "openai") {
+        // OpenAI also uses ids such as codex-mini-latest; a labeled third-party
+        // provider must not slip through because its id happens to start with gpt-.
+        if (row.litellm_provider !== "openai" &&
+            (row.litellm_provider || !idPattern.test(modelId))) continue;
+      } else if (idPattern && !idPattern.test(modelId)) continue;
       if (!rowsById.has(modelId)) rowsById.set(modelId, []);
       rowsById.get(modelId).push(row);
     }
