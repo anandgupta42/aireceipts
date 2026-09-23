@@ -243,6 +243,7 @@ async function buildModelMix(session: Session, byModelUsd: { model: string; usd:
   const grandTotal = [...mixMap.values()].reduce((sum, t) => sum + t.total, 0);
   return [...mixMap.entries()]
     .map(([model, tokens]) => ({
+      // SPEC-0095 R3 — an unpriced id is untrusted text; `$` becomes `?` so an unpriced receipt never shows a dollar-shaped string (I2).
       model: usdMap.has(model) ? sanitizeText(model) : sanitizeText(model).replace(/\$/g, "?"),
       tokens,
       tokenShare: grandTotal > 0 ? tokens.total / grandTotal : 0,
@@ -325,7 +326,7 @@ export async function buildReceiptModel(session: Session, dataDir: string = defa
     attribution.totalUsd !== null && attribution.unpricedTokens.total === 0 && !attribution.costLowerBoundCacheTier
       ? await priceDeltaFootnote(session, attribution.totalTokens, attribution.totalUsd, dataDir)
       : null;
-  const trivialSpans = priceDelta ? await detectTrivialSpans(session, dataDir) : null;
+  const trivialSpans = await detectTrivialSpans(session, dataDir);
 
   const modelMix = await buildModelMix(session, attribution.byModelUsd);
   const toolRows = sortToolRows(attribution.byTool);
@@ -387,7 +388,8 @@ export async function buildReceiptModel(session: Session, dataDir: string = defa
   const unobservedCacheWriteTokens =
     session.source === "codex" &&
     attribution.totalUsd !== null &&
-    attribution.byModelUsd.some((entry) => entry.model.startsWith("gpt-5.6-"));
+    attribution.byModelUsd.some((entry) => entry.model.startsWith("gpt-5.6-") ||
+      priceRowsUsed.some((row) => row.matched_id === entry.model && row.model.startsWith("gpt-5.6-")));
   // SPEC-0044 A3 — `costLowerBoundCacheTier` is only ever set from a PRICED
   // turn whose cache-write actually fell back to an uncited rate
   // (attribution.ts guards on `priced !== null && priced.cacheWriteLowerBound`,

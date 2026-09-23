@@ -68,9 +68,7 @@ legacy dollar scalars.
 | `combinedUnpricedTokensScope` | literal `parent-session-plus-readable-subagents` | Explicit scope of `combinedUnpricedTokens`. |
 | `combinedPricingCoverage` | enum | Coverage of `combinedPricedUsd`: `full`, `partial`, or `unpriced`. Parent gaps, exact child unpriced usage, unreadable children, failed child discovery, dropped child records, and child cache-rate/write omissions make a priced combination `partial`. |
 | `wasteLines` | array | Legacy field name for detector-flagged heuristic patterns; a row is evidence to inspect, not proven waste or savings. See WasteLine. |
-| `detail` | string, optional | Full sanitized transcript id for an `unpriced-model` caveat. |
 | `caveats` | array | Confidence facts, never a ranking: `kind` (`time-mtime` \| `time-span` \| `cost-lower-bound-cache-tier` \| `unobserved-cache-write-tokens` \| `unattributed-aggregate-usage` \| `dropped-transcript-records` \| `partial-priced-coverage` \| `unpriced-model` \| `subagents-unreadable` \| `subagents-unpriced` \| `subagents-priced-tokens-only` \| `subagents-dropped-records` \| `subagent-rollup-unavailable`) + `text`, and optional `detail` containing the full sanitized id for `unpriced-model`. Never changes the arithmetic itself. Empty when nothing extra is known. |
-
 | `budget` | array (optional) | Advisory budget lines (SPEC-0009); present only when `~/.aireceipts/budget.json` is configured. |
 | `priceDelta` | PriceDelta \| null | Candidate repricing when strictly below the observed floor; otherwise null. |
 | `methodology` | string | The attribution methodology string (I3). |
@@ -82,7 +80,8 @@ legacy dollar scalars.
 | `subagents` | Subagents (optional) | SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths. |
 
 An `unpriced-model` caveat uses one of these exact text forms, with the
-transcript id bounded for display:
+transcript id bounded for display (for the same reason, an unpriced model's
+label in `modelMix` has every `$` replaced by `?`; priced labels are unchanged):
 
 ```text
 caveat: model <id> not in bundled <vendor> price table (latest citation <date>); tokens only
@@ -211,6 +210,7 @@ An additive interpretation beside legacy numeric dollar fields. Spend CostEstima
 |---|---|---|
 | `kind` | enum | Includes `time-mtime`, `time-span`, `cost-lower-bound-cache-tier` (observed cached reads/writes had no cited applicable rate and contributed zero), `unobserved-cache-write-tokens` (the Codex GPT-5.6 trace has no cache-write bucket, so any write premium is absent from the floor), and `unattributed-aggregate-usage`. The last kind covers several no-trustworthy-join cases distinguished by `text`: Claude id-less usage is one coherent unpriced envelope; an unreconciled Codex cumulative stream disables request-level pricing and preserves the local envelope as tokens; a componentwise-dominating OpenCode aggregate yields an unpriced bucket on a full receipt and is excluded from a partial slice; crossed aggregate/itemized vectors keep itemized totals and expose only positive aggregate-only components as conflicting evidence excluded from totals and floor. |
 | `text` | string | The rendered caveat line, verbatim. |
+| `detail` | string, optional | Full sanitized transcript id for an `unpriced-model` caveat. |
 
 ### WasteLine (discriminated on `kind`)
 
@@ -240,7 +240,7 @@ any contributing turn is unpriced, I2), and reports prompt-only `tokens`.
 | `baselineUsd` | number | Explicit replacement for the misleading legacy name `actualUsd`; the observed session's Standard-API floor, never an invoice. |
 | `baselineCostEstimate` | CostEstimate | Structured lower-bound semantics for `baselineUsd`. |
 
-Also carries `cheaperModel` (the cheapest current model), `usd` (the re-priced lower-bound scalar), and `costEstimate` (its structured lower-bound semantics).
+Also carries `cheaperModel` (the cheapest listed comparison candidate, emitted only when strictly cheaper for the session), `usd` (the re-priced lower-bound scalar), and `costEstimate` (its structured lower-bound semantics).
 
 ### PriceRowUsed
 

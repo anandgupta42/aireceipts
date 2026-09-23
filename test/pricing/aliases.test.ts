@@ -22,7 +22,7 @@ function aliasErrors(input: PriceTable[]): string[] {
     for (const omitted of table.omitted ?? []) ids.set(omitted.model, [...(ids.get(omitted.model) ?? []), `${table.vendor}/${omitted.model} omitted`]);
   }
   for (const table of input) for (const [model, entry] of Object.entries(table.models)) {
-    const history = entry.price_history;
+    const history = [...entry.price_history].sort((a, b) => a.from_date.localeCompare(b.from_date));
     for (const alias of entry.aliases ?? []) {
       const at = `${table.vendor}/${model} alias ${alias.id}`;
       const previous = ids.get(alias.id) ?? [];
@@ -47,15 +47,40 @@ function aliasErrors(input: PriceTable[]): string[] {
 
 describe("SPEC-0095 R2 alias integrity", () => {
   it("validates every live vendor table", () => expect(aliasErrors(tables)).toEqual([]));
-  it("names canonical, omitted, cross-vendor and same-vendor collisions", () => {
+  it("names both entries for each isolated collision", () => {
     const source = { url: "https://example.com", observed_at: "2026-01-01", excerpt: "same price" };
     const row = { input: 1, output: 2, from_date: "2026-01-01", to_date: null, sources: [source] };
     const alias = (id: string) => ({ id, from_date: "2026-01-01", to_date: null, sources: [source] });
-    const a: PriceTable = { vendor: "anthropic", models: { "claude-a": { price_history: [row], aliases: [alias("claude-b"), alias("claude-b"), alias("gpt-a"), alias("claude-o")] }, "claude-b": { price_history: [row] } }, omitted: [{ model: "claude-o", reason: "x" }] };
-    const b: PriceTable = { vendor: "openai", models: { "gpt-a": { price_history: [row] } } };
-    expect(aliasErrors([a, b]).join("\n")).toContain("duplicates");
-    expect(aliasErrors([a, b]).join("\n")).toContain("omitted");
-    expect(aliasErrors([a, b]).join("\n")).toContain("routes outside");
+    const fixture = (vendor: string, model: string, ids: string[] = []): PriceTable =>
+      ({ vendor, models: { [model]: { price_history: [row], ...(ids.length ? { aliases: ids.map(alias) } : {}) } } });
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["claude-b"]), fixture("anthropic", "claude-b")])).toContain("anthropic/claude-a alias claude-b duplicates anthropic/claude-b canonical");
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["gpt-a"]), fixture("openai", "gpt-a")])).toContain("anthropic/claude-a alias gpt-a duplicates openai/gpt-a canonical");
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["claude-s"]), fixture("anthropic", "claude-b", ["claude-s"])] )).toContain("anthropic/claude-b alias claude-s duplicates anthropic/claude-a alias claude-s");
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["gpt-s"]), fixture("openai", "gpt-b", ["gpt-s"])] )).toContain("openai/gpt-b alias gpt-s duplicates anthropic/claude-a alias gpt-s");
+    const omitted = fixture("anthropic", "claude-a", ["claude-o"]);
+    omitted.omitted = [{ model: "claude-o", reason: "fixture" }];
+    expect(aliasErrors([omitted])).toContain("anthropic/claude-a alias claude-o duplicates anthropic/claude-o omitted");
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["gpt-x"])] )).toContain("anthropic/claude-a alias gpt-x routes outside anthropic");
+    expect(aliasErrors([fixture("anthropic", "claude-a", ["claude-a"])] )).toContain("anthropic/claude-a alias claude-a duplicates anthropic/claude-a canonical");
+  });
+  it("names an unreachable alias and its canonical entry", () => {
+    const source = { url: "https://example.com", observed_at: "2026-01-01", excerpt: "same price" };
+    const row = { input: 1, output: 2, from_date: "2026-01-01", to_date: null, sources: [source] };
+    const table: PriceTable = { vendor: "anthropic", models: { "claude-a": { price_history: [row], aliases: [{ id: "gpt-b", from_date: "2026-01-01", to_date: null, sources: [source] }] } } };
+    expect(aliasErrors([table])).toEqual(["anthropic/claude-a alias gpt-b routes outside anthropic"]);
+  });
+  it("names an alias with a forbidden character", () => {
+    const source = { url: "https://example.com", observed_at: "2026-01-01", excerpt: "same price" };
+    const row = { input: 1, output: 2, from_date: "2026-01-01", to_date: null, sources: [source] };
+    const table: PriceTable = { vendor: "openai", models: { "gpt-a": { price_history: [row], aliases: [{ id: "gpt-b:0", from_date: "2026-01-01", to_date: null, sources: [source] }] } } };
+    expect(aliasErrors([table])).toEqual(["openai/gpt-a alias gpt-b:0 has forbidden character"]);
+  });
+  it("checks windows against sorted history and names the alias", () => {
+    const source = { url: "https://example.com", observed_at: "2026-01-01", excerpt: "same price" };
+    const early = { input: 1, output: 2, from_date: "2026-01-01", to_date: "2026-02-28", sources: [source] };
+    const late = { ...early, from_date: "2026-03-01", to_date: null };
+    const table: PriceTable = { vendor: "openai", models: { "gpt-a": { price_history: [late, early], aliases: [{ id: "gpt-b", from_date: "2025-12-01", to_date: null, sources: [source] }] } } };
+    expect(aliasErrors([table])).toEqual(["openai/gpt-a alias gpt-b outside history"]);
   });
   it("rejects an invalid window and alias evidence missing after a price change", () => {
     const source = (date: string) => ({ url: "https://example.com", observed_at: date, excerpt: "same price" });
@@ -66,7 +91,7 @@ describe("SPEC-0095 R2 alias integrity", () => {
       ],
       aliases: [{ id: "gpt-snapshot", from_date: "2026-01-01", to_date: null, sources: [source("2026-01-01")] }],
     } } };
-    expect(aliasErrors([table]).join(" ")).toContain("no evidence for period 2026-03-01");
+    expect(aliasErrors([table])).toEqual(["openai/gpt-a alias gpt-snapshot has no evidence for period 2026-03-01"]);
     table.models["gpt-a"].aliases![0].sources.push(source("2026-03-01"));
     expect(aliasErrors([table])).toEqual([]);
     table.models["gpt-a"].aliases![0].to_date = "2025-12-31";

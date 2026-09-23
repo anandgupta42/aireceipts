@@ -327,6 +327,10 @@ function layoutBlock(block: Block, cur: Cursor, p: Paints, els: string[]): void 
       if (block.align === "center") {
         els.push(textEl(WIDTH / 2, cur.y + 9, block.text, { size: SZ_FOOT, anchor: "middle", fill: p.muted }));
       } else {
+        if (block.text.startsWith("caveat: model ") || block.text.startsWith("caveat: +")) {
+          cur.y = footnoteLines(block.text, cur.y, RIGHT - LEFT, p.muted, els);
+          return;
+        }
         els.push(textEl(LEFT + (block.indent ?? 0) * NOTE_INDENT_PX, cur.y + 9, block.text, { size: SZ_FOOT, fill: p.muted }));
       }
       cur.y += FOOT_LH;

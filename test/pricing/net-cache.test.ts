@@ -91,6 +91,15 @@ describe("complete observed cache price arithmetic", () => {
       expect((await computeNetCache(session(), dir, [{ ...resolved[0]!, to_date: "2026-01-31" }])).unavailableReason).toBe("unpriced-usage");
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
+  it("matches an alias-priced unit against the row's matched id", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "aireceipts-cache-alias-"));
+    try {
+      const aliasSession = session();
+      aliasSession.turns[0]!.model = "claude-opus-4-8-snapshot";
+      const resolved = [{ ...row, vendor: "anthropic", model: "claude-opus-4-8", matched_id: "claude-opus-4-8-snapshot" }];
+      expect((await computeNetCache(aliasSession, dir, resolved)).usd).toBeCloseTo(0.44375, 10);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
   it.each(["codex", "cursor", "gemini"] as const)("never infers missing write counters for %s", async source => {
     expect((await computeNetCache({ ...session(), source }, defaultDataDir())).unavailableReason).toBe(source === "codex" ? "write-counters-unobserved" : "unsupported-adapter");
   });

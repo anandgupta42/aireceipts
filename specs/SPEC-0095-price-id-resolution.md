@@ -458,6 +458,7 @@ Status moved to `approved` on the maintainer's instruction to address the review
 start the build (R1 to R5; R6 stays a maintainer question, Q4).
 
 **2026-09-23 · S6 (Codex GitHub review of rev 2, four findings, all accepted).**
+Build note: the seed itself is byte-neutral; the strictly-cheaper rule removed self-comparison price-delta lines from four context-thrash goldens whose session model was the cheapest candidate (deliberate I5 update).
 - P1, an approved spec cannot carry R6 while approved SPEC-0094 excludes the field:
   R6 is no longer a requirement; it is a deferred proposal section outside the build
   contract, its scenario, matrix rows and success criterion are removed, and the

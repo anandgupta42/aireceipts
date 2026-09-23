@@ -74,7 +74,7 @@ async function flattenCalls(session: Session, dataDir: string): Promise<FlatCall
       continue;
     }
     const priced = await priceSessionTurn(session, turn, dataDir);
-    const completeUsd = priced && priced.unpricedUsage.total === 0 ? priced.usd : null;
+    const completeUsd = priced?.usd != null && priced.unpricedUsage.total === 0 ? priced.usd : null;
     const share = 1 / turn.toolCalls.length;
     const tokenShare: TokenUsage = turn.usage ? scaleUsage(turn.usage, share) : emptyUsage();
     for (const call of turn.toolCalls) {
@@ -472,7 +472,7 @@ export async function detectContextThrash(session: Session, dataDir: string = de
         pricingUnits: turn.pricingUnits?.map((unit) => ({ ...unit, usage: promptOnlyUsage(unit.usage) })),
       };
       const priced = await priceSessionTurn(session, slicedTurn, dataDir);
-      if (priced === null || priced.unpricedUsage.total > 0) {
+      if (priced?.usd == null || priced.unpricedUsage.total > 0) {
         usd = null;
       } else if (usd !== null) {
         usd += priced.usd;

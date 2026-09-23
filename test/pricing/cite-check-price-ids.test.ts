@@ -22,4 +22,17 @@ describe("SPEC-0095 R5 cite-check shapes", () => {
     expect(missing.status).toBe(1);
     for (const item of ["aliases[0]", "invalid date window", "observed_at", "comparison_candidates[0]"]) expect(missing.output).toContain(item);
   });
+  it("rejects a reversed alias window", () => {
+    const alias = { id: "gpt-snapshot", from_date: "2026-03-01", to_date: "2026-02-01", sources: [source] };
+    const result = check({ models: { "gpt-a": { price_history: [{ input: 1, output: 2, from_date: "2026-01-01", to_date: null, sources: [source] }], aliases: [alias] } } });
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("invalid date window");
+  });
+  it("adds alias and candidate URLs to the liveness set", () => {
+    const aliasSource = { ...source, url: "https://example.com/alias" };
+    const candidateSource = { ...source, url: "https://example.com/candidate" };
+    const result = check({ models: { "gpt-a": { price_history: [{ input: 1, output: 2, from_date: "2026-01-01", to_date: null, sources: [source] }], aliases: [{ id: "gpt-snapshot", from_date: "2026-01-01", to_date: null, sources: [aliasSource] }] } }, comparison_candidates: [{ model: "gpt-a", reason: "fixture", sources: [candidateSource] }] });
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("skipping URL liveness for 3 cited url(s)");
+  });
 });

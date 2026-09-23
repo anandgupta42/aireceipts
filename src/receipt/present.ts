@@ -469,11 +469,14 @@ export function detailsBlocks(model: ReceiptModel): Block[] {
 function caveatBlocks(model: ReceiptModel): Block[] {
   let shown = 0;
   const blocks: Block[] = [];
+  const unpricedCount = model.caveats.filter((caveat) => caveat.kind === "unpriced-model").length;
   for (const caveat of model.caveats) {
     if (caveat.kind === "unpriced-model" && ++shown > 3) continue;
     blocks.push({ kind: "note", text: caveat.text, muted: true, spaceBefore: blocks.length === 0 });
+    if (caveat.kind === "unpriced-model" && shown === 3 && unpricedCount > 3) {
+      blocks.push({ kind: "note", text: `caveat: +${unpricedCount - 3} more unpriced model ids`, muted: true });
+    }
   }
-  if (shown > 3) blocks.push({ kind: "note", text: `caveat: +${shown - 3} more unpriced model ids`, muted: true });
   return blocks;
 }
 

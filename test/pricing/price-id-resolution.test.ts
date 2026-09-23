@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import fc from "fast-check";
 import type { Session, Turn } from "../../src/parse/types.js";
-import { cheapestCurrentRow, resolvePrice } from "../../src/pricing/resolve.js";
+import { cheapestCurrentRow, priceSessionTurn, resolvePrice } from "../../src/pricing/resolve.js";
 import type { PriceTable } from "../../src/pricing/types.js";
 import { buildReceiptModel } from "../../src/receipt/model.js";
 import { toJsonModel } from "../../src/receipt/json.js";
@@ -46,8 +46,9 @@ describe("SPEC-0095 price ids", () => {
   });
   it("never normalizes an uncited variant", async () => {
     table();
-    await fc.assert(fc.asyncProperty(fc.constantFrom("[1m]", "-20991231", "-x", "-X"), async (suffix) => {
+    await fc.assert(fc.asyncProperty(fc.oneof(fc.constant("[1m]"), fc.stringMatching(/-[A-Za-z0-9]{1,12}/), fc.constant("-20991231")), async (suffix) => {
       expect(await resolvePrice("openai", `gpt-a${suffix}`, "2026-03-01", dir)).toBeNull();
+      expect(await resolvePrice("openai", `GPT-A${suffix}`, "2026-03-01", dir)).toBeNull();
     }));
   });
   it("names absent, omitted, no-dated-row and no-vendor reasons exactly", async () => {
@@ -83,6 +84,70 @@ describe("SPEC-0095 price ids", () => {
     expect(blocks.some((b) => "text" in b && b.text === "caveat: +2 more unpriced model ids")).toBe(true);
     expect(toJsonModel(model).caveats.filter((c) => c.kind === "unpriced-model")).toHaveLength(5);
     expect(renderReceiptSvg(model)).toContain("caveat: +2 more unpriced model ids");
+  });
+  it("places overflow immediately after the third unpriced line", async () => {
+    table();
+    const model = await buildReceiptModel(session(["gpt-a", "gpt-b", "gpt-c", "gpt-d", "gpt-e"]), dir);
+    const notes = buildReceiptView(model, "classic").blocks.filter((block) => block.kind === "note").map((block) => block.text);
+    const third = notes.findIndex((text) => text.startsWith("caveat: model gpt-d "));
+    expect(notes[third + 1]).toBe("caveat: +1 more unpriced model ids");
+    expect(notes.some((text) => text.startsWith("caveat: 4 of 5 usage turns"))).toBe(true);
+  });
+  it("sanitizes control characters in a hostile id and keeps a dollar-shaped unpriced label out of the receipt", async () => {
+    table();
+    const model = await buildReceiptModel(session(["gpt-a\n$evil"]), dir);
+    expect(model.caveats.find((c) => c.kind === "unpriced-model")?.text).toContain("gpt-a?evil");
+    expect(model.modelMix[0]?.model).toBe("gpt-a?evil");
+    expect(model.modelMix[0]?.usd).toBeNull();
+  });
+  it("wraps a 64-character unpriced id inside the SVG card", async () => {
+    table();
+    const model = await buildReceiptModel(session([`gpt-${"x".repeat(60)}`]), dir);
+    const svg = renderReceiptSvg(model);
+    await expect(svg).toMatchFileSnapshot(path.resolve("goldens/svg/unpriced-model-64.svg"));
+    for (const match of svg.matchAll(/<text ([^>]+)>([^<]*)<\/text>/g)) {
+      const attrs = match[1]!;
+      const x = Number(attrs.match(/\bx="([^"]+)"/)?.[1]);
+      const size = Number(attrs.match(/\bfont-size="([^"]+)"/)?.[1]);
+      const anchor = attrs.match(/\btext-anchor="([^"]+)"/)?.[1];
+      const length = match[2]!.replace(/&amp;|&lt;|&gt;/g, "x").length * size * 0.6;
+      const end = x + (anchor === "end" ? 0 : anchor === "middle" ? length / 2 : length);
+      expect(end, match[0]).toBeLessThanOrEqual(608);
+    }
+  });
+  it("uses bundle-wide reasons for Bedrock regions and treats prototype keys as unknown", async () => {
+    table();
+    for (const id of ["eu.anthropic.x", "apac.anthropic.x", "global.anthropic.x"]) {
+      const model = await buildReceiptModel(session([id]), dir);
+      expect(model.caveats.find((c) => c.kind === "unpriced-model")?.text).toContain("not in bundled price tables");
+    }
+    for (const id of ["constructor", "toString"]) {
+      const model = await buildReceiptModel(session([id]), dir);
+      expect(model.caveats.find((c) => c.kind === "unpriced-model")?.text).toContain("not in bundled openai price table");
+    }
+  });
+  it("keeps an absent-id line when another row source is undated", async () => {
+    table({ models: { "gpt-a": { price_history: [{ ...row, sources: [source, { ...source, observed_at: undefined as unknown as string }] }] } } });
+    expect((await buildReceiptModel(session(["gpt-missing"]), dir)).caveats.find((c) => c.kind === "unpriced-model")?.text).toContain("latest citation 2026-02-01");
+  });
+  it("returns the miss reason with a null session-turn price", async () => {
+    table();
+    const s = session(["gpt-missing"]);
+    expect(await priceSessionTurn(s, s.turns[0]!, dir)).toMatchObject({ usd: null, reasons: [{ id: "gpt-missing", kind: "vendor-absent" }] });
+  });
+  it("does not call a non-finite cost a missing dated row", async () => {
+    table({ models: { "gpt-a": { price_history: [{ ...row, input: 1e308, output: 1e308 }] } } });
+    const s = session(["gpt-a"]);
+    s.turns[0]!.usage = { input: 1_000_000, output: 1_000_000, cacheRead: 0, cacheCreation: 0, total: 2_000_000 };
+    const model = await buildReceiptModel(s, dir);
+    expect(model.totalUsd).toBeNull();
+    expect(model.caveats.some((c) => c.kind === "unpriced-model")).toBe(false);
+  });
+  it("marks a Codex GPT-5.6 alias as missing cache-write counters", async () => {
+    table({ models: { "gpt-5.6-sol": { price_history: [row], aliases: [{ id: "gpt-5.6", from_date: "2026-01-01", to_date: null, sources: [source] }] } } });
+    const model = await buildReceiptModel(session(["gpt-5.6"]), dir);
+    expect(model.unobservedCacheWriteTokens).toBe(true);
+    expect(model.caveats.some((caveat) => caveat.kind === "unobserved-cache-write-tokens")).toBe(true);
   });
   it("suppresses router, unpriceable, missing timestamp and zero usage", async () => {
     table();
@@ -121,5 +186,11 @@ describe("SPEC-0095 price ids", () => {
     const child = session(["gpt-child", "gpt-parent"]);
     const merged = await attachSubagentRollup(parent, "/fake", { discover: async () => ["child"], load: async () => child });
     expect(merged.caveats.filter((c) => c.kind === "unpriced-model").map((c) => c.detail)).toEqual(["gpt-parent", "gpt-child"]);
+  });
+  it("dedupes one unknown id shared by two children", async () => {
+    table();
+    const parent = await buildReceiptModel(session(["gpt-parent"]), dir);
+    const merged = await attachSubagentRollup(parent, "/fake", { discover: async () => ["a", "b"], load: async () => session(["gpt-shared"]) });
+    expect(merged.caveats.filter((c) => c.kind === "unpriced-model").map((c) => c.detail)).toEqual(["gpt-parent", "gpt-shared"]);
   });
 });
