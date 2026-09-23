@@ -58,6 +58,8 @@ export interface RunStartTelemetry {
   isCI: boolean;
 }
 
+let currentRunIdentity: Pick<RunStartTelemetry, "installHash" | "isCI"> | undefined;
+
 export interface RecordCliRunInput extends RunStartTelemetry {
   command: string;
   agentType: AgentSource | undefined;
@@ -162,6 +164,9 @@ export function recordReceiptGenerated(input: RecordReceiptGeneratedInput): void
   recordEvent({
     name: "receipt_generated",
     properties: {
+      cliVersion: getCliVersion(),
+      installHash: currentRunIdentity?.installHash ?? "unavailable",
+      isCI: currentRunIdentity?.isCI ?? isCiEnv(),
       surface: input.surface,
       agentType: toAgentTypeTelemetry(input.agentType),
       multiAgent: input.multiAgent,
@@ -291,7 +296,9 @@ export async function noteRunStart(command: string, env: NodeJS.ProcessEnv = pro
   });
 
   if (!result) {
-    return { installHash: "unavailable", runOrdinalBucket: "unavailable", isCI: isCiEnv(env) };
+    const run = { installHash: "unavailable", runOrdinalBucket: "unavailable", isCI: isCiEnv(env) } as const;
+    currentRunIdentity = { installHash: run.installHash, isCI: run.isCI };
+    return run;
   }
 
   if (createdFirstRunMilestone && !result.recovered) {
@@ -299,11 +306,13 @@ export async function noteRunStart(command: string, env: NodeJS.ProcessEnv = pro
   }
 
   const installHash = telemetryEnabled && result.state.installId ? installHashOf(result.state.installId) : "unavailable";
-  return {
+  const run = {
     installHash,
     runOrdinalBucket: result.recovered ? "unavailable" : bucketOrdinal(result.state.runCount),
     isCI: isCiEnv(env),
   };
+  currentRunIdentity = { installHash: run.installHash, isCI: run.isCI };
+  return run;
 }
 
 type ReceiptMilestone = "first_receipt" | "third_receipt" | "tenth_receipt";

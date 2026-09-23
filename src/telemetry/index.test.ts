@@ -19,6 +19,7 @@ import {
   type RecordParseFailureInput,
 } from "./index.js";
 import { EVENT_NAMES, validateEvent, type TelemetryEvent } from "./schemas.js";
+import { getCliVersion, isCiEnv } from "./helpers.js";
 import { __resetQueueForTests, peekQueuedEvents } from "./sender.js";
 
 const VALID_CONN = "InstrumentationKey=abc-123;IngestionEndpoint=https://example.in.applicationinsights.azure.com/";
@@ -28,6 +29,24 @@ const RUN_BASE = {
   installHash: HASH,
   runOrdinalBucket: "1",
   isCI: false,
+} as const;
+
+const RECEIPT_BASE = {
+  surface: "receipt",
+  agentType: "claude-code",
+  multiAgent: false,
+  outputMode: "text",
+  template: "none",
+  pricedRowCoverage: "some",
+  hasStuckLoopWaste: false,
+  hasTrivialSpansWaste: false,
+  hasContextThrashWaste: false,
+  hasPriceDelta: false,
+  hasSubagents: false,
+  hasPreEditShare: false,
+  detailsView: false,
+  turnCount: 1,
+  toolCallCount: 2,
 } as const;
 
 let home: string;
@@ -129,6 +148,39 @@ describe("recordParseFailure builds a valid parse_failure event and hashes the s
 });
 
 describe("SPEC-0043 recorders", () => {
+  it("uses unavailable and the current CI environment when no run was started", async () => {
+    await noteReceiptGenerated(RECEIPT_BASE);
+    const receipt = peekQueuedEvents().find((event) => event.name === "receipt_generated");
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: getCliVersion(),
+      installHash: "unavailable",
+      isCI: isCiEnv(),
+    });
+    expect(validateEvent(receipt as TelemetryEvent)).toBe(true);
+  });
+
+  it("copies the run's hashed identity and CI flag into the receipt event", async () => {
+    const run = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN, CI: "true" });
+    recordCliRun({ command: "receipt", agentType: "claude-code", durationMs: 10, ok: true, ...run });
+    await noteReceiptGenerated(RECEIPT_BASE);
+
+    const events = peekQueuedEvents();
+    const cliRun = events.find((event) => event.name === "cli_run");
+    const receipt = events.find((event) => event.name === "receipt_generated");
+    expect(run.installHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: getCliVersion(),
+      installHash: run.installHash,
+      isCI: true,
+    });
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: (cliRun?.properties as Record<string, unknown>).cliVersion,
+      installHash: (cliRun?.properties as Record<string, unknown>).installHash,
+      isCI: (cliRun?.properties as Record<string, unknown>).isCI,
+    });
+    expect(validateEvent(receipt as TelemetryEvent)).toBe(true);
+  });
+
   it("the public recorders cover every event name", async () => {
     recordCliRun({ command: "receipt", agentType: undefined, durationMs: 10, ok: true, ...RUN_BASE });
     recordCliError({ command: "receipt", agentType: undefined, err: new Error("x") });

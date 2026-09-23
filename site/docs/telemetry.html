@@ -402,6 +402,9 @@ footer{
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
   <tbody>
+    <tr><td><code>cliVersion</code></td><td>string</td><td>semver</td><td>From this package's <code>package.json</code>.</td></tr>
+    <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted hash of the random local install id; raw id never leaves disk.</td></tr>
+    <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>True when <code>CI</code> or <code>GITHUB_ACTIONS</code> is set and not false. Telemetry is enabled by default in CI, so this field distinguishes CI runs from human runs in the data.</td></tr>
     <tr><td><code>surface</code></td><td>enum</td><td><code>receipt</code> | <code>compare</code> | <code>mini</code> | <code>pr</code></td><td>Statusline/quota/template previews are not receipts.</td></tr>
     <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td><code>unknown</code> for mixed-agent/multi-session surfaces.</td></tr>
     <tr><td><code>multiAgent</code></td><td>boolean</td><td></td><td>True when the rendered surface combines more than one session/model.</td></tr>

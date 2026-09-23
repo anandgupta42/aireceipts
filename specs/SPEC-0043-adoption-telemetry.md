@@ -157,6 +157,17 @@ instrumentation slices named in SPEC-0081's 2026-07-13 Tombstone: launch data sh
 controlled non-zero runs without diagnostic events, so classification must precede
 any conversion intervention.
 
+### Amendment — 2026-09-22 · release measurement on receipt_generated
+
+`receipt_generated` gains `cliVersion` (bare semver from `getCliVersion()`),
+`installHash` (the 64-hex salted hash of the random local install id, or
+`unavailable`), and `isCI` (boolean). These are the same data classes already
+permitted on `cli_run` by SPEC-0043. They introduce no new data class or
+disclosure. The September priced-row coverage collapse could not be split
+between stale price tables and old installs without version and install
+identity on each receipt event. `--telemetry-show` prints all three fields in
+the exact queued payload.
+
 ## Scenarios
 
 - **Given** a user runs `aireceipts` on a Claude Code session with two stuck-loop waste
