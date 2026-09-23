@@ -32,3 +32,22 @@ describe("GPT-5.6 Sol dated promotional pricing", () => {
       .toBeCloseTo(31, 12);
   });
 });
+
+describe("new OpenAI rows observed on 2026-09-22", () => {
+  it.each(["gpt-6-astra", "gpt-5.2-codex", "gpt-5-codex", "gpt-5.2", "gpt-5"])(
+    "leaves %s unpriced before the observed rate date",
+    async (model) => {
+      expect(await resolvePrice("openai", model, "2026-09-21", dataDir)).toBeNull();
+      expect(await resolvePrice("openai", model, "2026-09-22", dataDir)).not.toBeNull();
+    },
+  );
+
+  it("selects the cited GPT-6 tier only above 272K prompt-input tokens", async () => {
+    const usage = { input: 272_000, output: 1_000, cacheRead: 0, cacheCreation: 0, total: 273_000 };
+    const short = await priceTurn("openai", "gpt-6-sol", "2026-09-22", usage, dataDir);
+    const long = await priceTurn("openai", "gpt-6-sol", "2026-09-22",
+      { ...usage, input: 272_001, total: 273_001 }, dataDir);
+    expect(short?.usd).toBeCloseTo(0.554, 12);
+    expect(long?.usd).toBeCloseTo(1.103004, 12);
+  });
+});
