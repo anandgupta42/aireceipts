@@ -89,6 +89,30 @@
             }
           ]
         }
+      ],
+      "aliases": [
+        {
+          "id": "claude-haiku-4-5-20251001",
+          "from_date": "2026-01-01",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "`claude-haiku-4-5` is a convenience alias that resolves to the pinned snapshot `claude-haiku-4-5-20251001`."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "**Claude API alias:** For models before the 4.6 generation, the alias is a convenience pointer that resolves to the dated ID. Dateless IDs are their own pinned snapshot; the alias row repeats them."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "Input pricing: $1 / MTok · Output pricing: $5 / MTok"
+            }
+          ]
+        }
       ]
     },
     "claude-fable-5-1": {
@@ -304,6 +328,35 @@
             }
           ]
         }
+      ],
+      "aliases": [
+        {
+          "id": "claude-opus-4-5-20251101",
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "| Claude API | `claude-opus-4-5-20251101` |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "| Claude API alias | `claude-opus-4-5` |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "**Claude API alias:** For models before the 4.6 generation, the alias is a convenience pointer that resolves to the dated ID. Dateless IDs are their own pinned snapshot; the alias row repeats them."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "Input pricing: $5 / MTok · Output pricing: $25 / MTok"
+            }
+          ]
+        }
       ]
     },
     "claude-sonnet-4-6": {
@@ -364,83 +417,32 @@
             }
           ]
         }
-      ]
-    },
-    "claude-haiku-4-5-20251001": {
-      "price_history": [
+      ],
+      "aliases": [
         {
-          "input": 1,
-          "output": 5,
-          "input_cached": 0.1,
-          "input_cache_write_5m": 1.25,
-          "input_cache_write_1h": 2,
+          "id": "claude-sonnet-4-5-20250929",
           "from_date": "2026-09-22",
           "to_date": null,
           "sources": [
             {
-              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-              "observed_at": "2026-09-22",
-              "excerpt": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |"
-            },
-            {
-              "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
-              "observed_at": "2026-09-22",
-              "excerpt": "**Latest.** Released October 15, 2025."
-            }
-          ]
-        }
-      ]
-    },
-    "claude-opus-4-5-20251101": {
-      "price_history": [
-        {
-          "input": 5,
-          "output": 25,
-          "input_cached": 0.5,
-          "input_cache_write_5m": 6.25,
-          "input_cache_write_1h": 10,
-          "from_date": "2026-09-22",
-          "to_date": null,
-          "sources": [
-            {
-              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-              "observed_at": "2026-09-22",
-              "excerpt": "| Claude Opus 4.5 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
-            },
-            {
-              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
-              "observed_at": "2026-09-22",
-              "excerpt": "**Legacy.** Released November 24, 2025."
-            }
-          ]
-        }
-      ]
-    },
-    "claude-sonnet-4-5-20250929": {
-      "price_history": [
-        {
-          "input": 3,
-          "output": 15,
-          "input_cached": 0.3,
-          "input_cache_write_5m": 3.75,
-          "input_cache_write_1h": 6,
-          "from_date": "2026-09-22",
-          "to_date": null,
-          "sources": [
-            {
-              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-              "observed_at": "2026-09-22",
-              "excerpt": "| Claude Sonnet 4.5 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |"
+              "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "| Claude API | `claude-sonnet-4-5-20250929` |"
             },
             {
               "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
-              "observed_at": "2026-09-22",
-              "excerpt": "**Legacy.** Released September 29, 2025."
+              "observed_at": "2026-09-23",
+              "excerpt": "| Claude API alias | `claude-sonnet-4-5` |"
             },
             {
-              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
-              "observed_at": "2026-09-22",
-              "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
+              "url": "https://platform.claude.com/docs/en/models/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "**Claude API alias:** For models before the 4.6 generation, the alias is a convenience pointer that resolves to the dated ID. Dateless IDs are their own pinned snapshot; the alias row repeats them."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+              "observed_at": "2026-09-23",
+              "excerpt": "Input pricing: $3 / MTok · Output pricing: $15 / MTok"
             }
           ]
         }
@@ -668,59 +670,6 @@
     },
     {
       "model": "claude-sonnet-4-5",
-      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
-      "sources": [
-        {
-          "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-          "observed_at": "2026-09-22",
-          "excerpt": "| Claude Sonnet 4.5 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |"
-        },
-        {
-          "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
-          "observed_at": "2026-09-22",
-          "excerpt": "**Legacy.** Released September 29, 2025."
-        },
-        {
-          "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
-          "observed_at": "2026-09-22",
-          "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
-        }
-      ]
-    },
-    {
-      "model": "claude-haiku-4-5-20251001",
-      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
-      "sources": [
-        {
-          "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-          "observed_at": "2026-09-22",
-          "excerpt": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |"
-        },
-        {
-          "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
-          "observed_at": "2026-09-22",
-          "excerpt": "**Latest.** Released October 15, 2025."
-        }
-      ]
-    },
-    {
-      "model": "claude-opus-4-5-20251101",
-      "reason": "compatibility seed: pre-SPEC-0095 comparison set",
-      "sources": [
-        {
-          "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-          "observed_at": "2026-09-22",
-          "excerpt": "| Claude Opus 4.5 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
-        },
-        {
-          "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
-          "observed_at": "2026-09-22",
-          "excerpt": "**Legacy.** Released November 24, 2025."
-        }
-      ]
-    },
-    {
-      "model": "claude-sonnet-4-5-20250929",
       "reason": "compatibility seed: pre-SPEC-0095 comparison set",
       "sources": [
         {
