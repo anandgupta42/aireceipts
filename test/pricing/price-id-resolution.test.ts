@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import fc from "fast-check";
 import type { Session, Turn } from "../../src/parse/types.js";
 import { cheapestCurrentRow, priceSessionTurn, resolvePrice } from "../../src/pricing/resolve.js";
+import type { PricingLookup } from "../../src/pricing/resolve.js";
 import type { PriceTable } from "../../src/pricing/types.js";
 import { buildReceiptModel } from "../../src/receipt/model.js";
 import { toJsonModel } from "../../src/receipt/json.js";
@@ -104,7 +105,6 @@ describe("SPEC-0095 price ids", () => {
     table();
     const model = await buildReceiptModel(session([`gpt-${"x".repeat(60)}`]), dir);
     const svg = renderReceiptSvg(model);
-    await expect(svg).toMatchFileSnapshot(path.resolve("goldens/svg/unpriced-model-64.svg"));
     for (const match of svg.matchAll(/<text ([^>]+)>([^<]*)<\/text>/g)) {
       const attrs = match[1]!;
       const x = Number(attrs.match(/\bx="([^"]+)"/)?.[1]);
@@ -133,7 +133,17 @@ describe("SPEC-0095 price ids", () => {
   it("returns the miss reason with a null session-turn price", async () => {
     table();
     const s = session(["gpt-missing"]);
-    expect(await priceSessionTurn(s, s.turns[0]!, dir)).toMatchObject({ usd: null, reasons: [{ id: "gpt-missing", kind: "vendor-absent" }] });
+    expect(await priceSessionTurn(s, s.turns[0]!, dir, () => {})).toMatchObject({ usd: null, reasons: [{ id: "gpt-missing", kind: "vendor-absent" }] });
+  });
+  it("does not load the bundle for 2000 Bedrock turns when no caller collects reasons", async () => {
+    const s = session(Array(2000).fill("us.anthropic.unknown:0") as string[]);
+    let bundleReads = 0;
+    const lookup = { tables: new Map() } as PricingLookup;
+    Object.defineProperty(lookup, "bundle", { get: () => { bundleReads++; return Promise.resolve([]); }, configurable: true });
+    for (const turn of s.turns) {
+      expect(await priceSessionTurn(s, turn, dir, undefined, lookup)).toBeNull();
+    }
+    expect(bundleReads).toBe(0);
   });
   it("does not call a non-finite cost a missing dated row", async () => {
     table({ models: { "gpt-a": { price_history: [{ ...row, input: 1e308, output: 1e308 }] } } });

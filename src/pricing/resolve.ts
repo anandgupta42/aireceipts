@@ -399,6 +399,7 @@ export async function priceTurn(
   usage: TokenUsage | undefined,
   dataDir: string,
   lookup?: PricingLookup,
+  withReason = true,
 ): Promise<{
   usd: number | null;
   cacheWriteLowerBound: boolean;
@@ -410,13 +411,13 @@ export async function priceTurn(
     return null;
   }
   if (!vendor) {
-    const reason = await unpricedReason(undefined, modelId, dateISO, dataDir, lookup);
+    const reason = withReason ? await unpricedReason(undefined, modelId, dateISO, dataDir, lookup) : null;
     return { usd: null, cacheWriteLowerBound: false, cacheReadLowerBound: false, cacheReadAtInputRateUsd: null, ...(reason ? { reason } : {}) };
   }
   const table = await tableFor(vendor, dataDir, lookup);
   const row = resolvedInTable(table, vendor, modelId, dateISO);
   if (!row) {
-    const reason = await unpricedReason(vendor, modelId, dateISO, dataDir, lookup, table);
+    const reason = withReason ? await unpricedReason(vendor, modelId, dateISO, dataDir, lookup, table) : null;
     return { usd: null, cacheWriteLowerBound: false, cacheReadLowerBound: false, cacheReadAtInputRateUsd: null, ...(reason ? { reason } : {}) };
   }
   const usd = costOf(usage, row);
@@ -486,7 +487,7 @@ export async function priceSessionTurn(
     }
     const vendor = session.unpriceable ? undefined : vendorForTurn(session.source, model, provider);
     const priced = session.unpriceable || provider === null
-      ? null : await priceTurn(vendor, model, dateISO, unit.usage, dataDir, lookup);
+      ? null : await priceTurn(vendor, model, dateISO, unit.usage, dataDir, lookup, onUnpriced !== undefined);
     if (!priced || priced.usd === null) {
       if (!session.unpriceable && provider !== null && unit.usage.total > 0 && isPriceableUsage(unit.usage)) {
         if (priced?.reason) {

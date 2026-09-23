@@ -247,7 +247,7 @@ function footMaxChars(size: number, innerWidth: number): number {
 function footnoteLines(text: string, topY: number, innerWidth: number, muted: string, els: string[]): number {
   let y = topY;
   for (const line of wrapText(text, footMaxChars(SZ_FOOT, innerWidth))) {
-    els.push(textEl(LEFT, y + 11, line, { size: SZ_FOOT, fill: muted }));
+    els.push(textEl(LEFT, y + 9, line, { size: SZ_FOOT, fill: muted }));
     y += FOOT_LH;
   }
   return y;
