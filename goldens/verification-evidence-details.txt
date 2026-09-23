@@ -26,6 +26,10 @@ peak turn........................7.8k tok (turn 3)
 top 3 turns.....................100% (turns 1,2,3)
 same reads at uncached input rate........≥ $0.1435
   (arithmetic, not a prediction)
+cache vs uncached......................$0.07 lower
+  (hypothetical no-cache price, same tokens)
+  (read discount minus write premium)
+  (parent session; arithmetic, not a prediction)
 
 VERIFICATION EVIDENCE
 npx tsc --noEmit...........tool result ok (turn 2)
