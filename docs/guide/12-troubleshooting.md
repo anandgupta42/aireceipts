@@ -70,8 +70,10 @@ calls — not "less," zero), set either environment variable:
 export AIRECEIPTS_TELEMETRY=off      # or DO_NOT_TRACK=1
 ```
 
-To see exactly what a run would send — and send nothing — run `aireceipts
---telemetry-show`. Full detail: [docs/telemetry.md](../telemetry.md).
+To see the exact payload a run would send — and send nothing — run `aireceipts
+--telemetry-show`. Transport metadata (the send time, the sending IP the receiver
+sees and the coarse location it derives) is not part of that payload. Full detail:
+[docs/telemetry.md](../telemetry.md).
 
 ## Turn off the automatic session-end receipt
 

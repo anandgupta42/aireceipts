@@ -56,6 +56,9 @@ export type CountBucketValue = (typeof COUNT_BUCKET_VALUES)[number];
 export const ORDINAL_BUCKET_VALUES = ["1", "2-3", "4-10", "11-50", ">50", "unavailable"] as const;
 export type OrdinalBucketValue = (typeof ORDINAL_BUCKET_VALUES)[number];
 
+export const INSTALL_ID_SOURCE_VALUES = ["existing", "new", "recovered_after_corrupt", "unavailable"] as const;
+export type InstallIdSourceValue = (typeof INSTALL_ID_SOURCE_VALUES)[number];
+
 export const INSTALL_AGE_BUCKET_VALUES = ["first_day", "2-7d", "8-30d", "31-90d", ">90d", "unavailable"] as const;
 export type InstallAgeBucketValue = (typeof INSTALL_AGE_BUCKET_VALUES)[number];
 
@@ -171,6 +174,7 @@ export const cliRunPropertiesSchema = z
     ok: z.boolean(),
     isCI: z.boolean(),
     installHash: installHashSchema,
+    installIdSource: z.enum(INSTALL_ID_SOURCE_VALUES),
     runOrdinalBucket: z.enum(ORDINAL_BUCKET_VALUES),
     /** Present only for controlled non-zero returns; thrown errors are recorded as `cli_error`. */
     exitClass: z.enum(EXIT_CLASS_VALUES).optional(),
@@ -207,6 +211,9 @@ export type ParseFailureProperties = z.infer<typeof parseFailurePropertiesSchema
 
 export const receiptGeneratedPropertiesSchema = z
   .object({
+    cliVersion: cliVersionSchema,
+    installHash: installHashSchema,
+    isCI: z.boolean(),
     surface: z.enum(RECEIPT_SURFACE_VALUES),
     agentType: z.enum(AGENT_TYPE_VALUES),
     multiAgent: z.boolean(),

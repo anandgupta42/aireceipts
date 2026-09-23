@@ -10,6 +10,7 @@
 // user-supplied template file (~/.aireceipts/templates/<name>.json) that
 // `validateReceiptBlocks` can validate at load time, so the honesty invariants
 // (I2/I3) are non-removable by construction rather than by renderer politeness.
+import { isTracedNetCacheRow } from "./netCache.js";
 import { combinedPricedUsd, type ReceiptModel } from "./model.js";
 import { formatUsdFloor, formatUsdFloorLedger, usdFloorDecimals, type UsdFloorDecimals } from "./format.js";
 
@@ -251,7 +252,8 @@ export function validateReceiptBlocks(blocks: Block[], model: ReceiptModel): Blo
 
   if (priced) {
     const allowedDollars = tracedDollarAmounts(model);
-    for (const b of blocks) {
+    for (const [index, b] of blocks.entries()) {
+      if (isTracedNetCacheRow(blocks, index, model.netCache)) continue;
       for (const s of blockStrings(b)) {
         for (const amount of dollarAmounts(s)) {
           const at = s.indexOf(amount);

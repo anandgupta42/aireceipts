@@ -1,3 +1,4 @@
+import { NET_CACHE_INTERPRETATION, NET_CACHE_REASONS } from "../pricing/netCache.js";
 // SPEC-0011 R1/R4: the single source of truth for the shape of every `--json`
 // export surface. `docs/json-schema.md` mirrors this schema field-by-field,
 // enforced by an automated parity test (the documented field names must equal
@@ -15,6 +16,7 @@ import {
   STANDARD_API_LIST_PRICE_EQUIVALENT,
 } from "./costEstimate.js";
 import { SCHEMA_VERSION } from "./schemaVersion.js";
+import { verificationEvidenceSchema } from "./verificationSchema.js";
 
 // Re-exported so existing importers keep one canonical path; the constant itself
 // lives in the zod-free `schemaVersion.ts` (see the rationale there).
@@ -232,6 +234,13 @@ const receiptBodyShape = {
     .nullable(),
   /** SPEC-0061 R5 — subagent rollup aggregate; present only when the session has children. Counts and sums only — never child ids, titles, or paths. */
   subagents: subagentAggregateSchema.optional(),
+  netCache: z.object({
+    usd: z.number().nullable(),
+    unavailableReason: z.enum(NET_CACHE_REASONS).nullable(),
+    interpretation: z.literal(NET_CACHE_INTERPRETATION),
+    scope: z.literal("parent-session"),
+  }).strict().optional(),
+  verificationEvidence: verificationEvidenceSchema.optional(),
 } as const;
 
 export const receiptBodySchema = z.object(receiptBodyShape).strict();

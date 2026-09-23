@@ -43,10 +43,13 @@ describe("SPEC-0043 R1: exactly nine event names", () => {
 describe("SPEC-0043 R9: docs parity", () => {
   const doc = readFileSync(resolve(process.cwd(), "docs/telemetry.md"), "utf8");
   const fieldsByEvent = {
-    cli_run: ["cliVersion", "os", "nodeMajor", "commandClass", "agentType", "durationBucket", "ok", "isCI", "installHash", "runOrdinalBucket", "exitClass"],
+    cli_run: ["cliVersion", "os", "nodeMajor", "commandClass", "agentType", "durationBucket", "ok", "isCI", "installHash", "installIdSource", "runOrdinalBucket", "exitClass"],
     cli_error: ["errorClass", "command", "agentType", "inPackage"],
     parse_failure: ["agentType", "adapterVersion", "signatureHash"],
     receipt_generated: [
+      "cliVersion",
+      "installHash",
+      "isCI",
       "surface",
       "agentType",
       "multiAgent",
@@ -137,6 +140,7 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
         ok: true,
         isCI: false,
         installHash: INSTALL_HASH,
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       },
     };
@@ -172,6 +176,9 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
     [
       "receipt_generated",
       {
+        cliVersion: "0.1.0",
+        installHash: INSTALL_HASH,
+        isCI: false,
         surface: "receipt",
         agentType: "claude-code",
         multiAgent: false,
@@ -235,9 +242,40 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
         ok: true,
         isCI: true,
         installHash: "unavailable",
+        installIdSource: "existing",
         runOrdinalBucket: "unavailable",
       }).success,
     ).toBe(true);
+  });
+
+  it("receipt_generated accepts the unavailable install hash sentinel and rejects malformed identity fields", () => {
+    const valid = {
+      cliVersion: "0.11.0",
+      installHash: INSTALL_HASH,
+      isCI: true,
+      surface: "receipt",
+      agentType: "claude-code",
+      multiAgent: false,
+      outputMode: "text",
+      template: "none",
+      pricedRowCoverage: "none",
+      hasStuckLoopWaste: false,
+      hasTrivialSpansWaste: false,
+      hasContextThrashWaste: false,
+      hasPriceDelta: false,
+      hasSubagents: false,
+      hasPreEditShare: false,
+      detailsView: false,
+      turnCountBucket: "1",
+      toolCallCountBucket: "1",
+      receiptOrdinalBucket: "1",
+    };
+    expect(receiptGeneratedPropertiesSchema.safeParse(valid).success).toBe(true);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installHash: "unavailable" }).success).toBe(true);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, cliVersion: "v0.11.0" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installHash: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, isCI: "true" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installId: "raw-id" }).success).toBe(false);
   });
 
   it("SPEC-0075 R6 strictly accepts boolean-only statusline scope/config markers", () => {
@@ -270,6 +308,7 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         ok: true,
         isCI: false,
         installHash: INSTALL_HASH,
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       },
     ],
@@ -284,6 +323,9 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
     [
       receiptGeneratedPropertiesSchema,
       {
+        cliVersion: "0.1.0",
+        installHash: INSTALL_HASH,
+        isCI: false,
         surface: "receipt",
         agentType: "claude-code",
         multiAgent: false,
@@ -296,6 +338,7 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         hasPriceDelta: false,
         hasSubagents: false,
         hasPreEditShare: false,
+        detailsView: false,
         turnCountBucket: "1",
         toolCallCountBucket: "2-3",
         receiptOrdinalBucket: "1",
@@ -354,9 +397,18 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         ok: true,
         isCI: false,
         installHash: "123e4567-e89b-12d3-a456-426614174000",
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       }).success,
     ).toBe(false);
+  });
+
+  it("rejects an unknown installIdSource", () => {
+    expect(cliRunPropertiesSchema.safeParse({
+      cliVersion: "0.1.0", os: "darwin", nodeMajor: 22, commandClass: "receipt",
+      agentType: "claude-code", durationBucket: "<100ms", ok: true, isCI: false,
+      installHash: INSTALL_HASH, installIdSource: "some-local-path", runOrdinalBucket: "1",
+    }).success).toBe(false);
   });
 
   it("validateEvent returns false (never throws) for an unrecognized event name", () => {
@@ -375,6 +427,7 @@ describe("SPEC-0042 R5 — handoffFormat allowlist", () => {
     ok: true,
     isCI: false,
     installHash: "unavailable" as const,
+    installIdSource: "existing",
     runOrdinalBucket: "1" as const,
   };
 
@@ -401,6 +454,7 @@ describe("controlled exitClass allowlist", () => {
     ok: false,
     isCI: false,
     installHash: "unavailable" as const,
+    installIdSource: "existing",
     runOrdinalBucket: "1" as const,
   };
 

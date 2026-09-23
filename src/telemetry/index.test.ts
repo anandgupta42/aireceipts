@@ -1,8 +1,9 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  __resetRunIdentityForTests,
   noteReceiptGenerated,
   noteMilestone,
   noteRunStart,
@@ -19,15 +20,36 @@ import {
   type RecordParseFailureInput,
 } from "./index.js";
 import { EVENT_NAMES, validateEvent, type TelemetryEvent } from "./schemas.js";
+import { getCliVersion, isCiEnv } from "./helpers.js";
 import { __resetQueueForTests, peekQueuedEvents } from "./sender.js";
+import { readState } from "./state.js";
 
 const VALID_CONN = "InstrumentationKey=abc-123;IngestionEndpoint=https://example.in.applicationinsights.azure.com/";
 const HASH = "a".repeat(64);
 
 const RUN_BASE = {
   installHash: HASH,
+  installIdSource: "existing",
   runOrdinalBucket: "1",
   isCI: false,
+} as const;
+
+const RECEIPT_BASE = {
+  surface: "receipt",
+  agentType: "claude-code",
+  multiAgent: false,
+  outputMode: "text",
+  template: "none",
+  pricedRowCoverage: "some",
+  hasStuckLoopWaste: false,
+  hasTrivialSpansWaste: false,
+  hasContextThrashWaste: false,
+  hasPriceDelta: false,
+  hasSubagents: false,
+  hasPreEditShare: false,
+  detailsView: false,
+  turnCount: 1,
+  toolCallCount: 2,
 } as const;
 
 let home: string;
@@ -35,6 +57,7 @@ let savedHome: string | undefined;
 
 beforeEach(async () => {
   __resetQueueForTests();
+  __resetRunIdentityForTests();
   home = await mkdtemp(join(tmpdir(), "aireceipts-telemetry-index-"));
   savedHome = process.env.AIRECEIPTS_HOME;
   process.env.AIRECEIPTS_HOME = home;
@@ -129,6 +152,39 @@ describe("recordParseFailure builds a valid parse_failure event and hashes the s
 });
 
 describe("SPEC-0043 recorders", () => {
+  it("uses unavailable and the current CI environment when no run was started", async () => {
+    await noteReceiptGenerated(RECEIPT_BASE);
+    const receipt = peekQueuedEvents().find((event) => event.name === "receipt_generated");
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: getCliVersion(),
+      installHash: "unavailable",
+      isCI: isCiEnv(),
+    });
+    expect(validateEvent(receipt as TelemetryEvent)).toBe(true);
+  });
+
+  it("copies the run's hashed identity and CI flag into the receipt event", async () => {
+    const run = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN, CI: "true" });
+    recordCliRun({ command: "receipt", agentType: "claude-code", durationMs: 10, ok: true, ...run });
+    await noteReceiptGenerated(RECEIPT_BASE);
+
+    const events = peekQueuedEvents();
+    const cliRun = events.find((event) => event.name === "cli_run");
+    const receipt = events.find((event) => event.name === "receipt_generated");
+    expect(run.installHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: getCliVersion(),
+      installHash: run.installHash,
+      isCI: true,
+    });
+    expect(receipt?.properties).toMatchObject({
+      cliVersion: (cliRun?.properties as Record<string, unknown>).cliVersion,
+      installHash: (cliRun?.properties as Record<string, unknown>).installHash,
+      isCI: (cliRun?.properties as Record<string, unknown>).isCI,
+    });
+    expect(validateEvent(receipt as TelemetryEvent)).toBe(true);
+  });
+
   it("the public recorders cover every event name", async () => {
     recordCliRun({ command: "receipt", agentType: undefined, durationMs: 10, ok: true, ...RUN_BASE });
     recordCliError({ command: "receipt", agentType: undefined, err: new Error("x") });
@@ -210,6 +266,7 @@ describe("SPEC-0043 noteRunStart", () => {
   it("returns a 64-hex install hash when telemetry is enabled", async () => {
     const result = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.UTC(2026, 6, 4));
     expect(result.installHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.installIdSource).toBe("new");
     expect(result.runOrdinalBucket).toBe("1");
     expect(result.isCI).toBe(false);
   });
@@ -217,6 +274,22 @@ describe("SPEC-0043 noteRunStart", () => {
   it("does not create an install hash under a kill switch", async () => {
     const result = await noteRunStart("receipt", { DO_NOT_TRACK: "1", AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.UTC(2026, 6, 4));
     expect(result.installHash).toBe("unavailable");
+    expect(result.installIdSource).toBe("unavailable");
+    expect((await readState(home)).installId).toBeUndefined();
+  });
+
+  it("reports an existing id on the next run", async () => {
+    const env = { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN };
+    const first = await noteRunStart("receipt", env);
+    const second = await noteRunStart("receipt", env);
+    expect(second.installIdSource).toBe("existing");
+    expect(second.installHash).toBe(first.installHash);
+  });
+
+  it("reports unavailable when local state cannot be written", async () => {
+    await writeFile(join(home, ".aireceipts"), "not a directory");
+    const result = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN });
+    expect(result).toMatchObject({ installHash: "unavailable", installIdSource: "unavailable", runOrdinalBucket: "unavailable" });
   });
 
   it("records the first_run activation milestone only once", async () => {
@@ -263,6 +336,7 @@ describe("showTelemetryPayload: R5 --telemetry-show backing function", () => {
 
     expect(result.enabled).toBe(true);
     expect(result.events).toHaveLength(1);
+    expect(result.events[0]).toMatchObject({ properties: { installIdSource: "existing" } });
     expect(peekQueuedEvents()).toHaveLength(1);
   });
 

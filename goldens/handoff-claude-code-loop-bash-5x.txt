@@ -8,6 +8,6 @@ FLAGGED PATTERN COST.....................≈ $0.0767
 
 ⚠ Bash loop ×5..................≥ $0.0767 (3m 45s)
   at turns 1-5
-  → change or stop after two identical failures
+  → check whether repeated calls were needed
 
 covers: 6 turns · 5 tool calls · 0 compactions · 1 flagged-pattern line

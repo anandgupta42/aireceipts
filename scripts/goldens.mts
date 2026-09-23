@@ -18,6 +18,7 @@ import { renderPrArtifactHtml } from "../src/pr/html.js";
 import { renderPerCommitLines } from "../src/pr/perCommit.js";
 import type { ContributorView } from "../src/pr/body.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { verificationGoldens } from "./verification-goldens.mjs";
 
 const update = process.argv.includes("--update");
 const corpus = JSON.parse(readFileSync("eval/corpus.json", "utf8")).entries as
@@ -73,6 +74,7 @@ const nameOf = (path: string): string => path.split("/").pop()!.replace(/\.jsonl
 
 // SVG export — a priced fixture in both themes, plus a two-card compare (SPEC-0003).
 mkdirSync("goldens/svg", { recursive: true });
+await verificationGoldens(check);
 const PRICED = { source: "claude-code" as AgentSource, path: "test/fixtures/claude-code/clean-multi-tool-2-models.jsonl" };
 const LOOP = { source: "claude-code" as AgentSource, path: "test/fixtures/claude-code/loop-bash-5x.jsonl" };
 const pricedModel = await modelFor(PRICED.source, PRICED.path);
@@ -113,6 +115,13 @@ for (const template of ["grocery", "datavis"] as const) {
 check(`goldens/${stem}-details.txt`, renderReceipt(pricedModel, { color: false, details: true }) + "\n");
 check(`goldens/${LOOP.source}-${nameOf(LOOP.path)}-details.txt`, renderReceipt(loopModel, { color: false, details: true }) + "\n");
 check(`goldens/svg/${stem}-details-light.svg`, renderReceiptSvg(pricedModel, { theme: "light", details: true }));
+
+// SPEC-0090 — new complete-cache fixture pins the opt-in signed arithmetic only.
+const cacheModel = await modelFor("claude-code", "test/fixtures/claude-code/cache-economics-complete.jsonl");
+check("goldens/cache-economics-details.txt", renderReceipt(cacheModel, { color: false, details: true }) + "\n");
+for (const theme of ["light", "dark"] as const) {
+  check(`goldens/svg/cache-economics-details-${theme}.svg`, renderReceiptSvg(cacheModel, { theme, details: true }));
+}
 
 // Hostile fixtures are a visual-regression battery: every one renders through
 // every receipt template in both terminal and SVG form, not only the default

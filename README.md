@@ -189,7 +189,7 @@ If you are an AI agent asked to install aireceipts, do the following:
 |---|---|
 | `aireceipts` | Receipt for the newest session (`--list` to pick another) |
 | `aireceipts --mini` | Six-line mini-receipt for the newest session |
-| `aireceipts --details` | Adds a DETAILS section — token composition, session shape, per-model split (classic template) |
+| `aireceipts --details` | Adds token composition, session shape, per-model split, and [recorded verification evidence](docs/guide/04-read-a-receipt.md#recorded-verification-evidence) (classic template) |
 | `aireceipts --template <name>` / `templates` | Render a receipt style (`classic`, `grocery`, `datavis`); `templates` previews each — [guide](docs/guide/10-templates.md) |
 | `aireceipts setup` | Found sessions, latest observable floor, week floor, and the integrations that fit your machine — [guide](docs/guide/01-getting-started.md) |
 | `aireceipts pr --post [--artifact]` | Attach the receipt of the sessions behind a PR as a comment; `--artifact` also publishes a durable receipt page — [guide](docs/pr-receipts.md) |
@@ -206,7 +206,7 @@ If you are an AI agent asked to install aireceipts, do the following:
 
 <div align="center">
 
-<img alt="Historical terminal recording of a synthetic handoff. Current aireceipts prints FLAGGED PATTERN COST with approximate notation, a not-proven-savings disclaimer, the flagged Bash loop evidence and its fix, and the coverage line; this recording predates that notation." src="site/assets/waste-handoff.gif" width="640">
+<img alt="Historical terminal recording of a synthetic handoff. Current aireceipts prints FLAGGED PATTERN COST with approximate notation, a not-proven-savings disclaimer, the flagged Bash loop evidence and a neutral review prompt, and the coverage line; this recording predates that notation." src="site/assets/waste-handoff.gif" width="640">
 
 </div>
 
@@ -220,7 +220,7 @@ receipt proves, and what it can't: [docs/trust.md](docs/trust.md) · `aireceipts
 
 Anonymous diagnostics and usage signals, on by default (in CI too) — error classes,
 duration buckets, parse-failure signatures, feature enums, and coarse buckets. Never
-code, prompts, paths, titles, or dollar amounts. See exactly what a run would send:
+code, prompts, paths, titles, or dollar amounts. See the exact payload a run would send:
 `aireceipts --telemetry-show`. Kill it: `AIRECEIPTS_TELEMETRY=off` or
 `DO_NOT_TRACK=1`. Schema and rationale: [docs/telemetry.md](docs/telemetry.md).
 

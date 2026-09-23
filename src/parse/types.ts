@@ -42,6 +42,8 @@ export const SOURCE_LABELS: Record<AgentSource, string> = {
  * as zero. See each adapter's `mapUsage` for the exact per-vendor mapping.
  */
 export interface TokenUsage {
+  /** Complete explicit cache counters on this exact request snapshot; never inferred from normalized zeros. */
+  cacheEvidenceComplete?: true;
   input: number;
   output: number;
   cacheRead: number;

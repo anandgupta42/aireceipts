@@ -4,11 +4,11 @@
     "claude-fable-5": {
       "price_history": [
         {
-          "input": 10.0,
-          "output": 50.0,
-          "input_cached": 1.0,
+          "input": 10,
+          "output": 50,
+          "input_cached": 1,
           "input_cache_write_5m": 12.5,
-          "input_cache_write_1h": 20.0,
+          "input_cache_write_1h": 20,
           "from_date": "2026-07-02",
           "to_date": null,
           "sources": [
@@ -24,11 +24,11 @@
     "claude-opus-4-8": {
       "price_history": [
         {
-          "input": 5.0,
-          "output": 25.0,
+          "input": 5,
+          "output": 25,
           "input_cached": 0.5,
           "input_cache_write_5m": 6.25,
-          "input_cache_write_1h": 10.0,
+          "input_cache_write_1h": 10,
           "from_date": "2026-01-01",
           "to_date": null,
           "sources": [
@@ -44,34 +44,28 @@
     "claude-sonnet-5": {
       "price_history": [
         {
-          "input": 2.0,
-          "output": 10.0,
+          "input": 2,
+          "output": 10,
           "input_cached": 0.2,
           "input_cache_write_5m": 2.5,
-          "input_cache_write_1h": 4.0,
+          "input_cache_write_1h": 4,
           "from_date": "2026-01-01",
-          "to_date": "2026-08-31",
-          "sources": [
-            {
-              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
-              "observed_at": "2026-07-01",
-              "excerpt": "Claude Sonnet 5 — introductory pricing through August 31, 2026: Base Input $2 / MTok, Cache Hits & Refreshes $0.20 / MTok, 5m Cache Writes $2.50 / MTok, 1h Cache Writes $4 / MTok, Output $10 / MTok"
-            }
-          ]
-        },
-        {
-          "input": 3.0,
-          "output": 15.0,
-          "input_cached": 0.3,
-          "input_cache_write_5m": 3.75,
-          "input_cache_write_1h": 6.0,
-          "from_date": "2026-09-01",
           "to_date": null,
           "sources": [
             {
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-01",
-              "excerpt": "Claude Sonnet 5 — starting September 1, 2026: Base Input $3 / MTok, Cache Hits & Refreshes $0.30 / MTok, 5m Cache Writes $3.75 / MTok, 1h Cache Writes $6 / MTok, Output $15 / MTok"
+              "excerpt": "Claude Sonnet 5 — introductory pricing through August 31, 2026: Base Input $2 / MTok, Cache Hits & Refreshes $0.20 / MTok, 5m Cache Writes $2.50 / MTok, 1h Cache Writes $4 / MTok, Output $10 / MTok"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "The $2/$10 per million input/output token pricing for Claude Sonnet 5, announced at launch as introductory pricing through August 31, 2026, is now the standard price. The previously scheduled increase to $3/$15 per million input/output tokens on September 1, 2026 will not occur."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "Claude Sonnet 5 | $2 / MTok | $2.50 / MTok | $4 / MTok | $0.20 / MTok | $10 / MTok"
             }
           ]
         }
@@ -80,11 +74,11 @@
     "claude-haiku-4-5": {
       "price_history": [
         {
-          "input": 1.0,
-          "output": 5.0,
+          "input": 1,
+          "output": 5,
           "input_cached": 0.1,
           "input_cache_write_5m": 1.25,
-          "input_cache_write_1h": 2.0,
+          "input_cache_write_1h": 2,
           "from_date": "2026-01-01",
           "to_date": null,
           "sources": [
@@ -92,6 +86,361 @@
               "url": "https://platform.claude.com/docs/en/about-claude/pricing",
               "observed_at": "2026-07-01",
               "excerpt": "Claude Haiku 4.5 — Base Input $1 / MTok, Cache Hits & Refreshes $0.10 / MTok, 5m Cache Writes $1.25 / MTok, 1h Cache Writes $2 / MTok, Output $5 / MTok"
+            }
+          ]
+        }
+      ]
+    },
+    "claude-fable-5-1": {
+      "price_history": [
+        {
+          "input": 10,
+          "output": 50,
+          "input_cached": 0.25,
+          "input_cache_write_5m": 12.5,
+          "input_cache_write_1h": 20,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Fable 5.1 | $10 / MTok | $12.50 / MTok | $20 / MTok | $0.25 / MTok<sup>1</sup> | $50 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "Cache read (hit) | 0.1x base input price (0.025x on Claude Fable 5.1 and Claude Mythos 5.1; 0.05x on Claude Opus 5.5)"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/fable-5-1/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Latest.** Released September 1, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-mythos-5-1": {
+      "price_history": [
+        {
+          "input": 10,
+          "output": 50,
+          "input_cached": 0.25,
+          "input_cache_write_5m": 12.5,
+          "input_cache_write_1h": 20,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Mythos 5.1 ([limited availability](https://anthropic.com/glasswing)) | $10 / MTok | $12.50 / MTok | $20 / MTok | $0.25 / MTok<sup>1</sup> | $50 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "Cache read (hit) | 0.1x base input price (0.025x on Claude Fable 5.1 and Claude Mythos 5.1; 0.05x on Claude Opus 5.5)"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/mythos-5-1/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Invite only.** Released September 1, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-mythos-5": {
+      "price_history": [
+        {
+          "input": 10,
+          "output": 50,
+          "input_cached": 1,
+          "input_cache_write_5m": 12.5,
+          "input_cache_write_1h": 20,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Mythos 5 ([limited availability](https://anthropic.com/glasswing)) | $10 / MTok | $12.50 / MTok | $20 / MTok | $1 / MTok | $50 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/mythos-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Invite only.** Released June 9, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-5-5": {
+      "price_history": [
+        {
+          "input": 4,
+          "output": 20,
+          "input_cached": 0.2,
+          "input_cache_write_5m": 5,
+          "input_cache_write_1h": 8,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 5.5 | $4 / MTok | $5 / MTok | $8 / MTok | $0.20 / MTok<sup>2</sup> | $20 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "Cache read (hit) | 0.1x base input price (0.025x on Claude Fable 5.1 and Claude Mythos 5.1; 0.05x on Claude Opus 5.5)"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-5-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Latest.** Released September 22, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-5": {
+      "price_history": [
+        {
+          "input": 5,
+          "output": 25,
+          "input_cached": 0.5,
+          "input_cache_write_5m": 6.25,
+          "input_cache_write_1h": 10,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 5 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released July 24, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-4-7": {
+      "price_history": [
+        {
+          "input": 5,
+          "output": 25,
+          "input_cached": 0.5,
+          "input_cache_write_5m": 6.25,
+          "input_cache_write_1h": 10,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 4.7 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-7/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released April 16, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-4-6": {
+      "price_history": [
+        {
+          "input": 5,
+          "output": 25,
+          "input_cached": 0.5,
+          "input_cache_write_5m": 6.25,
+          "input_cache_write_1h": 10,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 4.6 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-6/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released February 5, 2026."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-4-5": {
+      "price_history": [
+        {
+          "input": 5,
+          "output": 25,
+          "input_cached": 0.5,
+          "input_cache_write_5m": 6.25,
+          "input_cache_write_1h": 10,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 4.5 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released November 24, 2025."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-sonnet-4-6": {
+      "price_history": [
+        {
+          "input": 3,
+          "output": 15,
+          "input_cached": 0.3,
+          "input_cache_write_5m": 3.75,
+          "input_cache_write_1h": 6,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Sonnet 4.6 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/sonnet-4-6/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released February 17, 2026."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Claude 4.6 and later models include the full 1M token context window at standard pricing."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-sonnet-4-5": {
+      "price_history": [
+        {
+          "input": 3,
+          "output": 15,
+          "input_cached": 0.3,
+          "input_cache_write_5m": 3.75,
+          "input_cache_write_1h": 6,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Sonnet 4.5 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released September 29, 2025."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-haiku-4-5-20251001": {
+      "price_history": [
+        {
+          "input": 1,
+          "output": 5,
+          "input_cached": 0.1,
+          "input_cache_write_5m": 1.25,
+          "input_cache_write_1h": 2,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/haiku-4-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Latest.** Released October 15, 2025."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-opus-4-5-20251101": {
+      "price_history": [
+        {
+          "input": 5,
+          "output": 25,
+          "input_cached": 0.5,
+          "input_cache_write_5m": 6.25,
+          "input_cache_write_1h": 10,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Opus 4.5 | $5 / MTok | $6.25 / MTok | $10 / MTok | $0.50 / MTok | $25 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/opus-4-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released November 24, 2025."
+            }
+          ]
+        }
+      ]
+    },
+    "claude-sonnet-4-5-20250929": {
+      "price_history": [
+        {
+          "input": 3,
+          "output": 15,
+          "input_cached": 0.3,
+          "input_cache_write_5m": 3.75,
+          "input_cache_write_1h": 6,
+          "from_date": "2026-09-22",
+          "to_date": null,
+          "sources": [
+            {
+              "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "| Claude Sonnet 4.5 | $3 / MTok | $3.75 / MTok | $6 / MTok | $0.30 / MTok | $15 / MTok |"
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/models/sonnet-4-5/overview",
+              "observed_at": "2026-09-22",
+              "excerpt": "**Legacy.** Released September 29, 2025."
+            },
+            {
+              "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+              "observed_at": "2026-09-22",
+              "excerpt": "Other Claude models, including Claude Sonnet 4.5, have a 200k-token context window."
             }
           ]
         }

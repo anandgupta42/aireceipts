@@ -340,9 +340,9 @@ footer{
 
 <ul>
   <li><strong>The records existed on the author's machine.</strong> Every number is computed from transcript files found locally at render time — never from a guess, a prediction, or a remote service.</li>
-  <li><strong>The dollar floors come from cited, dated price tables.</strong> A <code>$</code> renders only when a <code>data/prices/&lt;vendor&gt;.json</code> row — carrying its <code>sources:</code> citations — matches the session's model and date. No matching row means tokens are shown instead. Every computed amount is labeled <code>≥</code> and means &quot;observable tokens at the Standard API list price,&quot; not &quot;this was your invoice.&quot; The arithmetic can be audited back to the vendor page the row was copied from.</li>
+  <li><strong>The dollar floors come from cited, dated price tables.</strong> A <code>$</code> renders only when a <code>data/prices/&lt;vendor&gt;.json</code> row — carrying its <code>sources:</code> citations — matches the session's model and date. No matching row means tokens are shown instead. Every attributed spend amount is labeled <code>≥</code> and means &quot;observable tokens at the Standard API list price,&quot; not &quot;this was your invoice.&quot; The arithmetic can be audited back to the vendor page the row was copied from.</li>
   <li><strong>The rendering is deterministic.</strong> The same transcript and price tables produce a byte-identical receipt, on any machine (<code>--methodology</code> describes the attribution; goldens and a determinism gate enforce it in CI).</li>
-  <li><strong>Incompleteness is labeled.</strong> Every dollar is a Standard API-equivalent floor. A PR receipt that could not attribute every candidate session also counts the sessions it left out; missing price coverage stays in a separate token ledger.</li>
+  <li><strong>Incompleteness is labeled.</strong> Observed-spend dollar amounts are Standard API-equivalent floors. The optional net cache comparison is signed same-token arithmetic, labeled <code>lower</code> or <code>higher</code>; it is not a floor or measured savings. A PR receipt that could not attribute every candidate session also counts the sessions it left out; missing price coverage stays in a separate token ledger.</li>
 </ul>
 
 <h2 id="what-a-receipt-cannot-prove">What a receipt cannot prove</h2>

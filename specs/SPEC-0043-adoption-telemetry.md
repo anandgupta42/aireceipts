@@ -157,6 +157,31 @@ instrumentation slices named in SPEC-0081's 2026-07-13 Tombstone: launch data sh
 controlled non-zero runs without diagnostic events, so classification must precede
 any conversion intervention.
 
+### Amendment — 2026-09-22 · release measurement on receipt_generated
+
+`receipt_generated` gains `cliVersion` (bare semver from `getCliVersion()`),
+`installHash` (the 64-hex salted hash of the random local install id, or
+`unavailable`), and `isCI` (boolean). These are the same data classes already
+permitted on `cli_run` by SPEC-0043. They introduce no new data class or
+disclosure. The September priced-row coverage collapse could not be split
+between stale price tables and old installs without version and install
+identity on each receipt event. The strict `receipt_generated` schema enforces
+the three fields and `docs/telemetry.md` documents them.
+
+### Amendment — 2026-09-22 · install identity preservation
+
+Valid JSON with a bad state field now retains any v4 UUID `installId`, string
+`firstRunAt`, and individually valid non-negative integer counters while resetting
+invalid fields. Recovery still marks the run ordinal unavailable. Unparseable state is
+moved aside as `state.json.corrupt-<timestamp>` before a fresh id is minted when
+telemetry is enabled. A file whose `schemaVersion` is a number above the current one
+was written by a newer CLI and is never salvaged or rewritten (a pinned older hook can
+run beside a newer install); that run reports its identity as unavailable. `cli_run` adds the closed `installIdSource` enum: `existing`,
+`new`, `recovered_after_corrupt`, or `unavailable`. Production telemetry showed one
+machine minting 53 of 124 observed install ids in 90 days, including 47 first runs
+with an unavailable ordinal. The new field is a bounded enum and sends no new data
+class; the raw id, state contents, and file path remain local.
+
 ## Scenarios
 
 - **Given** a user runs `aireceipts` on a Claude Code session with two stuck-loop waste
