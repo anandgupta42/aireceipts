@@ -240,6 +240,9 @@ function mapUsage(raw: unknown, present: boolean): MappedClaudeUsage {
   return {
     malformed,
     usage: withTotal({
+      ...(input.present && output.present && cacheRead.present && flatCacheCreation.present
+        && cacheCreation5m.present && cacheCreation1h.present && !malformed && splitSum === cacheCreation
+        ? { cacheEvidenceComplete: true as const } : {}),
       input: input.value,
       output: output.value,
       cacheRead: cacheRead.value,

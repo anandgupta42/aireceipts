@@ -343,7 +343,7 @@ footer{
 <h2 id="invariants-this-schema-upholds">Invariants this schema upholds</h2>
 
 <ul>
-  <li><strong>I2 — never a fabricated dollar.</strong> A <code>usd</code>/<code>totalUsd</code>/<code>actualUsd</code> field is <code>null</code> (JSON) or an empty cell (CSV) whenever nothing priced; it is never <code>0</code> standing in for &quot;unknown&quot;. Every non-null computed dollar is a lower bound at the standard API list-price-equivalent basis, recorded explicitly in its adjacent CostEstimate. Token fields are always populated.</li>
+  <li><strong>I2 — never a fabricated dollar.</strong> A <code>usd</code>/<code>totalUsd</code>/<code>actualUsd</code> field is <code>null</code> (JSON) or an empty cell (CSV) whenever nothing priced; it is never <code>0</code> standing in for &quot;unknown&quot;. Receipt cost totals are lower bounds at the standard API list-price-equivalent basis, recorded explicitly in their adjacent CostEstimate. The optional signed <code>netCache.usd</code> is a same-token arithmetic difference, explicitly labeled by <code>interpretation</code>; it is not a cost total or a bound. Token fields are always populated.</li>
   <li><strong>I5 — byte-stable contract.</strong> Key order is fixed; the exporters build objects by hand rather than routing through <code>zod</code>, so output is deterministic.</li>
   <li><strong>I6 — facts, not rankings.</strong> <code>compare</code> carries a factual <code>delta</code> line only — never a better/worse field.</li>
 </ul>
@@ -389,9 +389,24 @@ footer{
     <tr><td><code>methodology</code></td><td>string</td><td>The attribution methodology string (I3).</td></tr>
     <tr><td><code>priceRowsUsed</code></td><td>array</td><td>Every dated price row consulted; see PriceRowUsed.</td></tr>
     <tr><td><code>costShape</code></td><td>CostShape</td><td>SPEC-0067 — cost-shape facts (standalone, never in savings math): <code>preEdit</code> (pre-edit cost/token share), <code>topTurns</code> (expensive-turn concentration, or null), <code>lateTurn</code> (neutral late-half/early-half cost ratio, low confidence, or null).</td></tr>
+    <tr><td><code>netCache</code></td><td>NetCache (optional)</td><td>Parent-session signed same-token arithmetic. <code>usd</code> is hypothetical no-cache price minus observed cache price (positive = lower with cache), or null. <code>unavailableReason</code> is null or <code>unsupported-adapter</code>, <code>write-counters-unobserved</code>, <code>incomplete-cache-evidence</code>, <code>price-row-incomplete</code>, <code>unpriced-usage</code>, <code>no-cache-activity</code>. <code>scope</code> is <code>parent-session</code>; <code>interpretation</code> explicitly labels arithmetic, not a prediction. Never a floor, invoice, or savings estimate.</td></tr>
     <tr><td><code>sameFileReReads</code></td><td>SameFileReReads | null</td><td>SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none.</td></tr>
     <tr><td><code>verificationEvidence</code></td><td>object, optional</td><td>Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see <a href="04-read-a-receipt.html#recorded-verification-evidence">verification evidence</a>. Omitted when unsupported or incomplete.</td></tr>
     <tr><td><code>subagents</code></td><td>Subagents (optional)</td><td>SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths.</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="netcache-object">NetCache object</h3>
+
+<p>Current CLI receipts emit this object for every session, with null and a reason when unavailable. It is optional in the additive schema so older schema-v2 receipts remain valid. Signed arithmetic covers the parent session only and is excluded from spend totals.</p>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>usd</code></td><td>number | null</td><td>Same-observed-token hypothetical no-cache price minus cache price; positive means lower with cache. Null when incomplete. This is neither a floor nor invoice savings.</td></tr>
+    <tr><td><code>unavailableReason</code></td><td>string | null</td><td>Reason the net arithmetic is withheld; null when complete. See the <code>netCache</code> row for enum values.</td></tr>
+    <tr><td><code>interpretation</code></td><td>string</td><td><code>hypothetical no-cache price minus observed cache price, same tokens; arithmetic, not a prediction</code>.</td></tr>
+    <tr><td><code>scope</code></td><td>string</td><td>Always <code>parent-session</code>; child cache economics are not combined.</td></tr>
   </tbody>
 </table></div>
 
@@ -468,7 +483,7 @@ footer{
 
 <h3 id="costestimate-object">CostEstimate object</h3>
 
-<p>An additive interpretation beside legacy numeric dollar fields. Receipts currently expose only lower bounds; future estimate kinds require an additive schema change rather than silently changing a numeric field's meaning. The legacy scalar retains its raw compatibility precision, while <code>minUsd</code> is deliberately floored for safe display.</p>
+<p>An additive interpretation beside legacy numeric dollar fields. Spend CostEstimate objects currently expose only lower bounds; future estimate kinds require an additive schema change rather than silently changing a numeric field's meaning. The legacy scalar retains its raw compatibility precision, while <code>minUsd</code> is deliberately floored for safe display.</p>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>

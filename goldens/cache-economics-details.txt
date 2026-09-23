@@ -1,0 +1,35 @@
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                    AIRECEIPTS                    
+      “Show the recorded cache arithmetic.”       
+   Claude Code · Jun 14 2026 23:59:30 UTC · 30s   
+               claude-opus-4-8 100%               
+         cache served 98% of input tokens         
+
+pre-edit: no named edit tool observed
+  (share before the first named edit tool)
+
+(thinking/reply)...............≥ $0.0705  (1 turn)
+--------------------------------------------------
+TOTAL....................................≥ $0.0705
+standard API-equivalent floor; not an invoice
+same tokens on claude-haiku-4-5..........≥ $0.0141
+  (80% lower observable floor)
+  (arithmetic, not a prediction)
+
+DETAILS
+tokens in / out..........................100 / 150
+cache read / write.......................100k / 2k
+  writes: 5m 1k · 1h 1k
+turns / tool calls...........................1 / 0
+peak turn........................102k tok (turn 1)
+top 3 turns.........................100% (turns 1)
+same reads at uncached input rate..........≥ $0.45
+  (arithmetic, not a prediction)
+cache vs uncached......................$0.44 lower
+  (hypothetical no-cache price, same tokens)
+  (read discount minus write premium)
+  (parent session; arithmetic, not a prediction)
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                npx aireceipts-cli                
+         github.com/anandgupta42/receipts         
+- - - - - - - - - - - - - - - - - - - - - - - - -
