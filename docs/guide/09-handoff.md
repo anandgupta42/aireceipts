@@ -12,14 +12,14 @@ aireceipts --handoff "intermittently"
 handoff: Can you fix the flaky login test in src/auth/login.test.ts? It's failing intermittently in CI.
 Claude Code · Jun 15 2026 14:00:25 UTC · 4m 35s
 claude-opus-4-8 100%
-total ≥ $0.09 · 6 turns · 5 tool calls
+total ≥ $0.0945 · 6 turns · 5 tool calls
 --------------------------------------------------
-FLAGGED PATTERN COST.......................≈ $0.07
+FLAGGED PATTERN COST.....................≈ $0.0767
   heuristic pattern subtotal · not proven savings
 
-⚠ Bash loop ×5....................≥ $0.07 (3m 45s)
+⚠ Bash loop ×5..................≥ $0.0767 (3m 45s)
   at turns 1-5
-  → change or stop after two identical failures
+  → check whether repeated calls were needed
 
 covers: 6 turns · 5 tool calls · 0 compactions · 1 flagged-pattern line
 ```
@@ -43,8 +43,10 @@ rule your agent can follow next time. The rules are fixed strings keyed to the
 detector class — extracted evidence plus a static instruction, never generated
 prose. It closes with a `covers:` line stating exactly what the packet
 accounts for. Paste the whole block into your next prompt so the agent knows
-what to avoid — here, a Bash command it re-ran five times over nearly four
-minutes.
+what to inspect — here, a Bash command it re-ran five times over nearly four
+minutes. Identical calls do not establish identical failures: polling, successful
+rereads, and deliberate negative tests can also repeat. Check whether the earlier
+result already answers the question and is still current before reusing it.
 
 When pricing coverage is mixed, the state header does not call the observed
 floor a total. It prints `known priced subtotal ≥ $X · known unpriced N tok`,
@@ -92,8 +94,7 @@ session contained no avoidable work.
 
 Some detector patterns show up run after run. Pass `--handoff-threshold N` and,
 for any detector class that recurs across `N` or more of your recent sessions, the handoff also
-suggests a `CLAUDE.md` rule to prevent it — a durable fix instead of a one-off
-note. The default threshold is `3`:
+suggests a `CLAUDE.md` rule to help review it on later runs. The default threshold is `3`:
 
 ```sh
 aireceipts --handoff --handoff-threshold 3
