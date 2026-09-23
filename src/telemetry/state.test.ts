@@ -1,8 +1,10 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureInstallId, installHashOf, readState, updateState } from "./state.js";
+import { ensureInstallId, installHashOf, readState, updateState, updateStateWithMeta } from "./state.js";
+
+const INSTALL_ID = "123e4567-e89b-42d3-a456-426614174000";
 
 describe("SPEC-0043 R7 local telemetry state", () => {
   let home: string;
@@ -34,6 +36,42 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     expect(state?.runCount).toBe(1);
     const raw = await readFile(path(), "utf8");
     expect(() => JSON.parse(raw)).not.toThrow();
+    const siblings = await readdir(join(home, ".aireceipts"));
+    const backup = siblings.find((name) => name.startsWith("state.json.corrupt-"));
+    expect(backup).toBeDefined();
+    expect(await readFile(join(home, ".aireceipts", backup!), "utf8")).toBe("{not json");
+  });
+
+  it("salvages a valid install id and individual fields from valid JSON with bad counters", async () => {
+    await mkdir(join(home, ".aireceipts"));
+    await writeFile(path(), JSON.stringify({ schemaVersion: 1, installId: INSTALL_ID, firstRunAt: "2026-07-01", runCount: -1, receiptCount: 3, milestones: [] }));
+    const result = await updateStateWithMeta((state) => { ensureInstallId(state, true); }, home);
+    expect(result).toMatchObject({ recovered: true, installIdSource: "existing", state: { installId: INSTALL_ID, firstRunAt: "2026-07-01", runCount: 0, receiptCount: 3, milestones: {} } });
+  });
+
+  it("salvages an install id despite a wrong (not newer) schemaVersion", async () => {
+    await mkdir(join(home, ".aireceipts"));
+    await writeFile(path(), JSON.stringify({ schemaVersion: "1", installId: INSTALL_ID, runCount: 2, receiptCount: 1, milestones: {} }));
+    const result = await updateStateWithMeta((state) => { ensureInstallId(state, true); }, home);
+    expect(result?.state.installId).toBe(INSTALL_ID);
+    expect(result?.recovered).toBe(true);
+    expect(result?.installIdSource).toBe("existing");
+  });
+
+  it("marks a missing file as a new id source", async () => {
+    const result = await updateStateWithMeta((state) => { ensureInstallId(state, true); }, home);
+    expect(result?.installIdSource).toBe("new");
+  });
+
+  it("moves unparseable bytes aside and mints a fresh id", async () => {
+    await mkdir(join(home, ".aireceipts"));
+    await writeFile(path(), "{not json", "utf8");
+    const result = await updateStateWithMeta((state) => { ensureInstallId(state, true); }, home);
+    expect(result?.installIdSource).toBe("recovered_after_corrupt");
+    expect(result?.state.installId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    const backup = (await readdir(join(home, ".aireceipts"))).find((name) => name.startsWith("state.json.corrupt-"));
+    expect(backup).toBeDefined();
+    expect(await readFile(join(home, ".aireceipts", backup!), "utf8")).toBe("{not json");
   });
 
   it("concurrent last-write-wins updates leave valid JSON", async () => {
@@ -48,6 +86,36 @@ describe("SPEC-0043 R7 local telemetry state", () => {
 
     const parsed = JSON.parse(await readFile(path(), "utf8")) as { schemaVersion?: unknown };
     expect(parsed.schemaVersion).toBe(1);
+  });
+
+  it("never rewrites a state file from a newer schema version", async () => {
+    await mkdir(join(home, ".aireceipts"), { recursive: true });
+    const newer = JSON.stringify({ schemaVersion: 2, installId: INSTALL_ID, runCount: 3, receiptCount: 1, milestones: {}, heartbeat: { polls: 7 } });
+    await writeFile(path(), newer, "utf8");
+    const result = await updateStateWithMeta((state) => { state.runCount += 1; ensureInstallId(state, true); }, home);
+    expect(result).toBeUndefined();
+    expect(await readFile(path(), "utf8")).toBe(newer);
+    const entries = await readdir(join(home, ".aireceipts"));
+    expect(entries.filter((name) => name.startsWith("state.json.corrupt-"))).toHaveLength(0);
+    expect(await readState(home)).toMatchObject({ schemaVersion: 1, runCount: 0, receiptCount: 0 });
+  });
+
+  it("concurrent writers recovering the same corrupt file leave one parseable state and keep every backup", async () => {
+    await mkdir(join(home, ".aireceipts"), { recursive: true });
+    await writeFile(path(), "{bad", "utf8");
+    await Promise.all([0, 1].map(() => updateStateWithMeta((state) => { ensureInstallId(state, true); }, home)));
+    const parsed = JSON.parse(await readFile(path(), "utf8")) as { installId?: string };
+    expect(parsed.installId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    const entries = await readdir(join(home, ".aireceipts"));
+    expect(entries.filter((name) => name === "state.json")).toHaveLength(1);
+    const backups = entries.filter((name) => name.startsWith("state.json.corrupt-"));
+    expect(backups.length).toBeGreaterThanOrEqual(1);
+    for (const name of backups) {
+      const bytes = await readFile(join(home, ".aireceipts", name), "utf8");
+      // The original corrupt bytes always survive; a racing recovery may also move
+      // aside a sibling's freshly written valid state (last-write-wins, SPEC-0043 R7).
+      expect(bytes === "{bad" || JSON.parse(bytes).schemaVersion === 1).toBe(true);
+    }
   });
 
   it("creates a random install id only when telemetry is enabled", async () => {

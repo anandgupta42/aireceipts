@@ -38,6 +38,7 @@ events in-process but skips the network flush, so those events are not sent.
 | `isCI` | boolean | | True when `CI` or `GITHUB_ACTIONS` is set and not false. Telemetry is enabled by default in CI, so this field distinguishes CI runs from human runs in the data. |
 | `installHash` | string | 64-hex sha256 or `unavailable` | Salted hash of the random local install id; raw id never leaves disk. |
 | `runOrdinalBucket` | enum | `1` \| `2-3` \| `4-10` \| `11-50` \| `>50` \| `unavailable` | Lifetime run ordinal bucket; never the raw count. |
+| `installIdSource` | enum | `existing` \| `new` \| `recovered_after_corrupt` \| `unavailable` | Whether the id came from state, was newly minted, followed recovery of unparseable state, or was unavailable. |
 | `handoffFormat` | enum (optional) | `text` \| `json` | SPEC-0042: emission mode, present only on handoff-command runs — never content. |
 
 ### `cli_error` — one per uncaught top-level CLI error
@@ -145,7 +146,9 @@ On the first telemetry-enabled run, aireceipts creates a random UUID in `~/.aire
 sha256("aireceipts-install-v1:" + installId)
 ```
 
-That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json`. If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
+That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete `~/.aireceipts/state.json` and any `~/.aireceipts/state.json.corrupt-*` backups (they keep the bytes of an unparseable state file, which can include the old raw id). If `AIRECEIPTS_TELEMETRY=off` or `DO_NOT_TRACK=1` is active on a fresh install, no install id is created.
+
+An unparseable state file is moved aside as `state.json.corrupt-<timestamp>` rather than silently replaced.
 
 ## Local counters
 

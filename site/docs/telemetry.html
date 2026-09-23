@@ -370,6 +370,7 @@ footer{
     <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>True when <code>CI</code> or <code>GITHUB_ACTIONS</code> is set and not false. Telemetry is enabled by default in CI, so this field distinguishes CI runs from human runs in the data.</td></tr>
     <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted hash of the random local install id; raw id never leaves disk.</td></tr>
     <tr><td><code>runOrdinalBucket</code></td><td>enum</td><td><code>1</code> | <code>2-3</code> | <code>4-10</code> | <code>11-50</code> | <code>&gt;50</code> | <code>unavailable</code></td><td>Lifetime run ordinal bucket; never the raw count.</td></tr>
+    <tr><td><code>installIdSource</code></td><td>enum</td><td><code>existing</code> | <code>new</code> | <code>recovered_after_corrupt</code> | <code>unavailable</code></td><td>Whether the id came from state, was newly minted, followed recovery of unparseable state, or was unavailable.</td></tr>
     <tr><td><code>handoffFormat</code></td><td>enum (optional)</td><td><code>text</code> | <code>json</code></td><td>SPEC-0042: emission mode, present only on handoff-command runs — never content.</td></tr>
   </tbody>
 </table></div>
@@ -498,7 +499,9 @@ footer{
 
 <pre class="doc-code"><code class="language-text">sha256(&quot;aireceipts-install-v1:&quot; + installId)</code></pre>
 
-<p>That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete <code>~/.aireceipts/state.json</code>. If <code>AIRECEIPTS_TELEMETRY=off</code> or <code>DO_NOT_TRACK=1</code> is active on a fresh install, no install id is created.</p>
+<p>That hash intentionally links events from the same install over time so adoption and retention can be counted. It does not identify a person, machine, or repo. To reset it, delete <code>~/.aireceipts/state.json</code> and any <code>~/.aireceipts/state.json.corrupt-*</code> backups (they keep the bytes of an unparseable state file, which can include the old raw id). If <code>AIRECEIPTS_TELEMETRY=off</code> or <code>DO_NOT_TRACK=1</code> is active on a fresh install, no install id is created.</p>
+
+<p>An unparseable state file is moved aside as <code>state.json.corrupt-&lt;timestamp&gt;</code> rather than silently replaced.</p>
 
 <h2 id="local-counters">Local counters</h2>
 

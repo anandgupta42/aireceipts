@@ -43,7 +43,7 @@ describe("SPEC-0043 R1: exactly nine event names", () => {
 describe("SPEC-0043 R9: docs parity", () => {
   const doc = readFileSync(resolve(process.cwd(), "docs/telemetry.md"), "utf8");
   const fieldsByEvent = {
-    cli_run: ["cliVersion", "os", "nodeMajor", "commandClass", "agentType", "durationBucket", "ok", "isCI", "installHash", "runOrdinalBucket", "exitClass"],
+    cli_run: ["cliVersion", "os", "nodeMajor", "commandClass", "agentType", "durationBucket", "ok", "isCI", "installHash", "installIdSource", "runOrdinalBucket", "exitClass"],
     cli_error: ["errorClass", "command", "agentType", "inPackage"],
     parse_failure: ["agentType", "adapterVersion", "signatureHash"],
     receipt_generated: [
@@ -140,6 +140,7 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
         ok: true,
         isCI: false,
         installHash: INSTALL_HASH,
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       },
     };
@@ -241,6 +242,7 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
         ok: true,
         isCI: true,
         installHash: "unavailable",
+        installIdSource: "existing",
         runOrdinalBucket: "unavailable",
       }).success,
     ).toBe(true);
@@ -306,6 +308,7 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         ok: true,
         isCI: false,
         installHash: INSTALL_HASH,
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       },
     ],
@@ -394,9 +397,18 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         ok: true,
         isCI: false,
         installHash: "123e4567-e89b-12d3-a456-426614174000",
+        installIdSource: "existing",
         runOrdinalBucket: "1",
       }).success,
     ).toBe(false);
+  });
+
+  it("rejects an unknown installIdSource", () => {
+    expect(cliRunPropertiesSchema.safeParse({
+      cliVersion: "0.1.0", os: "darwin", nodeMajor: 22, commandClass: "receipt",
+      agentType: "claude-code", durationBucket: "<100ms", ok: true, isCI: false,
+      installHash: INSTALL_HASH, installIdSource: "some-local-path", runOrdinalBucket: "1",
+    }).success).toBe(false);
   });
 
   it("validateEvent returns false (never throws) for an unrecognized event name", () => {
@@ -415,6 +427,7 @@ describe("SPEC-0042 R5 — handoffFormat allowlist", () => {
     ok: true,
     isCI: false,
     installHash: "unavailable" as const,
+    installIdSource: "existing",
     runOrdinalBucket: "1" as const,
   };
 
@@ -441,6 +454,7 @@ describe("controlled exitClass allowlist", () => {
     ok: false,
     isCI: false,
     installHash: "unavailable" as const,
+    installIdSource: "existing",
     runOrdinalBucket: "1" as const,
   };
 

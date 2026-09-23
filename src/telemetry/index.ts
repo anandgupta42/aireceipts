@@ -28,6 +28,7 @@ import type {
   ExportSurfaceValue,
   ExitClassValue,
   HookOperationValue,
+  InstallIdSourceValue,
   InputModeValue,
   IntegrationValue,
   MilestoneValue,
@@ -54,6 +55,7 @@ export type { TelemetryState };
 
 export interface RunStartTelemetry {
   installHash: string;
+  installIdSource: InstallIdSourceValue;
   runOrdinalBucket: "1" | "2-3" | "4-10" | "11-50" | ">50" | "unavailable";
   isCI: boolean;
 }
@@ -94,6 +96,7 @@ export function recordCliRun(input: RecordCliRunInput): void {
       ok: input.ok,
       isCI: input.isCI,
       installHash: input.installHash,
+      installIdSource: input.installIdSource,
       runOrdinalBucket: input.runOrdinalBucket,
       ...(!input.ok && input.exitClass !== undefined ? { exitClass: input.exitClass } : {}),
       ...(input.handoffFormat !== undefined ? { handoffFormat: input.handoffFormat } : {}),
@@ -301,7 +304,12 @@ export async function noteRunStart(command: string, env: NodeJS.ProcessEnv = pro
   });
 
   if (!result) {
-    const run = { installHash: "unavailable", runOrdinalBucket: "unavailable", isCI: isCiEnv(env) } as const;
+    const run = {
+      installHash: "unavailable",
+      installIdSource: "unavailable",
+      runOrdinalBucket: "unavailable",
+      isCI: isCiEnv(env),
+    } as const;
     currentRunIdentity = { installHash: run.installHash, isCI: run.isCI };
     return run;
   }
@@ -311,8 +319,9 @@ export async function noteRunStart(command: string, env: NodeJS.ProcessEnv = pro
   }
 
   const installHash = telemetryEnabled && result.state.installId ? installHashOf(result.state.installId) : "unavailable";
-  const run = {
+  const run: RunStartTelemetry = {
     installHash,
+    installIdSource: installHash === "unavailable" ? "unavailable" : result.installIdSource,
     runOrdinalBucket: result.recovered ? "unavailable" : bucketOrdinal(result.state.runCount),
     isCI: isCiEnv(env),
   };
