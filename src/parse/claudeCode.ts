@@ -536,14 +536,16 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
+        parseFailureShapes: [...(jsonDroppedRecords > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
         ...(anonymousUsage.total > 0 ? { unattributedUsage: anonymousUsage } : {}),
       }
-    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0 };
+    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined };
 }
 
 const ROOT = "~/.claude/projects";
 
 export class ClaudeCodeAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "claude-code";
   readonly label = "Claude Code";
   readonly vendor = "anthropic";
@@ -609,7 +611,7 @@ export class ClaudeCodeAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, compactions, droppedRecords, unattributedUsage } = await parseTranscript(id, true);
+      const { summary, turns, compactions, droppedRecords, parseFailureShapes, unattributedUsage } = await parseTranscript(id, true);
       // SPEC-0044 B3: only present when > 0 (absent → clean), so a clean
       // session's shape is unchanged.
       return {
@@ -618,6 +620,7 @@ export class ClaudeCodeAdapter implements SessionAdapter {
         compactions,
         ...(unattributedUsage ? { unattributedUsage } : {}),
         ...(droppedRecords > 0 ? { droppedRecords } : {}),
+        ...(parseFailureShapes.length > 0 ? { parseFailureShapes } : {}),
       };
     } catch {
       return null;

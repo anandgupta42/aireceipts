@@ -152,6 +152,25 @@ describe("recordParseFailure builds a valid parse_failure event and hashes the s
   });
 });
 
+describe("SPEC-0094 R2c identity on error events", () => {
+  it.each([true, false])("uses the current run identity with CI=%s", async (ci) => {
+    const run = await noteRunStart("receipt", {
+      AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN,
+      ...(ci ? { CI: "true" } : {}),
+    });
+    recordCliError({ command: "receipt", agentType: "gemini", err: new Error("broken") });
+    recordParseFailure({ agentType: "gemini", adapterVersion: "1", shape: "gemini:malformed_jsonl" });
+    for (const event of peekQueuedEvents().filter((candidate) => candidate.name === "cli_error" || candidate.name === "parse_failure")) {
+      expect(event.properties).toMatchObject({
+        cliVersion: getCliVersion(),
+        installHash: run.installHash,
+        isCI: ci,
+      });
+      expect(validateEvent(event as TelemetryEvent)).toBe(true);
+    }
+  });
+});
+
 describe("SPEC-0043 recorders", () => {
   it("uses unavailable and the current CI environment when no run was started", async () => {
     await noteReceiptGenerated(RECEIPT_BASE);

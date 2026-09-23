@@ -5,6 +5,7 @@
 // command (R7 — shared helpers under common ownership); the context is only the
 // side-effecting seams.
 import type { CliOptions } from "./options.js";
+import type { Session } from "../parse/types.js";
 import type {
   RecordExportGeneratedInput,
   RecordHookConfiguredInput,
@@ -34,6 +35,7 @@ export interface CommandContext {
   prompt(question: string): Promise<boolean>;
   /** Telemetry surface a command may read (recording/flush stays in `main()` — R6). */
   readonly telemetry: {
+    observeSession?(session: Session): void;
     showPayload(env: NodeJS.ProcessEnv): { enabled: boolean; events: readonly unknown[]; reason?: "development-build" };
     noteReceiptGenerated(input: Omit<RecordReceiptGeneratedInput, "receiptOrdinal">, command?: string): Promise<void>;
     recordExportGenerated(input: RecordExportGeneratedInput): void;

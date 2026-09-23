@@ -364,7 +364,7 @@ footer{
     <tr><td><code>os</code></td><td>enum</td><td><code>darwin</code> | <code>linux</code> | <code>win32</code> | <code>other</code></td><td>Collapsed from <code>process.platform</code>.</td></tr>
     <tr><td><code>nodeMajor</code></td><td>integer</td><td>e.g. <code>22</code></td><td>Major Node version only.</td></tr>
     <tr><td><code>commandClass</code></td><td>enum</td><td><code>backfill</code> | <code>benchmark</code> | <code>check-budget</code> | <code>compare</code> | <code>demo</code> | <code>handoff</code> | <code>help</code> | <code>install-hook</code> | <code>integrations</code> | <code>list</code> | <code>methodology</code> | <code>mini</code> | <code>pr</code> | <code>quota</code> | <code>receipt</code> | <code>setup</code> | <code>stats</code> | <code>statusline</code> | <code>telemetry-show</code> | <code>templates</code> | <code>uninstall-hook</code> | <code>version</code> | <code>week</code></td><td>Selected command name only; never raw argv or flag values.</td></tr>
-    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td>Which agent format was parsed, if known.</td></tr>
+    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td>Resolved source for a single-agent render. Help, version, setup, and mixed-agent renders remain <code>unknown</code>.</td></tr>
     <tr><td><code>durationBucket</code></td><td>enum</td><td><code>&lt;100ms</code> | <code>100-500ms</code> | <code>500ms-2s</code> | <code>2-10s</code> | <code>&gt;10s</code></td><td>Coarse bucket; never raw milliseconds.</td></tr>
     <tr><td><code>ok</code></td><td>boolean</td><td></td><td>Whether the command returned exit code 0.</td></tr>
     <tr><td><code>exitClass</code></td><td>enum (optional)</td><td><code>no-session-match</code> | <code>invalid-arguments</code> | <code>budget-exceeded</code> | <code>not-comparable</code> | <code>other-controlled</code></td><td>Present only when <code>ok</code> is false for a controlled return: respectively, no matching session/query; rejected flags or options; <code>check-budget</code> over its cap; <code>compare</code> lacking two comparable sessions; or another deliberate non-zero outcome. Thrown errors omit this field and emit <code>cli_error</code> instead. Never free text.</td></tr>
@@ -395,26 +395,35 @@ footer{
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
   <tbody>
+    <tr><td><code>cliVersion</code></td><td>string</td><td>semver</td><td>Version of this CLI.</td></tr>
+    <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted random install identifier; never the raw id.</td></tr>
+    <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>True when a CI environment marker is present.</td></tr>
     <tr><td><code>errorClass</code></td><td>enum</td><td><code>parse_error</code> | <code>io_error</code> | <code>network_error</code> | <code>validation_error</code> | <code>unknown_error</code></td><td>Derived from bounded error metadata; never <code>error.message</code>.</td></tr>
     <tr><td><code>command</code></td><td>enum</td><td><code>backfill</code> | <code>benchmark</code> | <code>check-budget</code> | <code>compare</code> | <code>demo</code> | <code>handoff</code> | <code>help</code> | <code>install-hook</code> | <code>integrations</code> | <code>list</code> | <code>methodology</code> | <code>mini</code> | <code>pr</code> | <code>quota</code> | <code>receipt</code> | <code>setup</code> | <code>stats</code> | <code>statusline</code> | <code>telemetry-show</code> | <code>templates</code> | <code>uninstall-hook</code> | <code>version</code> | <code>week</code></td><td>Never raw argv.</td></tr>
-    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td></td></tr>
+    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td>Resolved source if one agent session was loaded before the error; otherwise <code>unknown</code>.</td></tr>
     <tr><td><code>inPackage</code></td><td>boolean</td><td></td><td>Whether the top stack frame is inside aireceipts; the stack text never leaves the process.</td></tr>
   </tbody>
 </table></div>
 
 <pre class="doc-code"><code class="language-json">{
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;isCI&quot;: false,
   &quot;errorClass&quot;: &quot;io_error&quot;,
   &quot;command&quot;: &quot;receipt&quot;,
   &quot;agentType&quot;: &quot;unknown&quot;,
   &quot;inPackage&quot;: false
 }</code></pre>
 
-<h3 id="parsefailure-one-per-transcript-parsing-failure"><code>parse_failure</code> — one per transcript parsing failure</h3>
+<h3 id="parsefailure-one-per-distinct-record-level-skip-shape-on-a-full-load"><code>parse_failure</code> — one per distinct record-level skip shape on a full load</h3>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
   <tbody>
-    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td></td></tr>
+    <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td>Adapter that skipped a record during a full load.</td></tr>
+    <tr><td><code>cliVersion</code></td><td>string</td><td>semver</td><td>Version of this CLI.</td></tr>
+    <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted random install identifier; never the raw id.</td></tr>
+    <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>True when a CI environment marker is present.</td></tr>
     <tr><td><code>adapterVersion</code></td><td>string</td><td>short opaque token</td><td>Internal adapter version, not read from a transcript.</td></tr>
     <tr><td><code>signatureHash</code></td><td>string</td><td>64-hex sha256</td><td>Hash of a content-free structural failure descriptor.</td></tr>
   </tbody>
@@ -422,6 +431,9 @@ footer{
 
 <pre class="doc-code"><code class="language-json">{
   &quot;agentType&quot;: &quot;codex&quot;,
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;isCI&quot;: false,
   &quot;adapterVersion&quot;: &quot;1&quot;,
   &quot;signatureHash&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;
 }</code></pre>

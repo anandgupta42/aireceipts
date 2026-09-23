@@ -652,6 +652,7 @@ function summarySql(where = ""): string {
 }
 
 export class OpenCodeAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "opencode";
   readonly label = "opencode";
 
@@ -828,7 +829,7 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.unattributed ? { unattributedUsage: reconciled.unattributed } : {}),
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 
@@ -930,7 +931,7 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.unattributed ? { unattributedUsage: reconciled.unattributed } : {}),
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 

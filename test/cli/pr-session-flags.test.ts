@@ -14,7 +14,7 @@ const { runPrDetailed } = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("../../src/pr/index.js", () => ({ runPrDetailed }));
+vi.mock("../../src/pr/index.js", () => ({ runPrDetailed, defaultPrDeps: (overrides: unknown) => overrides }));
 
 import { parseOptions } from "../../src/cli/options.js";
 import { command as prCommand } from "../../src/cli/commands/pr.js";
@@ -54,6 +54,7 @@ describe("PR --session composition (#234)", () => {
 
     expect(runPrDetailed).toHaveBeenCalledWith(
       expect.objectContaining({ session: undefined, sessions: ["lead", "review"] }),
+      expect.objectContaining({ loadSession: expect.any(Function) }),
     );
     expect(recordPrFlowCompleted).toHaveBeenCalledOnce();
   });

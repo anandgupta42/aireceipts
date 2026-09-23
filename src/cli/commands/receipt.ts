@@ -16,6 +16,7 @@ import { svgOutOf, writeSvg, writePng } from "../common/output.js";
 import { receiptTelemetryFromModels, templateTelemetryValue } from "../common/telemetry.js";
 import type { ExportFormatValue } from "../../telemetry/schemas.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType } from "../agentType.js";
 
 const CSV_MODE_HINT = "use --csv=session or --csv=tool";
 
@@ -69,6 +70,8 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "other-controlled");
     return 1;
   }
+  ctx.telemetry.observeSession?.(session);
+  setAgentType(ctx, session.source);
   // SPEC-0061 — fold the session's subagents into the model before any format renders.
   const model = await buildFullSessionReceiptModel(session);
   const svgOut = svgOutOf(options);

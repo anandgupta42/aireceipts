@@ -129,6 +129,9 @@ export function recordCliError(input: RecordCliErrorInput): void {
   recordEvent({
     name: "cli_error",
     properties: {
+      cliVersion: getCliVersion(),
+      installHash: currentRunIdentity?.installHash ?? "unavailable",
+      isCI: currentRunIdentity?.isCI ?? isCiEnv(),
       errorClass: classifyError(input.err),
       command,
       agentType: toAgentTypeTelemetry(input.agentType),
@@ -149,6 +152,9 @@ export function recordParseFailure(input: RecordParseFailureInput): void {
   recordEvent({
     name: "parse_failure",
     properties: {
+      cliVersion: getCliVersion(),
+      installHash: currentRunIdentity?.installHash ?? "unavailable",
+      isCI: currentRunIdentity?.isCI ?? isCiEnv(),
       agentType: input.agentType,
       adapterVersion: input.adapterVersion,
       signatureHash: hashSignature(input.shape),
@@ -344,6 +350,7 @@ export async function noteStatuslinePoll(
     installHash: result.state.installId ? installHashOf(result.state.installId) : "unavailable",
     isCI: isCiEnv(env),
   };
+  currentRunIdentity = { installHash: identity.installHash, isCI: identity.isCI };
   if (firstRun && !result.recovered) recordActivationMilestone({ milestone: "first_run", command: "statusline", firstRunAt: result.state.firstRunAt, now });
   if (completed && completed.pollCount > 0) {
     const offset = Math.floor(now / 3_600_000) - Math.floor(Date.parse(`${completed.hour}:00:00.000Z`) / 3_600_000);
@@ -439,7 +446,7 @@ function receiptMilestoneFor(count: number): ReceiptMilestone | undefined {
 /** Increments the local receipt counter, records the receipt event, and fires once-only receipt milestones. */
 export async function noteReceiptGenerated(
   input: Omit<RecordReceiptGeneratedInput, "receiptOrdinal">,
-  command = input.surface,
+  command: string = input.surface,
   now: number = Date.now(),
 ): Promise<void> {
   let milestone: ReceiptMilestone | undefined;

@@ -309,6 +309,7 @@ describe("Codex cumulative usage envelopes", () => {
     ]);
 
     expect(session.droppedRecords).toBe(1);
+    expect(session.parseFailureShapes).toContain("codex:malformed_jsonl");
     expect(session.usageReconciliationFailed).toBe(true);
     expect(session.unattributedUsage?.total).toBe(402_000);
     expect((await buildReceiptModel(session)).totalUsd).toBeNull();

@@ -8,6 +8,7 @@ import { renderMiniReceipt } from "../../receipt/mini.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
+import { setAgentType } from "../agentType.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   try {
@@ -20,6 +21,8 @@ async function run(ctx: CommandContext): Promise<number> {
     if (!session) {
       return 0;
     }
+    ctx.telemetry.observeSession?.(session);
+    setAgentType(ctx, session.source);
     // SPEC-0061 R4 — subagent rollup; attach is itself fail-safe (parent-only on error).
     const model = await buildFullSessionReceiptModel(session);
     ctx.stdout.write(`${renderMiniReceipt(model)}\n`);

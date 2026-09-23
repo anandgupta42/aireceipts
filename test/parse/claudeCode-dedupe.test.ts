@@ -124,6 +124,7 @@ describe("claude-code adapter: one observable response group = one turn (message
     expect(session.turns[0].usage?.total).toBe(safeTotal);
     expect(session.turns[0].pricingUnits).toEqual([]);
     expect(session.droppedRecords).toBe(1);
+    expect(session.parseFailureShapes).toContain("claude-code:malformed_usage");
     const receipt = await buildReceiptModel(session);
     expect(receipt.totalUsd).toBeNull();
     expect(receipt.caveats).toContainEqual(expect.objectContaining({ kind: "dropped-transcript-records" }));

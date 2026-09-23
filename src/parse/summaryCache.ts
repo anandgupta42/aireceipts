@@ -125,6 +125,7 @@ function stripTurns(session: Session): SessionSummary {
   delete summary.usageReconciliationFailed;
   delete summary.excludedUnattributedUsage;
   delete summary.droppedRecords;
+  delete summary.parseFailureShapes;
   return summary as SessionSummary;
 }
 

@@ -552,15 +552,17 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
+        parseFailureShapes: droppedRecords > 0 ? ["codex:malformed_jsonl"] : [],
         ...(usageReconciliationFailed ? { usageReconciliationFailed: true as const } : {}),
         ...(usageReconciliationFailed && totalUsage.total > 0 ? { unattributedUsage: totalUsage } : {}),
       }
-    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0 };
+    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined, usageReconciliationFailed: undefined };
 }
 
 const ROOT = "~/.codex/sessions";
 
 export class CodexAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "codex";
   readonly label = "Codex";
   readonly vendor = "openai";
@@ -608,10 +610,10 @@ export class CodexAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, compactions, droppedRecords, usageReconciliationFailed, unattributedUsage } = await parseTranscript(id, true);
+      const { summary, turns, compactions, droppedRecords, parseFailureShapes, usageReconciliationFailed, unattributedUsage } = await parseTranscript(id, true);
       // SPEC-0040 R5 — compactions absent (not `[]`) when none; SPEC-0044 B3 —
       // droppedRecords present only when > 0 (absent → clean).
-      const dropped = droppedRecords > 0 ? { droppedRecords } : {};
+      const dropped = droppedRecords > 0 ? { droppedRecords, parseFailureShapes } : {};
       const reconciliation = usageReconciliationFailed
         ? { usageReconciliationFailed, ...(unattributedUsage ? { unattributedUsage } : {}) }
         : {};

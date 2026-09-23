@@ -40,6 +40,14 @@ disables shipped-default telemetry in development builds. The hook-suppression
 contract remains unchanged in slice A; SPEC-0094's later hook proposal requires
 its own delivery slice.
 
+### Amendment: 2026-09-23, SPEC-0094 slice B
+
+SPEC-0094 makes `cli_run.agentType` and `cli_error.agentType` reflect the resolved
+single-agent render. It activates `parse_failure` for closed record-level skip shapes
+on full transcript loads. `cli_error` and `parse_failure` gain `cliVersion`,
+`installHash`, and `isCI`; both events keep the content-free allowlist and the
+original salted install hash contract.
+
 ## Requirements
 
 - **R1 — Event catalog v2, exactly nine names.** `EVENT_NAMES` becomes {`cli_run`,

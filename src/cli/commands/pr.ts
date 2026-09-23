@@ -1,7 +1,8 @@
 // SPEC-0018: `pr` — attach the building session's receipt to the current PR
 // (SPEC-0019). priority 60, matches the `pr` positional subcommand. `--post`
 // upserts via gh; without it, a dry run prints the body.
-import { runPrDetailed } from "../../pr/index.js";
+import { defaultPrDeps, runPrDetailed } from "../../pr/index.js";
+import { loadSession } from "../../parse/load.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setExitClass } from "../exitClass.js";
@@ -17,7 +18,13 @@ async function run(ctx: CommandContext): Promise<number> {
     store: ctx.options.store,
     pushRef: ctx.options.pushRef,
     samosa: ctx.options.samosa,
-  });
+  }, defaultPrDeps({
+    loadSession: async (summary) => {
+      const session = await loadSession(summary);
+      if (session) ctx.telemetry.observeSession?.(session);
+      return session;
+    },
+  }));
   if (result.bodyRendered && result.receipt) {
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({

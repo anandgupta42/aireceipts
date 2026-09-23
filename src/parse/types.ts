@@ -222,6 +222,8 @@ export interface Session extends SessionSummary {
    * must floor `≥` and say so. Absent/0 → clean.
    */
   droppedRecords?: number;
+  /** Closed, content-free full-load skip shapes. Internal telemetry evidence only; never exported. */
+  parseFailureShapes?: string[];
 }
 
 export interface ListSessionsOptions {
@@ -257,6 +259,8 @@ export interface AdapterFidelity {
 
 export interface SessionAdapter {
   readonly id: AgentSource;
+  /** Bounded implementation token for parse-failure telemetry. */
+  readonly adapterVersion: string;
   /** human label, e.g. "Claude Code" */
   readonly label: string;
   /**

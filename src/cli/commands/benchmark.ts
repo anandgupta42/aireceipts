@@ -7,6 +7,7 @@ import { buildBenchmarkPayload, confirmPrompt, BENCHMARK_UNAVAILABLE_MESSAGE } f
 import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType } from "../agentType.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const { options } = ctx;
@@ -22,6 +23,8 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "other-controlled");
     return 1;
   }
+  ctx.telemetry.observeSession?.(session);
+  setAgentType(ctx, session.source);
   const model = await buildFullSessionReceiptModel(session);
   const payload = buildBenchmarkPayload(model, session.totals.turnCount);
 

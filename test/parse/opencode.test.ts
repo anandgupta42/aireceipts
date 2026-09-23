@@ -548,6 +548,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.turns[0].usage?.total).toBe(safeTotal);
     expect(session!.turns[0].pricingUnits).toEqual([]);
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     const receipt = await buildReceiptModel(session!, dataDir);
     expect(receipt.totalUsd).toBeNull();
     expect(receipt.caveats).toContainEqual(expect.objectContaining({ kind: "dropped-transcript-records" }));
@@ -570,6 +571,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.turns[0].usage).toEqual(expect.objectContaining({ total: 0 }));
     expect(session!.turns[0].pricingUnits).toEqual([]);
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     expect((await buildReceiptModel(session!, dataDir)).totalUsd).toBeNull();
   });
 
@@ -595,6 +597,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
       expect(session!.totals.tokens).toMatchObject({ input: 500, output: 125, cacheRead: 50, cacheCreation: 10, total: 685 });
       expect(session!.unattributedUsage).toBeUndefined();
       expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
       expect((await buildReceiptModel(session!, dataDir)).totalUsd).not.toBeNull();
     },
   );
@@ -617,6 +620,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.totals.tokens.total).toBe(685);
     expect(session!.unattributedUsage).toBeUndefined();
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
   });
 
   it("accepts legitimate numeric SQLite strings in a coherent OpenCode aggregate", async () => {

@@ -255,6 +255,7 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
 const ROOT = "~/.gemini/tmp";
 
 export class GeminiAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "gemini";
   readonly label = "Gemini CLI";
   readonly vendor = "google";
@@ -304,7 +305,7 @@ export class GeminiAdapter implements SessionAdapter {
       }
       const { summary, turns, droppedRecords } = buildSession(id, await readRecords(id));
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}) };
+      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
     } catch {
       return null;
     }

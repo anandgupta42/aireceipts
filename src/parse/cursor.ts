@@ -155,6 +155,7 @@ function summaryOf(c: ComposerData, id: string): SessionSummary {
 }
 
 export class CursorAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "cursor";
   readonly label = "Cursor";
 
@@ -225,11 +226,13 @@ export class CursorAdapter implements SessionAdapter {
       const order = composer.fullConversationHeadersOnly ?? [];
       const turns: Turn[] = [];
       let toolCallCount = 0;
+      let missingBubble = false;
       let current: Turn | null = null;
 
       for (const h of order) {
         const b = byId.get(h.bubbleId);
         if (!b) {
+          missingBubble = true;
           continue;
         }
         const isUser = h.type === 1 || b.type === 1;
@@ -251,7 +254,8 @@ export class CursorAdapter implements SessionAdapter {
       }
 
       const base = summaryOf(composer, id);
-      return { ...base, totals: { ...base.totals, turnCount: turns.length, toolCallCount }, turns };
+      return { ...base, totals: { ...base.totals, turnCount: turns.length, toolCallCount }, turns,
+        ...(missingBubble ? { parseFailureShapes: ["cursor:missing_bubble"] } : {}) };
     } finally {
       db.close();
     }

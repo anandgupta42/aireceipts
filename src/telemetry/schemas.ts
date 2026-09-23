@@ -195,6 +195,9 @@ export type CliRunProperties = z.infer<typeof cliRunPropertiesSchema>;
 
 export const cliErrorPropertiesSchema = z
   .object({
+    cliVersion: cliVersionSchema,
+    installHash: installHashSchema,
+    isCI: z.boolean(),
     errorClass: z.enum(ERROR_CLASS_VALUES),
     /** Same bounded enum as `cli_run.commandClass` — never the raw command line (R2). */
     command: z.enum(COMMAND_VALUES),
@@ -206,6 +209,9 @@ export type CliErrorProperties = z.infer<typeof cliErrorPropertiesSchema>;
 
 export const parseFailurePropertiesSchema = z
   .object({
+    cliVersion: cliVersionSchema,
+    installHash: installHashSchema,
+    isCI: z.boolean(),
     agentType: z.enum(AGENT_TYPE_VALUES),
     adapterVersion: adapterVersionSchema,
     signatureHash: signatureHashSchema,

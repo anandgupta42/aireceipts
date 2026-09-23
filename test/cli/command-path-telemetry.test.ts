@@ -9,7 +9,7 @@
 // at module load — so the temp home must exist, and be the mocked homedir,
 // before the src/ module graph evaluates. Without this, discovery scans the
 // REAL home: silently green against a dev machine's transcripts, exit 1 on CI.
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -128,6 +128,41 @@ describe("SPEC-0043 command-path telemetry", () => {
     const runs = events.filter((e) => e.name === "cli_run");
     expect(runs).toHaveLength(1);
     expect((runs[0].properties as Record<string, unknown>).commandClass).toBe("receipt");
+    expect((runs[0].properties as Record<string, unknown>).agentType).toBe(props.agentType);
+  });
+
+  it("queues one Gemini parse_failure on a torn full render without changing receipt bytes", async () => {
+    const chatDir = join(home, ".gemini", "tmp", "project", "chats");
+    mkdirSync(chatDir, { recursive: true });
+    const chat = join(chatDir, "torn.jsonl");
+    writeFileSync(chat, `${readFileSync(join(fixturesDir, "gemini", "clean-session.jsonl"), "utf8")}\n{torn\n`);
+    const oldTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const oldConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    const output: string[] = [];
+    process.stdout.write = ((chunk: string | Uint8Array) => { output.push(String(chunk)); return true; }) as typeof process.stdout.write;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      expect(await main([chat])).toBe(0);
+      const enabledBytes = output.join("");
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties).toMatchObject({ agentType: "gemini", cliVersion: expect.any(String),
+        installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: expect.any(Boolean) });
+      __resetQueueForTests();
+      output.length = 0;
+      process.env.AIRECEIPTS_TELEMETRY = "off";
+      expect(await main([chat])).toBe(0);
+      expect(output.join("")).toBe(enabledBytes);
+      __resetQueueForTests();
+      expect(await main(["--list"])).toBe(0);
+      expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
+    } finally {
+      if (oldTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = oldTelemetry;
+      if (oldConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = oldConnection;
+    }
   });
 
   it("a setup run emits cli_run with its own commandClass", async () => {
@@ -215,6 +250,12 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect((await telemetry.readState(home)).statusline).toBeUndefined();
     expect(telemetry.flushTelemetry).not.toHaveBeenCalled();
     expect(peekQueuedEvents().filter((event) => event.name === "cli_run")).toHaveLength(0);
+  });
+
+  it("a statusline poll of a torn transcript queues no parse_failure", async () => {
+    const transcriptPath = join(fixturesDir, "claude-code", "dropped-record-midstream.jsonl");
+    expect(await withStdinPayload(JSON.stringify({ transcript_path: transcriptPath }), () => main(["statusline"]))).toBe(0);
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
   });
 
   it("enabled scoped and unscoped statuslines flush only when the queue has an event", async () => {
