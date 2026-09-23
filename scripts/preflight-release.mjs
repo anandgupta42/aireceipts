@@ -24,11 +24,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const r = (p) => join(ROOT, p);
 
 // Ceilings: v0.10.0 shipped 72 files / ~580 KB; the SPEC-0036 exempt-glob
-// port to pr-check nudged it just past the old 580 line. Keep narrow headroom
-// so normal runtime growth fits while a real regression (sourcemaps back, a
-// stray directory) still trips the release gate.
+// port to pr-check nudged it just past the old 580 line. The 2026-09-22 price
+// refresh (31 new models, every row citing a verbatim vendor excerpt) put the
+// four data/prices tables at ~60 KB and the tarball at ~621 KB in CI. Keep
+// narrow headroom so normal runtime growth fits while a real regression
+// (sourcemaps back, a stray directory) still trips the release gate.
 export const MAX_TARBALL_FILES = 80;
-export const MAX_UNPACKED_KB = 590;
+export const MAX_UNPACKED_KB = 660;
 // NOTICE ships because Apache-2.0 §4(d) requires redistributions to include it.
 export const FILES_ALLOWLIST = ["dist", "data/prices", "data/demo", "README.md", "LICENSE", "NOTICE"];
 

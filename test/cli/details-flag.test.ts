@@ -69,6 +69,9 @@ describe("SPEC-0054 --details CLI surface", () => {
       const valid = validateEvent({
         name: "receipt_generated",
         properties: {
+          cliVersion: "0.11.0",
+          installHash: "unavailable",
+          isCI: false,
           surface: "receipt",
           agentType: "unknown",
           multiAgent: false,

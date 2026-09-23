@@ -211,6 +211,9 @@ export type ParseFailureProperties = z.infer<typeof parseFailurePropertiesSchema
 
 export const receiptGeneratedPropertiesSchema = z
   .object({
+    cliVersion: cliVersionSchema,
+    installHash: installHashSchema,
+    isCI: z.boolean(),
     surface: z.enum(RECEIPT_SURFACE_VALUES),
     agentType: z.enum(AGENT_TYPE_VALUES),
     multiAgent: z.boolean(),

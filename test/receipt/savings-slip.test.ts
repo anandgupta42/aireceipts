@@ -144,7 +144,7 @@ describe("SPEC-0059 R3 — evidence groups, ordering, rules", () => {
 
   it("a class's rule line renders once even when several of its lines fired", () => {
     const out = savingsSlipLines([loop(0.3), loop(0.1)], null).join("\n");
-    expect(out.match(/→ change or stop after two identical failures/g)).toHaveLength(1);
+    expect(out.match(/→ check whether repeated calls were needed/g)).toHaveLength(1);
     // Rows within the group are cost-descending.
     expect(out.indexOf("$0.30")).toBeLessThan(out.indexOf("$0.10"));
   });
@@ -274,7 +274,7 @@ describe("SPEC-0059 R6 — artifact parity", () => {
     });
     expect(html).toContain("<h2>handoff — flagged pattern cost ≈ $0.41</h2>");
     expect(html).toContain("FLAGGED PATTERN COST");
-    expect(html).toContain("→ change or stop after two identical failures");
+    expect(html).toContain("→ check whether repeated calls were needed");
   });
 
   it("renders no handoff section when the slip is absent", () => {
@@ -296,7 +296,7 @@ describe("SPEC-0059 R7 — JSON surface", () => {
     expect(json.couldHaveSaved.tokens).toBe(1000);
     expect(json.couldHaveSaved.pctOfTotal).toBeNull();
     expect(json.wasteLines.map((w) => w.rule)).toEqual([
-      "change or stop after two identical failures",
+      "check whether repeated calls were needed",
       "route short replies to a cheaper model",
     ]);
     expect(json.wasteLines.every((w) => w.costInterpretation === HEURISTIC_PATTERN_PRICING_INTERPRETATION)).toBe(true);

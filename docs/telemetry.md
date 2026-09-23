@@ -62,6 +62,9 @@ events in-process but skips the network flush, so those events are not sent.
 
 | Field | Type | Values | Notes |
 |---|---|---|---|
+| `cliVersion` | string | semver | From this package's `package.json`. |
+| `installHash` | string | 64-hex sha256 or `unavailable` | Salted hash of the random local install id; raw id never leaves disk. |
+| `isCI` | boolean | | True when `CI` or `GITHUB_ACTIONS` is set and not false. Telemetry is enabled by default in CI, so this field distinguishes CI runs from human runs in the data. |
 | `surface` | enum | `receipt` \| `compare` \| `mini` \| `pr` | Statusline/quota/template previews are not receipts. |
 | `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | `unknown` for mixed-agent/multi-session surfaces. |
 | `multiAgent` | boolean | | True when the rendered surface combines more than one session/model. |

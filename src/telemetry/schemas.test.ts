@@ -47,6 +47,9 @@ describe("SPEC-0043 R9: docs parity", () => {
     cli_error: ["errorClass", "command", "agentType", "inPackage"],
     parse_failure: ["agentType", "adapterVersion", "signatureHash"],
     receipt_generated: [
+      "cliVersion",
+      "installHash",
+      "isCI",
       "surface",
       "agentType",
       "multiAgent",
@@ -173,6 +176,9 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
     [
       "receipt_generated",
       {
+        cliVersion: "0.1.0",
+        installHash: INSTALL_HASH,
+        isCI: false,
         surface: "receipt",
         agentType: "claude-code",
         multiAgent: false,
@@ -242,6 +248,36 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
     ).toBe(true);
   });
 
+  it("receipt_generated accepts the unavailable install hash sentinel and rejects malformed identity fields", () => {
+    const valid = {
+      cliVersion: "0.11.0",
+      installHash: INSTALL_HASH,
+      isCI: true,
+      surface: "receipt",
+      agentType: "claude-code",
+      multiAgent: false,
+      outputMode: "text",
+      template: "none",
+      pricedRowCoverage: "none",
+      hasStuckLoopWaste: false,
+      hasTrivialSpansWaste: false,
+      hasContextThrashWaste: false,
+      hasPriceDelta: false,
+      hasSubagents: false,
+      hasPreEditShare: false,
+      detailsView: false,
+      turnCountBucket: "1",
+      toolCallCountBucket: "1",
+      receiptOrdinalBucket: "1",
+    };
+    expect(receiptGeneratedPropertiesSchema.safeParse(valid).success).toBe(true);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installHash: "unavailable" }).success).toBe(true);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, cliVersion: "v0.11.0" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installHash: "123e4567-e89b-12d3-a456-426614174000" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, isCI: "true" }).success).toBe(false);
+    expect(receiptGeneratedPropertiesSchema.safeParse({ ...valid, installId: "raw-id" }).success).toBe(false);
+  });
+
   it("SPEC-0075 R6 strictly accepts boolean-only statusline scope/config markers", () => {
     const valid = {
       integration: "statusline",
@@ -287,6 +323,9 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
     [
       receiptGeneratedPropertiesSchema,
       {
+        cliVersion: "0.1.0",
+        installHash: INSTALL_HASH,
+        isCI: false,
         surface: "receipt",
         agentType: "claude-code",
         multiAgent: false,
@@ -299,6 +338,7 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
         hasPriceDelta: false,
         hasSubagents: false,
         hasPreEditShare: false,
+        detailsView: false,
         turnCountBucket: "1",
         toolCallCountBucket: "2-3",
         receiptOrdinalBucket: "1",
