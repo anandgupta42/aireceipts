@@ -12,8 +12,8 @@ Invariants touched: I1 (resolution stays a local, deterministic table lookup), I
 (an alias prices a session only when a cited vendor page says the id is the same model
 at the same price; nothing is priced from a sibling), I3 (every alias and every
 comparison candidate carries its own cited source, and the exported price row carries
-the alias citation that justified it), I4 (one bounded enum added to telemetry, no model
-or vendor field), I5 (the new receipt line is golden-gated and derived only from bundled
+the alias citation that justified it), I4 (R1 to R5 add no telemetry field; the deferred
+age-bucket proposal would add one bounded enum and nothing else), I5 (the new receipt line is golden-gated and derived only from bundled
 data and the transcript), I6 (the comparison set is recorded, cited set membership,
 never a quality ranking). This spec carries the improvement plan's "SPEC-0086" bullets
 under id 0095.
@@ -66,7 +66,13 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   alias id (for example `gpt-5.6` for `gpt-5.6-sol`, if and only if OpenAI's page states
   that mapping). Same price must hold for every price period the alias covers: each
   canonical `price_history` row that the alias window overlaps needs at least one alias
-  source whose `observed_at` falls inside that row's window. A vendor change that prices
+  source whose `observed_at` is on or after the earliest `observed_at` among that row's
+  own sources, so the alias evidence is never older than the evidence that set the
+  row's price. `observed_at` records when the page was read, not when a rate takes
+  effect, so a scheduled row cited in advance (a 2027 rate observed in 2026) is covered
+  by an alias source from the same announcement; requiring the alias observation to
+  fall inside the billing window was rejected because it would reject exactly those
+  advance citations. A vendor change that prices
   the snapshot differently closes the alias with `to_date`. `resolvePrice`
   (`src/pricing/resolve.ts:19`) tries the canonical key first, then an alias in the same
   vendor table whose window contains the session date, then prices the canonical
@@ -101,17 +107,18 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   an explicit reason for every unit it does not price, computed where the unit is
   actually priced (`priceTurn`, `src/pricing/resolve.ts:331`, and `priceSessionTurn`,
   `src/pricing/resolve.ts:377`), never by a separate lookup. The reasons that produce a
-  line, with exact text:
+  line, with exact text (the `caveat: ` prefix matches every other caveat line, so a
+  reader scanning for that word finds all of them; Q3 is resolved this way):
   - vendor resolved, id absent from that vendor table's `models` and `aliases`:
-    `model <id> not in bundled <vendor> price table (latest citation <date>); tokens only`
+    `caveat: model <id> not in bundled <vendor> price table (latest citation <date>); tokens only`
   - no vendor resolved and the id is absent from every bundled table's `models`,
     `aliases` and `omitted`:
-    `model <id> not in bundled price tables (latest citation <date>); tokens only`
+    `caveat: model <id> not in bundled price tables (latest citation <date>); tokens only`
   - vendor resolved, id in that table's `omitted` array:
-    `model <id> omitted from bundled <vendor> price table; tokens only`
+    `caveat: model <id> omitted from bundled <vendor> price table; tokens only`
   - vendor resolved, id known (canonical or alias) but no row or alias window covers
-    the unit's date: `model <id> has no bundled <vendor> price for <session date>;
-    tokens only`
+    the unit's date: `caveat: model <id> has no bundled <vendor> price for <session
+    date>; tokens only`
 
   Every other unpriced reason produces no line and keeps today's output: an
   `unpriceable` session, a router or custom provider (`pricingProvider === null`,
@@ -127,7 +134,7 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   to no citation (I3). **Session date** is the UTC date (`isoDateOf`,
   `src/pricing/resolve.ts:270`) of the first unpriced unit for that id. Lines appear one
   per distinct id in first-appearance order. Text surfaces cap at three lines plus
-  `+<n> more unpriced model ids`; `--json` carries every line uncapped. The line is a new
+  `caveat: +<n> more unpriced model ids`; `--json` carries every line uncapped. The line is a new
   caveat kind `unpriced-model` (`src/receipt/caveats.ts:19`), built in
   `buildReceiptModel` next to the partial-coverage caveat (`src/receipt/model.ts:427`),
   rendered on every surface that already renders caveats, and exported as an additive
@@ -155,7 +162,13 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   footnote (`src/pricing/waste.ts:540`) and the trivial-spans estimate
   (`src/pricing/waste.ts:278`). A table without the array, with an empty array, or whose
   candidates have no current row yields `null`; both lines are then omitted, never
-  guessed. Membership is a recorded maintainer choice made through button 2, not
+  guessed. **Cheaper means cheaper for this session.** Once coverage-only rows exist,
+  the cheapest listed candidate can cost more than the session's own model (a
+  `gpt-5-nano` session against a listed `gpt-5.6` candidate). `priceDeltaFootnote`
+  (`src/pricing/waste.ts:540`) and the trivial-spans estimate therefore emit only when
+  the candidate's repriced floor is strictly lower than the session's actual floor;
+  otherwise both lines are omitted and `--json` carries no `cheaperModel`. A comparison
+  that costs more is never rendered as "cheaper". Membership is a recorded maintainer choice made through button 2, not
   arithmetic; `reason` states the basis and `sources` cites the vendor page it rests
   on. A per-vendor array was chosen over a per-model `comparison_candidate: true` flag
   because the whole comparison set for a vendor is then one reviewable block in the
@@ -185,8 +198,13 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   the canonical model's current row; a mismatch is reported as drift
   `vendor/<canonical> via alias <id>.<field>` and counts toward the existing drift exit
   code. `data/prices/README.md` documents both fields in the same PR.
-- **R6. Telemetry: one bounded enum.** `receipt_generated` already carries `cliVersion`
-  and `installHash` (#374, `src/telemetry/index.ts:170`). It gains `priceTableAgeBucket`
+## Deferred proposal: price-table age telemetry (Q4, not a requirement)
+
+This section is not part of the build contract. SPEC-0094 (approved) keeps
+`priceTableAgeBucket` out of scope, so shipping it needs the maintainer's yes on Q4 and
+then its own amendment to SPEC-0043 and SPEC-0094 with the disclosure PR. The proposal,
+kept here so the question stays answerable: `receipt_generated` already carries `cliVersion`
+  and `installHash` (#374, `src/telemetry/index.ts:170`). It would gain `priceTableAgeBucket`
   in `["session_before_table", "0-7d", "8-30d", "31-90d", ">90d", "unavailable"]`. The
   question it answers: are zero-priced receipts sessions that postdate their bundled
   price evidence (a stale bundle), or sessions within it (a missing model or an old
@@ -202,7 +220,7 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   (the most stale pair); pairing the earliest start with the oldest citation across
   sessions was rejected because it can name an age no session has. `unavailable` when no
   session has an age. Computed from bundled data and the transcript, never the wall
-  clock. It ships
+  clock. It would ship
   with the SPEC-0043 disclosure in the same PR: `docs/telemetry.md`,
   `--telemetry-show`, and the schema test (`src/telemetry/schemas.test.ts`). A model id
   or vendor family field (the plan's `unpricedModelFamily`) is rejected under I4 by
@@ -227,9 +245,10 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   renders, **then** the line shows `?100` or the first 64 characters plus `…`,
   `validateReceiptBlocks` reports no `dollar-in-unpriced` violation, the SVG stays
   inside the card, and `--json` carries the whole sanitized id.
-- **Given** a canonical price change on date D and an alias whose sources were all
-  observed before D, **when** CI runs, **then** R2(g) fails; with a source observed on or
-  after D it passes, and sessions on both sides of D price at their own row.
+- **Given** a canonical price change on date D whose new row was first cited on date C,
+  and an alias whose sources were all observed before C, **when** CI runs, **then**
+  R2(g) fails; with a source observed on or after C (even when C is before D, as for a
+  scheduled rate) it passes, and sessions on both sides of D price at their own row.
 - **Given** a transcript id `claude-haiku-4-5-20991231` that no table cites, **when**
   resolved, **then** it is tokens-only and the vendor-scoped absent line names it; no
   stripping to `claude-haiku-4-5` happens.
@@ -241,23 +260,20 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   and names both entries.
 - **Given** a Codex session on `gpt-6-sol`, no row or alias for that id, and an OpenAI
   table whose newest row citation is 2026-09-22, **when** the receipt renders, **then**
-  it shows `model gpt-6-sol not in bundled openai price table (latest citation
+  it shows `caveat: model gpt-6-sol not in bundled openai price table (latest citation
   2026-09-22); tokens only`, and ten consecutive runs are byte-identical.
 - **Given** a DeepSeek session dated after the flat rows closed on 2026-08-15, **when**
-  the receipt renders, **then** it shows `model deepseek-v4-pro has no bundled deepseek
-  price for <session date>; tokens only` rather than claiming the id is unknown.
+  the receipt renders, **then** it shows `caveat: model deepseek-v4-pro has no bundled
+  deepseek price for <session date>; tokens only` rather than claiming the id is unknown.
 - **Given** an opencode session routed through a custom provider (`pricingProvider`
   null) on `claude-sonnet-5`, **when** the receipt renders, **then** no R3 line appears.
 - **Given** the three sub-mini OpenAI rows land as coverage-only, **when** a Codex
   session on `gpt-5-mini` renders, **then** it is priced, and the price-delta and
-  trivial-spans lines still compare against the cheapest listed candidate, never
-  `gpt-5-nano`.
+  trivial-spans lines compare against the cheapest listed candidate only when that
+  candidate's floor is lower than the session's own; a `gpt-5-nano` session, cheaper
+  than every listed candidate, renders neither line and exports no `cheaperModel`.
 - **Given** a vendor table with no `comparison_candidates`, **when** a session of that
   vendor renders, **then** no price-delta footnote and no trivial-spans line appear.
-- **Given** telemetry is on and the session started 40 days after its table's latest
-  citation, **when** `receipt_generated` is queued, **then** `priceTableAgeBucket` is
-  `31-90d` and `--telemetry-show` prints it; with `AIRECEIPTS_TELEMETRY=off` nothing is
-  sent.
 
 ## Non-goals
 
@@ -294,7 +310,7 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
 | R2 | within-vendor duplicate | alias equals a canonical id; two equal aliases in one vendor | test fails naming both |
 | R2 | cross-vendor duplicate | alias equals another vendor's canonical or alias id | test fails |
 | R2 | omitted, routing, charset | alias equals an `omitted` id; alias not routed by `vendorForModel`; alias containing `:` | each fails |
-| R2 | windows and per-period evidence | window outside history; `to_date` before `from_date`; alias spanning a price change without a source inside the later row window | each fails; the evidenced variant passes and prices each side at its own row |
+| R2 | windows and per-period evidence | window outside history; `to_date` before `from_date`; alias spanning a price change with no source at least as new as the later row's earliest citation | each fails; the evidenced variant passes and prices each side at its own row; a scheduled row cited in advance passes with an alias source from the same day |
 | R2 | live tables | every `data/prices/*.json` | passes |
 | R3 | vendor absent | unpriced `gpt-6-sol` fixture | exact vendor-scoped absent line; golden |
 | R3 | no-vendor absent | `us.anthropic.` id | exact bundle-wide absent line |
@@ -310,15 +326,12 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
 | R4 | candidate filter | fixture with a cheaper non-candidate row | `cheapestCurrentRow` returns the cheapest listed candidate |
 | R4 | no candidates | array absent, empty, or no current candidate row | `null`; price-delta and trivial-spans lines omitted |
 | R4 | seed neutrality | each vendor's `cheapestCurrentRow` before and after seeding; all existing goldens | same model per vendor; goldens byte-identical |
-| R4 | coverage-only rows | fixture adding `gpt-5-mini` and `gpt-5-nano` rows, not candidates | sessions on them priced; both comparison lines unchanged |
+| R4 | coverage-only rows | fixture adding `gpt-5-mini` and `gpt-5-nano` rows, not candidates | sessions on them priced; both comparison lines unchanged for sessions the candidate undercuts |
+| R4 | candidate not cheaper | session on a coverage-only row cheaper than every listed candidate; session on the cheapest candidate itself | no price-delta footnote, no trivial-spans line, no `cheaperModel` in `--json` |
 | R5 | cite-check shapes | alias or candidate missing `sources`, `excerpt` or `observed_at`; invalid calendar date; reversed window; unknown `model` | exit 1 naming the entry |
 | R5 | cite-check liveness | alias and candidate URLs | included in the liveness set |
 | R5 | tripwire discovery | dataset lists a cited alias id | alias id absent from the discovery feed |
 | R5 | tripwire drift | dataset alias rate differs from the canonical row | drift entry `via alias`; exit 3 |
-| R6 | bucket math | session start vs latest citation at -1, 0, 7, 8, 30, 31, 90, 91 days; no start date | `session_before_table`, `0-7d`, `0-7d`, `8-30d`, `8-30d`, `31-90d`, `31-90d`, `>90d`, `unavailable` |
-| R6 | aggregation | one session on two vendors with different dates; a PR receipt with a January session against a September citation and a September session against a January citation | per session the oldest citation wins; the PR receipt reports `>90d` (the September session's own pair), never `0-7d` |
-| R6 | not applicable | all units `pricingProvider === null`; an `unpriceable` session; a PR receipt whose only session with a start date is router-only | `unavailable` |
-| R6 | disclosure | `--telemetry-show`; schema test | field shown; enum-only; no model or vendor string in the payload |
 
 ## Success criteria
 
@@ -334,11 +347,12 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
       price-delta and trivial-spans goldens.
 - [ ] The R2 test, the R5 cite-check cases and the tripwire cases pass against the live
       tables in CI.
-- [ ] Field check after release, from existing fields plus R6: among receipts with tool
+- [ ] Field check after release, from existing fields only: among receipts with tool
       calls on the new version, the `pricedRowCoverage=none` share split by
-      `priceTableAgeBucket`. Measured only once at least 100 such receipts from at least
-      10 distinct non-maintainer installs exist; until then the result is "insufficient
-      sample".
+      `cliVersion`, compared with the same share on the previous version. Measured only
+      once at least 100 such receipts from at least 10 distinct non-maintainer installs
+      exist; until then the result is "insufficient sample". The stale-bundle split
+      needs the deferred age-bucket proposal (Q4).
 - [ ] `npx tsc --noEmit`, `npx eslint . --max-warnings 0`, `npx vitest run`,
       `node scripts/verify-goldens.mjs`,
       `node scripts/determinism-check.mjs --runs=10 -- node scripts/verify-goldens.mjs`,
@@ -354,12 +368,14 @@ reaches the R3 line, R1 and R3 are parked and only R4 ships.
   seed cannot satisfy it without changing today's comparisons.
 - **Q2. Moving pointer aliases.** Should R2 later relax to date-disjoint uniqueness, so
   an alias the vendor repoints (a bare family id) can map to a new model from a date?
-- **Q3. Line prefix.** Existing caveats start with `caveat: `. R3 omits that prefix
-  because it states a fact about bundled data rather than the session. Confirm, or add
-  the prefix.
-- **Q4. Keep R6?** The independent critic argued R6 should be cut until a measurement
-  decision needs it. The draft keeps it because it is the only way to split "stale
-  bundle" from "missing model or old install" in the field, as the plan asks.
+- **Q3. Line prefix: resolved in rev 3.** The R3 lines carry the `caveat: ` prefix
+  like every other caveat, so the exact strings are fixed for golden gating. Dropping
+  it later is a one-line golden change the maintainer can request.
+- **Q4. Ship the price-table age telemetry?** The independent critic argued it should
+  be cut until a measurement decision needs it; the Codex GitHub review noted it
+  conflicts with approved SPEC-0094. It is now a deferred proposal (section above),
+  outside the build contract, kept because it is the only way to split "stale bundle"
+  from "missing model or old install" in the field, as the plan asks.
 
 ## Validation
 
@@ -440,3 +456,16 @@ not aliases. `claude-fable-5-1[1m]` appears 10 times and stays unresolved by des
   caveats through `SubagentRow`, deduped by raw id, with a matrix row.
 Status moved to `approved` on the maintainer's instruction to address the review and
 start the build (R1 to R5; R6 stays a maintainer question, Q4).
+
+**2026-09-23 · S6 (Codex GitHub review of rev 2, four findings, all accepted).**
+- P1, an approved spec cannot carry R6 while approved SPEC-0094 excludes the field:
+  R6 is no longer a requirement; it is a deferred proposal section outside the build
+  contract, its scenario, matrix rows and success criterion are removed, and the
+  invariants line says R1 to R5 add no telemetry field.
+- P1, Q3 left the exact R3 strings undecided: resolved, the lines carry `caveat: `.
+- P2, R2(g) rejected advance citations of scheduled rates (Gemini 3.7/3.8 rows
+  effective 2027-01-01 cited on 2026-09-22): the per-period rule now requires alias
+  evidence no older than the row's own earliest citation, not inside its billing window.
+- P1, the cheapest listed candidate can cost more than the session's model once
+  coverage-only rows exist: R4 requires a strictly lower repriced floor, otherwise both
+  comparison lines and `cheaperModel` are omitted; matrix row and scenario added.
