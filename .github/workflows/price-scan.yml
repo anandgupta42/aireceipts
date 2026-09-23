@@ -47,9 +47,20 @@ jobs:
 
           cat price-tripwire-report.md >> "$GITHUB_STEP_SUMMARY"
 
-          tripwire_status="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.status)")"
-          drift_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.driftCount)")"
-          discovery_count="$(node -e "const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8')); console.log(s.discoveryCount)")"
+          summary="$(node <<'NODE'
+          const s = JSON.parse(require('node:fs').readFileSync('price-tripwire-summary.json', 'utf8'));
+          const validCount = (n) => Number.isSafeInteger(n) && n >= 0;
+          if (!validCount(s.driftCount) || !validCount(s.discoveryCount) ||
+              !['clean', 'drift', 'discovery', 'warn'].includes(s.status) ||
+              (s.status === 'clean' && (s.driftCount || s.discoveryCount)) ||
+              (s.status === 'drift' && !s.driftCount) ||
+              (s.status === 'discovery' && (s.driftCount || !s.discoveryCount))) {
+            throw new Error('invalid price tripwire summary');
+          }
+          console.log(s.status, s.driftCount, s.discoveryCount);
+          NODE
+          )"
+          read -r tripwire_status drift_count discovery_count <<< "$summary"
 
           {
             echo "exit_code=$status"
