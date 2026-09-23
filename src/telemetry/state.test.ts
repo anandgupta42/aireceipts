@@ -23,6 +23,15 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     await expect(readState(home)).resolves.toEqual({ schemaVersion: 1, runCount: 0, receiptCount: 0, milestones: {} });
   });
 
+  it("drops unknown statusline keys while preserving its five known fields", async () => {
+    await mkdir(join(home, ".aireceipts"));
+    const statusline = { hour: "2026-09-22T21", pollCount: 2, failedPollCount: 1, surfaces: [], errorClasses: [], injected: "discard" };
+    await writeFile(path(), JSON.stringify({ schemaVersion: 1, runCount: 2, receiptCount: 0, milestones: {}, statusline }));
+    expect((await readState(home)).statusline).toEqual({ hour: statusline.hour, pollCount: 2, failedPollCount: 1, surfaces: [], errorClasses: [] });
+    await updateState(() => {}, home);
+    expect(JSON.parse(await readFile(path(), "utf8")).statusline).not.toHaveProperty("injected");
+  });
+
   it("corrupt state self-heals on the next successful update", async () => {
     await writeFile(path(), "{not json", "utf8").catch(async () => {
       await updateState(() => {}, home);
@@ -148,5 +157,15 @@ describe("SPEC-0043 R7 local telemetry state", () => {
       ensureInstallId(s, true);
     }, home);
     expect(regenerated?.installId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+
+  it("drops an invalid statusline key while preserving a valid install identity", async () => {
+    const initialized = await updateState((state) => { ensureInstallId(state, true); }, home);
+    const raw = JSON.parse(await readFile(path(), "utf8")) as Record<string, unknown>;
+    raw.statusline = { hour: "private/path", pollCount: -1, failedPollCount: 9, surfaces: ["x"], errorClasses: [] };
+    await writeFile(path(), JSON.stringify(raw));
+    const read = await readState(home);
+    expect(read.installId).toBe(initialized?.installId);
+    expect(read.statusline).toBeUndefined();
   });
 });

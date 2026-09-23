@@ -1,12 +1,12 @@
 ---
-id: SPEC-0094
+id: SPEC-0099
 title: Maintain one advisory price-scan issue
 status: approved
 milestone: M2
 depends: [SPEC-0005]
 ---
 
-# SPEC-0094: Maintain one advisory price-scan issue
+# SPEC-0099: Maintain one advisory price-scan issue
 
 ## Purpose
 

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { ERROR_CLASS_VALUES, INPUT_MODE_VALUES, RESULT_VALUES } from "./schemas.js";
 
 export interface TelemetryState {
   schemaVersion: 1;
@@ -10,6 +11,15 @@ export interface TelemetryState {
   runCount: number;
   receiptCount: number;
   milestones: Record<string, true>;
+  statusline?: StatuslineState;
+}
+
+export interface StatuslineState {
+  hour: string;
+  pollCount: number;
+  failedPollCount: number;
+  surfaces: string[];
+  errorClasses: string[];
 }
 
 export interface StateUpdateResult {
@@ -28,6 +38,18 @@ function statePath(homeOverride?: string): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validSurface(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try {
+    const tuple: unknown = JSON.parse(value);
+    return Array.isArray(tuple) && tuple.length === 6 &&
+      INPUT_MODE_VALUES.includes(tuple[0]) && typeof tuple[1] === "boolean" && RESULT_VALUES.includes(tuple[2]) &&
+      tuple.slice(3).every((item: unknown) => typeof item === "boolean");
+  } catch {
+    return false;
+  }
 }
 
 function parseState(parsed: unknown): { state: TelemetryState; recovered: boolean } {
@@ -54,6 +76,23 @@ function parseState(parsed: unknown): { state: TelemetryState; recovered: boolea
   if (typeof parsed.firstRunAt === "string") {
     state.firstRunAt = parsed.firstRunAt;
   } else if (parsed.firstRunAt !== undefined) recovered = true;
+  const statusline = parsed.statusline;
+  if (isRecord(statusline) && typeof statusline.hour === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(statusline.hour) &&
+    !Number.isNaN(Date.parse(`${statusline.hour}:00:00.000Z`)) &&
+    new Date(`${statusline.hour}:00:00.000Z`).toISOString().slice(0, 13) === statusline.hour &&
+    Number.isSafeInteger(statusline.pollCount) && (statusline.pollCount as number) >= 0 &&
+    Number.isSafeInteger(statusline.failedPollCount) && (statusline.failedPollCount as number) >= 0 &&
+    (statusline.failedPollCount as number) <= (statusline.pollCount as number) &&
+    Array.isArray(statusline.surfaces) && statusline.surfaces.every(validSurface) &&
+    Array.isArray(statusline.errorClasses) && statusline.errorClasses.every((v: unknown) => ERROR_CLASS_VALUES.includes(v as typeof ERROR_CLASS_VALUES[number]))) {
+    state.statusline = {
+      hour: statusline.hour as string,
+      pollCount: statusline.pollCount as number,
+      failedPollCount: statusline.failedPollCount as number,
+      surfaces: statusline.surfaces as string[],
+      errorClasses: statusline.errorClasses as string[],
+    };
+  }
   return { state, recovered };
 }
 

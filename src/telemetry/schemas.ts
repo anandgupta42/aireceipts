@@ -109,7 +109,7 @@ export type ExportFormatValue = (typeof EXPORT_FORMAT_VALUES)[number];
 export const TEMPLATE_TELEMETRY_VALUES = [...TEMPLATE_NAMES, "none"] as const;
 export type TemplateTelemetryValue = (typeof TEMPLATE_TELEMETRY_VALUES)[number];
 
-export const PRICED_ROW_COVERAGE_VALUES = ["none", "some", "all"] as const;
+export const PRICED_ROW_COVERAGE_VALUES = ["n/a", "none", "some", "all"] as const;
 export type PricedRowCoverageValue = (typeof PRICED_ROW_COVERAGE_VALUES)[number];
 
 export const MILESTONE_VALUES = [
@@ -132,6 +132,10 @@ export type IntegrationValue = (typeof INTEGRATION_VALUES)[number];
 
 export const INPUT_MODE_VALUES = ["stdin_payload", "disk_fallback", "none"] as const;
 export type InputModeValue = (typeof INPUT_MODE_VALUES)[number];
+
+export const POLL_COUNT_BUCKET_VALUES = ["1", "2-10", "11-50", "51-200", ">200"] as const;
+export const FAILED_POLL_COUNT_BUCKET_VALUES = ["0", "1", "2-10", ">10"] as const;
+export const HOUR_OFFSET_VALUES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", ">24"] as const;
 
 export const PR_MODE_VALUES = ["dry_run", "post"] as const;
 export type PrModeValue = (typeof PR_MODE_VALUES)[number];
@@ -284,9 +288,25 @@ export const integrationSurfaceRenderedPropertiesSchema = z
     scoped: z.boolean().optional(),
     /** SPEC-0075 R6 — boolean only; config contents must never enter a telemetry payload. */
     configFile: z.boolean().optional(),
+    cliVersion: cliVersionSchema.optional(),
+    installHash: installHashSchema.optional(),
+    isCI: z.boolean().optional(),
   })
   .strict();
 export type IntegrationSurfaceRenderedProperties = z.infer<typeof integrationSurfaceRenderedPropertiesSchema>;
+
+export const statuslineHeartbeatPropertiesSchema = z.object({
+  cliVersion: cliVersionSchema,
+  os: z.enum(OS_VALUES),
+  nodeMajor: nodeMajorSchema,
+  installHash: installHashSchema,
+  isCI: z.boolean(),
+  runOrdinalBucket: z.enum(ORDINAL_BUCKET_VALUES),
+  pollCountBucket: z.enum(POLL_COUNT_BUCKET_VALUES),
+  failedPollCountBucket: z.enum(FAILED_POLL_COUNT_BUCKET_VALUES),
+  hourOffset: z.enum(HOUR_OFFSET_VALUES),
+}).strict();
+export type StatuslineHeartbeatProperties = z.infer<typeof statuslineHeartbeatPropertiesSchema>;
 
 export const activationMilestonePropertiesSchema = z
   .object({
@@ -297,7 +317,7 @@ export const activationMilestonePropertiesSchema = z
   .strict();
 export type ActivationMilestoneProperties = z.infer<typeof activationMilestonePropertiesSchema>;
 
-/** Exactly nine event names exist (SPEC-0043 R1) — this array is the single source of truth other modules and tests assert against. */
+/** The ten event names are the single source of truth for the event catalog. */
 export const EVENT_NAMES = [
   "cli_run",
   "cli_error",
@@ -308,6 +328,7 @@ export const EVENT_NAMES = [
   "hook_configured",
   "integration_surface_rendered",
   "activation_milestone",
+  "statusline_heartbeat",
 ] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 
@@ -347,6 +368,10 @@ export interface ActivationMilestoneEvent {
   name: "activation_milestone";
   properties: ActivationMilestoneProperties;
 }
+export interface StatuslineHeartbeatEvent {
+  name: "statusline_heartbeat";
+  properties: StatuslineHeartbeatProperties;
+}
 export type TelemetryEvent =
   | CliRunEvent
   | CliErrorEvent
@@ -356,7 +381,8 @@ export type TelemetryEvent =
   | PrFlowCompletedEvent
   | HookConfiguredEvent
   | IntegrationSurfaceRenderedEvent
-  | ActivationMilestoneEvent;
+  | ActivationMilestoneEvent
+  | StatuslineHeartbeatEvent;
 
 /** `event.name` → its properties schema, exhaustive over `EVENT_NAMES`. */
 export const PROPERTIES_SCHEMA_BY_EVENT_NAME = {
@@ -369,6 +395,7 @@ export const PROPERTIES_SCHEMA_BY_EVENT_NAME = {
   hook_configured: hookConfiguredPropertiesSchema,
   integration_surface_rendered: integrationSurfaceRenderedPropertiesSchema,
   activation_milestone: activationMilestonePropertiesSchema,
+  statusline_heartbeat: statuslineHeartbeatPropertiesSchema,
 } as const satisfies Record<EventName, z.ZodTypeAny>;
 
 /** Validates a full envelope (name + properties) against its schema. Never throws — returns `false` on any mismatch, including an unrecognized `name`. */

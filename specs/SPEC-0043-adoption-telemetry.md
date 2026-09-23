@@ -30,6 +30,16 @@ no counter in any golden-gated output). SPEC-0000's telemetry sentences and AGEN
 I4 are amended by this spec's implementation (SPEC-0000 outranks specs when they
 disagree — the amendment must land there, not only here).
 
+### Amendment — 2026-09-22 · SPEC-0094 slice A
+
+SPEC-0094 adds `statusline_heartbeat` as the tenth event, replaces per-poll
+statusline `cli_run` recording with local hourly counters, reports each statusline
+surface tuple once per hour, and flushes scoped and unscoped polls only when the
+queue is non-empty. It also adds `pricedRowCoverage=n/a` for zero tool rows and
+disables shipped-default telemetry in development builds. The hook-suppression
+contract remains unchanged in slice A; SPEC-0094's later hook proposal requires
+its own delivery slice.
+
 ## Requirements
 
 - **R1 — Event catalog v2, exactly nine names.** `EVENT_NAMES` becomes {`cli_run`,

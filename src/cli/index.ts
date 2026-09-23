@@ -5,7 +5,7 @@
 // exactly the telemetry lifecycle (R6): parse → select → first-run notice → run →
 // record → bounded flush. The re-exports keep the statusline and handoff test
 // entry points importable from `src/cli/index.js` across the refactor.
-import { ensureFirstRunNotice, flushTelemetry, noteRunStart, recordCliError, recordCliRun } from "../telemetry/index.js";
+import { ensureFirstRunNotice, flushTelemetry, noteRunStart, noteStatuslinePoll, peekQueuedEvents, recordCliError, recordCliRun } from "../telemetry/index.js";
 import { parseOptions } from "./options.js";
 import { loadCommands, selectCommand } from "./registry.js";
 import { createContext } from "./context.js";
@@ -28,12 +28,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const isTelemetryShow = command.name === "telemetry-show";
   const isSilentHook = command.name === "hook-pre-push";
   const skipTelemetry = isTelemetryShow || isSilentHook;
-  const shouldFlushTelemetry = command.shouldFlushTelemetry?.(options) ?? true;
   if (!skipTelemetry) {
     await ensureFirstRunNotice((text) => process.stderr.write(text + "\n"), undefined);
   }
   const ctx = createContext(options, commands);
-  const runTelemetry = skipTelemetry ? undefined : await noteRunStart(command.name, process.env);
+  const runTelemetry = skipTelemetry || command.name === "statusline" ? undefined : await noteRunStart(command.name, process.env);
   const started = Date.now();
   try {
     const code = await command.run(ctx);
@@ -52,14 +51,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return code;
   } catch (err) {
     if (!skipTelemetry) {
-      recordCliError({ command: command.name, agentType: undefined, err });
+      if (command.name === "statusline") await noteStatuslinePoll(undefined, err);
+      else recordCliError({ command: command.name, agentType: undefined, err });
     }
     if (!isSilentHook) {
       process.stderr.write(String(err instanceof Error ? err.message : err) + "\n");
     }
     return isSilentHook ? 0 : 1;
   } finally {
-    if (!skipTelemetry && shouldFlushTelemetry) {
+    if (!skipTelemetry && (command.name !== "statusline" || peekQueuedEvents().length > 0)) {
       await flushTelemetry();
     }
   }

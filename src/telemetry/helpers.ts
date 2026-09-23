@@ -139,6 +139,10 @@ function packageRoot(): string {
   return dir;
 }
 
+export function isDevelopmentBuild(version: string = getCliVersion(), root: string = packageRoot()): boolean {
+  return version === "0.0.0" || existsSync(path.join(root, ".git"));
+}
+
 /**
  * Whether an error's top stack frame originates from inside this package's
  * own installed location (a bug in aireceipts itself) versus a dependency

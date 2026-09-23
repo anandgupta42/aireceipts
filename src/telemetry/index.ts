@@ -1,5 +1,5 @@
 import type { AgentSource } from "../parse/types.js";
-import { resolveTelemetryConfig } from "./config.js";
+import { killSwitchActive, resolveTelemetryConfig } from "./config.js";
 import {
   bucketCount,
   bucketDuration,
@@ -7,6 +7,7 @@ import {
   bucketOrdinal,
   classifyError,
   getCliVersion,
+  isDevelopmentBuild,
   isCiEnv,
   isInPackage,
   toAgentTypeTelemetry,
@@ -50,8 +51,17 @@ import type {
  * `AGENTS.md`/SPEC-0002/SPEC-0043 for the invariants this module upholds.
  */
 
-export { flushTelemetry, ensureFirstRunNotice, FIRST_RUN_NOTICE, readState };
+export { flushTelemetry, ensureFirstRunNotice, FIRST_RUN_NOTICE, readState, peekQueuedEvents };
 export type { TelemetryState };
+
+export interface StatuslineTelemetryInfo {
+  inputMode: InputModeValue;
+  payloadValid: boolean;
+  result: ResultValue;
+  customFormat: boolean;
+  scoped: boolean;
+  configFile: boolean;
+}
 
 export interface RunStartTelemetry {
   installHash: string;
@@ -260,7 +270,95 @@ export interface RecordIntegrationSurfaceRenderedInput {
 }
 
 export function recordIntegrationSurfaceRendered(input: RecordIntegrationSurfaceRenderedInput): void {
-  recordEvent({ name: "integration_surface_rendered", properties: input });
+  recordEvent({ name: "integration_surface_rendered", properties: {
+    cliVersion: getCliVersion(),
+    installHash: currentRunIdentity?.installHash ?? "unavailable",
+    isCI: currentRunIdentity?.isCI ?? isCiEnv(),
+    ...input,
+  } });
+}
+
+function pollBucket(count: number): "1" | "2-10" | "11-50" | "51-200" | ">200" {
+  if (count <= 1) return "1";
+  if (count <= 10) return "2-10";
+  if (count <= 50) return "11-50";
+  if (count <= 200) return "51-200";
+  return ">200";
+}
+
+function failedPollBucket(count: number): "0" | "1" | "2-10" | ">10" {
+  if (count === 0) return "0";
+  if (count === 1) return "1";
+  return count <= 10 ? "2-10" : ">10";
+}
+
+/** One atomic local statusline update. Events are queued only after it succeeds. */
+export async function noteStatuslinePoll(
+  info?: StatuslineTelemetryInfo,
+  err?: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+  now: number = Date.now(),
+): Promise<void> {
+  if (!resolveTelemetryConfig(env).enabled) {
+    await updateStateWithMeta((state) => {
+      state.firstRunAt ??= isoDate(now);
+      state.runCount += 1;
+      state.milestones.first_run = true;
+    });
+    return;
+  }
+  const hour = new Date(now).toISOString().slice(0, 13);
+  let completed: TelemetryState["statusline"];
+  let newSurface = false;
+  let newError = false;
+  let firstRun = false;
+  const errorClass = err === undefined ? undefined : classifyError(err);
+  const surface = info === undefined ? undefined : JSON.stringify([info.inputMode, info.payloadValid, info.result, info.customFormat, info.scoped, info.configFile]);
+  const result = await updateStateWithMeta((state) => {
+    state.firstRunAt ??= isoDate(now);
+    state.runCount += 1;
+    ensureInstallId(state, true);
+    if (!state.milestones.first_run) {
+      state.milestones.first_run = true;
+      firstRun = true;
+    }
+    if (state.statusline === undefined || state.statusline.hour < hour) {
+      completed = state.statusline;
+      state.statusline = { hour, pollCount: 0, failedPollCount: 0, surfaces: [], errorClasses: [] };
+    }
+    const current = state.statusline!;
+    current.pollCount += 1;
+    if (errorClass !== undefined) current.failedPollCount += 1;
+    if (surface !== undefined && !current.surfaces.includes(surface)) {
+      current.surfaces.push(surface);
+      newSurface = true;
+    }
+    if (errorClass !== undefined && !current.errorClasses.includes(errorClass)) {
+      current.errorClasses.push(errorClass);
+      newError = true;
+    }
+  });
+  if (!result) return;
+  const identity = {
+    cliVersion: getCliVersion(),
+    installHash: result.state.installId ? installHashOf(result.state.installId) : "unavailable",
+    isCI: isCiEnv(env),
+  };
+  if (firstRun && !result.recovered) recordActivationMilestone({ milestone: "first_run", command: "statusline", firstRunAt: result.state.firstRunAt, now });
+  if (completed && completed.pollCount > 0) {
+    const offset = Math.floor(now / 3_600_000) - Math.floor(Date.parse(`${completed.hour}:00:00.000Z`) / 3_600_000);
+    recordEvent({ name: "statusline_heartbeat", properties: {
+      ...identity,
+      os: toOsTelemetry(),
+      nodeMajor: Number(process.versions.node.split(".")[0]),
+      runOrdinalBucket: result.recovered ? "unavailable" : bucketOrdinal(result.state.runCount),
+      pollCountBucket: pollBucket(completed.pollCount),
+      failedPollCountBucket: failedPollBucket(completed.failedPollCount),
+      hourOffset: offset <= 24 ? String(offset) as (typeof import("./schemas.js").HOUR_OFFSET_VALUES)[number] : ">24",
+    } });
+  }
+  if (newSurface && info) recordIntegrationSurfaceRendered({ integration: "statusline", ...info, ...identity });
+  if (newError && err !== undefined) recordCliError({ command: "statusline", agentType: undefined, err });
 }
 
 export interface RecordActivationMilestoneInput {
@@ -383,7 +481,10 @@ export async function noteMilestone(milestone: MilestoneValue, command: string, 
  * it. Also reports whether telemetry is currently enabled, so a user can
  * tell "nothing queued yet" apart from "telemetry is off."
  */
-export function showTelemetryPayload(env: NodeJS.ProcessEnv = process.env): { enabled: boolean; events: readonly unknown[] } {
+export function showTelemetryPayload(env: NodeJS.ProcessEnv = process.env): { enabled: boolean; events: readonly unknown[]; reason?: "development-build" } {
   const config = resolveTelemetryConfig(env);
-  return { enabled: config.enabled, events: peekQueuedEvents() };
+  const killed = killSwitchActive(env);
+  return { enabled: config.enabled, events: peekQueuedEvents(),
+    ...(!config.enabled && !killed && env.AIRECEIPTS_TELEMETRY_CONNECTION === undefined && isDevelopmentBuild()
+      ? { reason: "development-build" as const } : {}) };
 }
