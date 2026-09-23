@@ -54,12 +54,46 @@
             }
           ],
           "from_date": "2026-07-09",
-          "to_date": null,
+          "to_date": "2026-08-20",
           "sources": [
             {
               "url": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
               "observed_at": "2026-07-10",
               "excerpt": "Input $5.00; cached input $0.50; output $30.00. Above 272K: 2x input, 1.5x output. Cache writes: 1.25x input."
+            }
+          ]
+        },
+        {
+          "input": 4.0,
+          "output": 20.0,
+          "input_cached": 0.4,
+          "input_cache_write": 5.0,
+          "context_tiers": [
+            {
+              "above_input_tokens": 272000,
+              "input": 8.0,
+              "output": 30.0,
+              "input_cached": 0.8,
+              "input_cache_write": 10.0
+            }
+          ],
+          "from_date": "2026-08-21",
+          "to_date": "2026-11-21",
+          "sources": [
+            {
+              "url": "https://developers.openai.com/api/docs/changelog#august-2026",
+              "observed_at": "2026-09-22",
+              "excerpt": "August 21 update: Sol input/output rates become 4/20 USD per million; promotion guaranteed at least through November 21, 2026."
+            },
+            {
+              "url": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+              "observed_at": "2026-09-22",
+              "excerpt": "Above 272K input: full-request input 2x, output 1.5x. Cache writes cost 1.25x uncached input."
+            },
+            {
+              "url": "https://developers.openai.com/api/docs/pricing",
+              "observed_at": "2026-09-22",
+              "excerpt": "GPT-5.6 Sol Standard short-context input/cached/write/output: 4/0.40/5/20; long-context: 8/0.80/10/30 USD per million tokens."
             }
           ]
         }
