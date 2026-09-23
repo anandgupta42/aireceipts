@@ -165,8 +165,8 @@ any conversion intervention.
 permitted on `cli_run` by SPEC-0043. They introduce no new data class or
 disclosure. The September priced-row coverage collapse could not be split
 between stale price tables and old installs without version and install
-identity on each receipt event. `--telemetry-show` prints all three fields in
-the exact queued payload.
+identity on each receipt event. The strict `receipt_generated` schema enforces
+the three fields and `docs/telemetry.md` documents them.
 
 ## Scenarios
 

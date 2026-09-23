@@ -60,6 +60,11 @@ export interface RunStartTelemetry {
 
 let currentRunIdentity: Pick<RunStartTelemetry, "installHash" | "isCI"> | undefined;
 
+/** Test-only: clears the per-process run identity so test order cannot leak it. */
+export function __resetRunIdentityForTests(): void {
+  currentRunIdentity = undefined;
+}
+
 export interface RecordCliRunInput extends RunStartTelemetry {
   command: string;
   agentType: AgentSource | undefined;

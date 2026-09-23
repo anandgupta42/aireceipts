@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  __resetRunIdentityForTests,
   noteReceiptGenerated,
   noteMilestone,
   noteRunStart,
@@ -54,6 +55,7 @@ let savedHome: string | undefined;
 
 beforeEach(async () => {
   __resetQueueForTests();
+  __resetRunIdentityForTests();
   home = await mkdtemp(join(tmpdir(), "aireceipts-telemetry-index-"));
   savedHome = process.env.AIRECEIPTS_HOME;
   process.env.AIRECEIPTS_HOME = home;
