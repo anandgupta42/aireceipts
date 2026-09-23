@@ -17,8 +17,8 @@ export const METHODOLOGY =
   'it called; a turn with no tool calls is attributed to "(thinking/reply)". Turns ' +
   "whose model has no matching price row contribute tokens only — never a guessed " +
   "dollar amount. A dominating session aggregate with no request/model join appears in an " +
-  'explicit "(unattributed usage)" token bucket; an aggregate that conflicts with itemized components remains excluded evidence. Both contribute zero dollars. Every computed dollar is a Standard-API list-price-equivalent ' +
-  "lower bound, never an invoice or subscription charge. Cache-write tokens are priced per known TTL tier when the " +
+  'explicit "(unattributed usage)" token bucket; an aggregate that conflicts with itemized components remains excluded evidence. Both contribute zero dollars. Every attributed spend amount is a Standard-API list-price-equivalent ' +
+  "lower bound, never an invoice or subscription charge. The optional net cache comparison is signed same-token arithmetic, not a floor or measured savings. Cache-write tokens are priced per known TTL tier when the " +
   "transcript splits them (5-minute and 1-hour rates); any unsplit cache-write " +
   "tokens are assumed to be 5-minute-tier (Claude Code's default cache TTL) and " +
   "priced only when that rate is cited. Cached reads or writes with no cited " +

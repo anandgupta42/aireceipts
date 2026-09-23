@@ -187,6 +187,7 @@ describe("claude-code adapter: one observable response group = one turn (message
     // second record has the documented highest output; its other components
     // stay together rather than fabricating independent bucket maxima.
     expect(session!.turns[0].usage).toEqual({
+      cacheEvidenceComplete: true,
       input: 90,
       output: 50,
       cacheRead: 900,

@@ -15,6 +15,7 @@ const SAMPLE_EVENT = {
     ok: true,
     isCI: false,
     installHash: "a".repeat(64),
+    installIdSource: "existing" as const,
     runOrdinalBucket: "1" as const,
   },
 };

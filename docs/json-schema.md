@@ -22,8 +22,10 @@ legacy dollar scalars.
 
 - **I2 — never a fabricated dollar.** A `usd`/`totalUsd`/`actualUsd` field is `null`
   (JSON) or an empty cell (CSV) whenever nothing priced; it is never `0` standing in for
-  "unknown". Every non-null computed dollar is a lower bound at the standard API list-price-equivalent
-  basis, recorded explicitly in its adjacent CostEstimate. Token fields are always populated.
+  "unknown". Receipt cost totals are lower bounds at the standard API list-price-equivalent
+  basis, recorded explicitly in their adjacent CostEstimate. The optional signed
+  `netCache.usd` is a same-token arithmetic difference, explicitly labeled by
+  `interpretation`; it is not a cost total or a bound. Token fields are always populated.
 - **I5 — byte-stable contract.** Key order is fixed; the exporters build objects by hand
   rather than routing through `zod`, so output is deterministic.
 - **I6 — facts, not rankings.** `compare` carries a factual `delta` line only — never a
@@ -72,9 +74,24 @@ legacy dollar scalars.
 | `methodology` | string | The attribution methodology string (I3). |
 | `priceRowsUsed` | array | Every dated price row consulted; see PriceRowUsed. |
 | `costShape` | CostShape | SPEC-0067 — cost-shape facts (standalone, never in savings math): `preEdit` (pre-edit cost/token share), `topTurns` (expensive-turn concentration, or null), `lateTurn` (neutral late-half/early-half cost ratio, low confidence, or null). |
+| `netCache` | NetCache (optional) | Parent-session signed same-token arithmetic. `usd` is hypothetical no-cache price minus observed cache price (positive = lower with cache), or null. `unavailableReason` is null or `unsupported-adapter`, `write-counters-unobserved`, `incomplete-cache-evidence`, `price-row-incomplete`, `unpriced-usage`, `no-cache-activity`. `scope` is `parent-session`; `interpretation` explicitly labels arithmetic, not a prediction. Never a floor, invoice, or savings estimate. |
 | `sameFileReReads` | SameFileReReads \| null | SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none. |
 | `verificationEvidence` | object, optional | Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see [verification evidence](guide/04-read-a-receipt.md#recorded-verification-evidence). Omitted when unsupported or incomplete. |
 | `subagents` | Subagents (optional) | SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths. |
+
+### NetCache object
+
+Current CLI receipts emit this object for every session, with null and a reason
+when unavailable. It is optional in the additive schema so older schema-v2
+receipts remain valid. Signed arithmetic covers the parent session only and is
+excluded from spend totals.
+
+| Field | Type | Notes |
+|---|---|---|
+| `usd` | number \| null | Same-observed-token hypothetical no-cache price minus cache price; positive means lower with cache. Null when incomplete. This is neither a floor nor invoice savings. |
+| `unavailableReason` | string \| null | Reason the net arithmetic is withheld; null when complete. See the `netCache` row for enum values. |
+| `interpretation` | string | `hypothetical no-cache price minus observed cache price, same tokens; arithmetic, not a prediction`. |
+| `scope` | string | Always `parent-session`; child cache economics are not combined. |
 
 ### VerificationEvidence
 
@@ -137,7 +154,7 @@ SPEC-0068 — same-FILE re-reads (same normalized path, any range) with no recor
 
 ### CostEstimate object
 
-An additive interpretation beside legacy numeric dollar fields. Receipts currently expose only lower bounds; future estimate kinds require an additive schema change rather than silently changing a numeric field's meaning. The legacy scalar retains its raw compatibility precision, while `minUsd` is deliberately floored for safe display.
+An additive interpretation beside legacy numeric dollar fields. Spend CostEstimate objects currently expose only lower bounds; future estimate kinds require an additive schema change rather than silently changing a numeric field's meaning. The legacy scalar retains its raw compatibility precision, while `minUsd` is deliberately floored for safe display.
 
 | Field | Type | Notes |
 |---|---|---|
