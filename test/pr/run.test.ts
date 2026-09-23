@@ -851,7 +851,7 @@ describe("SPEC-0059 handoff section (e2e through runPr)", () => {
     const body = out[0];
     expect(body).toContain("<details><summary>handoff — flagged pattern cost ≈ $");
     expect(body).toContain("FLAGGED PATTERN COST");
-    expect(body).toContain("→ change or stop after two identical failures");
+    expect(body).toContain("→ check whether repeated calls were needed");
     expect(body).toContain("covers: 1 session ·");
     expect(body.indexOf("full receipts (")).toBeLessThan(body.indexOf("<details><summary>handoff — "));
   });

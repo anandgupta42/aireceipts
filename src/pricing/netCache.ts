@@ -1,5 +1,5 @@
 import type { Session, TokenUsage } from "../parse/types.js";
-import type { PriceRow } from "./types.js";
+import type { PriceRow, ResolvedPrice } from "./types.js";
 import { isoDateOf, isPriceableUsage, pricingUnitsForTurn, ratesForUsage, resolvePrice, vendorForTurn } from "./resolve.js";
 
 export const NET_CACHE_INTERPRETATION = "hypothetical no-cache price minus observed cache price, same tokens; arithmetic, not a prediction";
@@ -30,7 +30,11 @@ export function netCacheAtRow(usage: TokenUsage, row: PriceRow): number | null {
   return Number.isFinite(delta) ? delta : null;
 }
 
-export async function computeNetCache(session: Session, dataDir: string): Promise<NetCache> {
+export async function computeNetCache(
+  session: Session,
+  dataDir: string,
+  resolvedRows?: readonly ResolvedPrice[],
+): Promise<NetCache> {
   const result = (usd: number | null, unavailableReason: NetCacheReason | null): NetCache =>
     ({ usd, unavailableReason, interpretation: NET_CACHE_INTERPRETATION, scope: "parent-session" });
   if (session.source === "codex") return result(null, "write-counters-unobserved");
@@ -54,7 +58,12 @@ export async function computeNetCache(session: Session, dataDir: string): Promis
       const date = isoDateOf(unit.timestamp);
       const vendor = vendorForTurn(session.source, unit.model, unit.pricingProvider);
       if (!unit.model || !date || vendor !== "anthropic") return result(null, "unpriced-usage");
-      const row = await resolvePrice(vendor, unit.model, date, dataDir);
+      // The receipt builder has already resolved these dated rows. Reuse them
+      // instead of rereading the price table once per request.
+      const row = resolvedRows === undefined
+        ? await resolvePrice(vendor, unit.model, date, dataDir)
+        : resolvedRows.find((candidate) => candidate.vendor === vendor && candidate.model === unit.model
+          && candidate.from_date <= date && (candidate.to_date === null || date <= candidate.to_date));
       if (!row) return result(null, "unpriced-usage");
       const delta = netCacheAtRow(unit.usage, row);
       if (delta === null) return result(null, "price-row-incomplete");

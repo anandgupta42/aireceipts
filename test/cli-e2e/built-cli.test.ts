@@ -921,7 +921,7 @@ describe("built CLI e2e", () => {
     expect(textRun.stdout).toContain("total ≥ $");
     // SPEC-0059 R1/R3 — the slip headline and the class's rule line ride the packet.
     expect(textRun.stdout).toContain("FLAGGED PATTERN COST");
-    expect(textRun.stdout).toContain("→ change or stop after two identical failures");
+    expect(textRun.stdout).toContain("→ check whether repeated calls were needed");
     expect(textRun.stdout).toContain("covers: 6 turns · 5 tool calls · 0 compactions · 1 flagged-pattern line");
   });
 

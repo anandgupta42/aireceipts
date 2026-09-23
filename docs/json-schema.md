@@ -76,6 +76,7 @@ legacy dollar scalars.
 | `costShape` | CostShape | SPEC-0067 — cost-shape facts (standalone, never in savings math): `preEdit` (pre-edit cost/token share), `topTurns` (expensive-turn concentration, or null), `lateTurn` (neutral late-half/early-half cost ratio, low confidence, or null). |
 | `netCache` | NetCache (optional) | Parent-session signed same-token arithmetic. `usd` is hypothetical no-cache price minus observed cache price (positive = lower with cache), or null. `unavailableReason` is null or `unsupported-adapter`, `write-counters-unobserved`, `incomplete-cache-evidence`, `price-row-incomplete`, `unpriced-usage`, `no-cache-activity`. `scope` is `parent-session`; `interpretation` explicitly labels arithmetic, not a prediction. Never a floor, invoice, or savings estimate. |
 | `sameFileReReads` | SameFileReReads \| null | SPEC-0068 — same-file re-reads diagnostic (standalone, low confidence, NEVER a waste row or savings claim); null when none. |
+| `verificationEvidence` | object, optional | Recorded literal TypeScript-command tool result and subsequent typed-edit chronology; see [verification evidence](guide/04-read-a-receipt.md#recorded-verification-evidence). Omitted when unsupported or incomplete. |
 | `subagents` | Subagents (optional) | SPEC-0061 — the session's subagent (child-transcript) rollup; present only when children were discovered. Aggregate only — never child ids, titles, or paths. |
 
 ### NetCache object
@@ -91,6 +92,18 @@ excluded from spend totals.
 | `unavailableReason` | string \| null | Reason the net arithmetic is withheld; null when complete. See the `netCache` row for enum values. |
 | `interpretation` | string | `hypothetical no-cache price minus observed cache price, same tokens; arithmetic, not a prediction`. |
 | `scope` | string | Always `parent-session`; child cache economics are not combined. |
+
+### VerificationEvidence
+
+JSON indices start at 0; text/SVG/PNG turn numbers start at 1.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `command` | string | Exactly `npx tsc --noEmit`; no inferred shell-command equivalence. |
+| `outcome` | enum | `tool-error` or `edit-after-tool-success`; adapter tool-result status, not compiler or project correctness. |
+| `checkTurnIndex` | integer | Zero-based captured turn of the latest recognized completed invocation. |
+| `editTurnIndex` | integer or null | Zero-based first later typed-source edit turn; null for the tool-error case. |
+| `scope` | string | `captured-parent-calls`; excludes external CI and child sessions. |
 
 ### Subagents object
 
