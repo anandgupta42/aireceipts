@@ -16,6 +16,7 @@
  * (`AIRECEIPTS_TELEMETRY=off|0|false`, `DO_NOT_TRACK=1`) still win everywhere,
  * in CI or not, and an empty/malformed connection string still disables it.
  */
+import { isDevelopmentBuild } from "./helpers.js";
 
 /**
  * No real Azure Application Insights resource is wired up yet. This is
@@ -96,6 +97,9 @@ function parseConnectionString(raw: string): { instrumentationKey: string; inges
  */
 export function resolveTelemetryConfig(env: NodeJS.ProcessEnv = process.env): TelemetryConfig {
   if (killSwitchActive(env)) {
+    return { enabled: false, instrumentationKey: undefined, ingestionEndpoint: undefined };
+  }
+  if (env.AIRECEIPTS_TELEMETRY_CONNECTION === undefined && isDevelopmentBuild()) {
     return { enabled: false, instrumentationKey: undefined, ingestionEndpoint: undefined };
   }
   const parsed = parseConnectionString(resolveConnectionString(env));

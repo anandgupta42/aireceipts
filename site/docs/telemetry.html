@@ -339,7 +339,7 @@ footer{
 <h2 id="tldr">tl;dr</h2>
 
 <ul>
-  <li><strong>On by default</strong>, but every event is one of a fixed nine-event catalog: <code>cli_run</code>, <code>cli_error</code>, <code>parse_failure</code>, <code>receipt_generated</code>, <code>export_generated</code>, <code>pr_flow_completed</code>, <code>hook_configured</code>, <code>integration_surface_rendered</code>, <code>activation_milestone</code>.</li>
+  <li><strong>On by default in installed builds</strong>, but every event is one of a fixed 10-event catalog: <code>cli_run</code>, <code>cli_error</code>, <code>parse_failure</code>, <code>receipt_generated</code>, <code>export_generated</code>, <code>pr_flow_completed</code>, <code>hook_configured</code>, <code>integration_surface_rendered</code>, <code>activation_milestone</code>, <code>statusline_heartbeat</code>.</li>
   <li><strong>Never sent</strong>: transcript content, prompts, file paths, repo names, hostnames, usernames, session IDs, dollar amounts, raw model strings, raw counts, or session timestamps. (The App Insights wire format requires one client-stamped send time per envelope — the flush moment, nothing about your session's timeline; see &quot;What is never sent&quot;.)</li>
   <li><strong>Pseudonymous install identity</strong>: when telemetry is enabled, a random install id is stored locally and sent only as a salted sha256 hash so events from the same install can be counted over time. Delete <code>~/.aireceipts/state.json</code> to reset it.</li>
   <li><strong>Disable anytime</strong>: <code>AIRECEIPTS_TELEMETRY=off</code> (or <code>0</code>/<code>false</code>) or <code>DO_NOT_TRACK=1</code>. Either one results in <strong>zero network calls</strong> and prevents install-id creation on a fresh install.</li>
@@ -354,7 +354,7 @@ footer{
 
 <h3 id="clirun-one-per-controlled-return-from-a-catalogued-command"><code>cli_run</code> — one per controlled return from a catalogued command</h3>
 
-<p>The fixed catalog covers every ordinary user-facing command listed below, including <code>setup</code> and <code>integrations</code>. Unrecognized or hidden internal command names never widen the schema: they are dropped rather than sent as raw text. Thrown paths emit <code>cli_error</code> only. <code>telemetry-show</code> and the hidden <code>hook pre-push</code> surface record nothing; scoped statusline polling records bounded events in-process but skips the network flush, so those events are not sent.</p>
+<p>The fixed catalog covers every ordinary user-facing command listed below, including <code>setup</code> and <code>integrations</code>. Unrecognized or hidden internal command names never widen the schema: they are dropped rather than sent as raw text. Thrown paths emit <code>cli_error</code> only. <code>telemetry-show</code> and the hidden <code>hook pre-push</code> surface record nothing. Statusline polls are counted locally and send a surface event for each new state in an hour plus a heartbeat after the hour ends.</p>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
@@ -374,17 +374,37 @@ footer{
   </tbody>
 </table></div>
 
+<pre class="doc-code"><code class="language-json">{
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;os&quot;: &quot;linux&quot;,
+  &quot;nodeMajor&quot;: 22,
+  &quot;commandClass&quot;: &quot;receipt&quot;,
+  &quot;agentType&quot;: &quot;unknown&quot;,
+  &quot;durationBucket&quot;: &quot;&lt;100ms&quot;,
+  &quot;ok&quot;: true,
+  &quot;isCI&quot;: false,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;runOrdinalBucket&quot;: &quot;1&quot;
+}</code></pre>
+
 <h3 id="clierror-one-per-uncaught-top-level-cli-error"><code>cli_error</code> — one per uncaught top-level CLI error</h3>
 
 <div class="table-wrap"><table>
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
   <tbody>
     <tr><td><code>errorClass</code></td><td>enum</td><td><code>parse_error</code> | <code>io_error</code> | <code>network_error</code> | <code>validation_error</code> | <code>unknown_error</code></td><td>Derived from bounded error metadata; never <code>error.message</code>.</td></tr>
-    <tr><td><code>command</code></td><td>enum</td><td>same command enum as <code>cli_run.commandClass</code></td><td>Never raw argv.</td></tr>
+    <tr><td><code>command</code></td><td>enum</td><td><code>backfill</code> | <code>benchmark</code> | <code>check-budget</code> | <code>compare</code> | <code>demo</code> | <code>handoff</code> | <code>help</code> | <code>install-hook</code> | <code>integrations</code> | <code>list</code> | <code>methodology</code> | <code>mini</code> | <code>pr</code> | <code>quota</code> | <code>receipt</code> | <code>setup</code> | <code>stats</code> | <code>statusline</code> | <code>telemetry-show</code> | <code>templates</code> | <code>uninstall-hook</code> | <code>version</code> | <code>week</code></td><td>Never raw argv.</td></tr>
     <tr><td><code>agentType</code></td><td>enum</td><td><code>claude-code</code> | <code>codex</code> | <code>cursor</code> | <code>gemini</code> | <code>opencode</code> | <code>unknown</code></td><td></td></tr>
     <tr><td><code>inPackage</code></td><td>boolean</td><td></td><td>Whether the top stack frame is inside aireceipts; the stack text never leaves the process.</td></tr>
   </tbody>
 </table></div>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;errorClass&quot;: &quot;io_error&quot;,
+  &quot;command&quot;: &quot;receipt&quot;,
+  &quot;agentType&quot;: &quot;unknown&quot;,
+  &quot;inPackage&quot;: false
+}</code></pre>
 
 <h3 id="parsefailure-one-per-transcript-parsing-failure"><code>parse_failure</code> — one per transcript parsing failure</h3>
 
@@ -396,6 +416,12 @@ footer{
     <tr><td><code>signatureHash</code></td><td>string</td><td>64-hex sha256</td><td>Hash of a content-free structural failure descriptor.</td></tr>
   </tbody>
 </table></div>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;agentType&quot;: &quot;codex&quot;,
+  &quot;adapterVersion&quot;: &quot;1&quot;,
+  &quot;signatureHash&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;
+}</code></pre>
 
 <h3 id="receiptgenerated-one-per-rendered-cost-receipt"><code>receipt_generated</code> — one per rendered cost receipt</h3>
 
@@ -410,7 +436,7 @@ footer{
     <tr><td><code>multiAgent</code></td><td>boolean</td><td></td><td>True when the rendered surface combines more than one session/model.</td></tr>
     <tr><td><code>outputMode</code></td><td>enum</td><td><code>text</code> | <code>json</code> | <code>csv</code> | <code>svg</code> | <code>png</code> | <code>markdown</code></td><td></td></tr>
     <tr><td><code>template</code></td><td>enum</td><td><code>classic</code> | <code>grocery</code> | <code>datavis</code> | <code>none</code></td><td><code>none</code> when no template flag drove the render.</td></tr>
-    <tr><td><code>pricedRowCoverage</code></td><td>enum</td><td><code>none</code> | <code>some</code> | <code>all</code></td><td>Share of rendered tool rows with resolved prices; no dollars are sent.</td></tr>
+    <tr><td><code>pricedRowCoverage</code></td><td>enum</td><td><code>n/a</code> | <code>none</code> | <code>some</code> | <code>all</code></td><td><code>n/a</code>: zero tool rows; <code>none</code>: rows exist but none are priced. No dollars are sent.</td></tr>
     <tr><td><code>hasStuckLoopWaste</code></td><td>boolean</td><td></td><td></td></tr>
     <tr><td><code>hasTrivialSpansWaste</code></td><td>boolean</td><td></td><td></td></tr>
     <tr><td><code>hasContextThrashWaste</code></td><td>boolean</td><td></td><td></td></tr>
@@ -424,6 +450,28 @@ footer{
   </tbody>
 </table></div>
 
+<pre class="doc-code"><code class="language-json">{
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;isCI&quot;: false,
+  &quot;surface&quot;: &quot;receipt&quot;,
+  &quot;agentType&quot;: &quot;unknown&quot;,
+  &quot;multiAgent&quot;: false,
+  &quot;outputMode&quot;: &quot;text&quot;,
+  &quot;template&quot;: &quot;none&quot;,
+  &quot;pricedRowCoverage&quot;: &quot;n/a&quot;,
+  &quot;hasStuckLoopWaste&quot;: false,
+  &quot;hasTrivialSpansWaste&quot;: false,
+  &quot;hasContextThrashWaste&quot;: false,
+  &quot;hasPriceDelta&quot;: false,
+  &quot;hasSubagents&quot;: false,
+  &quot;hasPreEditShare&quot;: false,
+  &quot;detailsView&quot;: false,
+  &quot;turnCountBucket&quot;: &quot;0&quot;,
+  &quot;toolCallCountBucket&quot;: &quot;0&quot;,
+  &quot;receiptOrdinalBucket&quot;: &quot;1&quot;
+}</code></pre>
+
 <h3 id="exportgenerated-one-per-successful-export-path"><code>export_generated</code> — one per successful export path</h3>
 
 <div class="table-wrap"><table>
@@ -435,6 +483,13 @@ footer{
     <tr><td><code>result</code></td><td>enum</td><td><code>success</code> | <code>no_data</code> | <code>invalid_args</code> | <code>declined</code> | <code>external_missing</code> | <code>external_failed</code> | <code>write_failed</code> | <code>internal_error</code></td><td></td></tr>
   </tbody>
 </table></div>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;surface&quot;: &quot;receipt&quot;,
+  &quot;format&quot;: &quot;json&quot;,
+  &quot;wroteFile&quot;: false,
+  &quot;result&quot;: &quot;success&quot;
+}</code></pre>
 
 <h3 id="prflowcompleted-one-per-aireceipts-pr-flow"><code>pr_flow_completed</code> — one per <code>aireceipts pr</code> flow</h3>
 
@@ -453,6 +508,18 @@ footer{
   </tbody>
 </table></div>
 
+<pre class="doc-code"><code class="language-json">{
+  &quot;mode&quot;: &quot;dry_run&quot;,
+  &quot;artifactRequested&quot;: false,
+  &quot;shareRequested&quot;: false,
+  &quot;contributorCountBucket&quot;: &quot;0&quot;,
+  &quot;commentResult&quot;: &quot;skipped&quot;,
+  &quot;artifactResult&quot;: &quot;skipped&quot;,
+  &quot;shareResult&quot;: &quot;skipped&quot;,
+  &quot;handoffSectionIncluded&quot;: false,
+  &quot;result&quot;: &quot;success&quot;
+}</code></pre>
+
 <h3 id="hookconfigured-one-per-hook-installuninstall-command"><code>hook_configured</code> — one per hook install/uninstall command</h3>
 
 <div class="table-wrap"><table>
@@ -463,6 +530,12 @@ footer{
     <tr><td><code>result</code></td><td>enum</td><td><code>success</code> | <code>no_data</code> | <code>invalid_args</code> | <code>declined</code> | <code>external_missing</code> | <code>external_failed</code> | <code>write_failed</code> | <code>internal_error</code></td><td></td></tr>
   </tbody>
 </table></div>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;operation&quot;: &quot;install&quot;,
+  &quot;promptOutcome&quot;: &quot;accepted&quot;,
+  &quot;result&quot;: &quot;success&quot;
+}</code></pre>
 
 <h3 id="integrationsurfacerendered-one-per-passive-integration-render"><code>integration_surface_rendered</code> — one per passive integration render</h3>
 
@@ -475,11 +548,27 @@ footer{
     <tr><td><code>customFormat</code></td><td>boolean (optional)</td><td></td><td>statusline only (SPEC-0062): an explicit <code>--format</code> was passed. The boolean only — never the format string.</td></tr>
     <tr><td><code>scoped</code></td><td>boolean (optional)</td><td></td><td>statusline only (SPEC-0075 R6): <code>--cwd</code> was supplied. The boolean only — never the path.</td></tr>
     <tr><td><code>configFile</code></td><td>boolean (optional)</td><td></td><td>statusline only (SPEC-0075 R6): a valid <code>statusline.json</code> supplied the item order. The boolean only — never the items.</td></tr>
+    <tr><td><code>cliVersion</code></td><td>string (optional)</td><td>semver</td><td>Present on statusline rows.</td></tr>
+    <tr><td><code>installHash</code></td><td>string (optional)</td><td>64-hex sha256 or <code>unavailable</code></td><td>Present on statusline rows.</td></tr>
+    <tr><td><code>isCI</code></td><td>boolean (optional)</td><td></td><td>Present on statusline rows.</td></tr>
     <tr><td><code>result</code></td><td>enum</td><td><code>success</code> | <code>no_data</code> | <code>invalid_args</code> | <code>declined</code> | <code>external_missing</code> | <code>external_failed</code> | <code>write_failed</code> | <code>internal_error</code></td><td></td></tr>
   </tbody>
 </table></div>
 
-<p><code>statusline --cwd</code> is a polled surface: it still advances the local run counter and records these bounded booleans in-process, but that invocation skips the network flush. A 15-second tmux poll therefore does not become a stream of network events.</p>
+<p>Scoped and unscoped statusline polls use the same rule: the queue is flushed only when non-empty. A statusline surface tuple is reported at most once per UTC hour in sequential execution. Quota rows retain their prior shape and per-run behavior; the identity trio is optional in the shared schema because quota does not provide it.</p>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;integration&quot;: &quot;statusline&quot;,
+  &quot;inputMode&quot;: &quot;none&quot;,
+  &quot;payloadValid&quot;: false,
+  &quot;result&quot;: &quot;no_data&quot;,
+  &quot;customFormat&quot;: false,
+  &quot;scoped&quot;: false,
+  &quot;configFile&quot;: false,
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;isCI&quot;: false
+}</code></pre>
 
 <h3 id="activationmilestone-once-per-milestone-per-local-state-file"><code>activation_milestone</code> — once per milestone per local state file</h3>
 
@@ -487,10 +576,47 @@ footer{
   <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
   <tbody>
     <tr><td><code>milestone</code></td><td>enum</td><td><code>first_run</code> | <code>first_receipt</code> | <code>third_receipt</code> | <code>tenth_receipt</code> | <code>first_export</code> | <code>first_compare</code> | <code>first_week</code> | <code>first_hook_install</code> | <code>first_pr</code> | <code>first_pr_post</code> | <code>first_artifact</code></td><td></td></tr>
-    <tr><td><code>command</code></td><td>enum</td><td>same command enum as <code>cli_run.commandClass</code></td><td>Command that caused the milestone.</td></tr>
+    <tr><td><code>command</code></td><td>enum</td><td><code>backfill</code> | <code>benchmark</code> | <code>check-budget</code> | <code>compare</code> | <code>demo</code> | <code>handoff</code> | <code>help</code> | <code>install-hook</code> | <code>integrations</code> | <code>list</code> | <code>methodology</code> | <code>mini</code> | <code>pr</code> | <code>quota</code> | <code>receipt</code> | <code>setup</code> | <code>stats</code> | <code>statusline</code> | <code>telemetry-show</code> | <code>templates</code> | <code>uninstall-hook</code> | <code>version</code> | <code>week</code></td><td>Command that caused the milestone.</td></tr>
     <tr><td><code>installAgeBucket</code></td><td>enum</td><td><code>first_day</code> | <code>2-7d</code> | <code>8-30d</code> | <code>31-90d</code> | <code>&gt;90d</code> | <code>unavailable</code></td><td>Derived locally from <code>firstRunAt</code>; raw date is not sent.</td></tr>
   </tbody>
 </table></div>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;milestone&quot;: &quot;first_run&quot;,
+  &quot;command&quot;: &quot;receipt&quot;,
+  &quot;installAgeBucket&quot;: &quot;first_day&quot;
+}</code></pre>
+
+<h3 id="statuslineheartbeat-one-completed-utc-hour-on-a-later-poll"><code>statusline_heartbeat</code> — one completed UTC hour on a later poll</h3>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Values</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>cliVersion</code></td><td>string</td><td>semver</td><td>From this package.</td></tr>
+    <tr><td><code>os</code></td><td>enum</td><td><code>darwin</code> | <code>linux</code> | <code>win32</code> | <code>other</code></td><td>Coarse platform.</td></tr>
+    <tr><td><code>nodeMajor</code></td><td>integer</td><td>e.g. <code>22</code></td><td>Major version only.</td></tr>
+    <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted random install identity.</td></tr>
+    <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>CI marker.</td></tr>
+    <tr><td><code>runOrdinalBucket</code></td><td>enum</td><td><code>1</code> | <code>2-3</code> | <code>4-10</code> | <code>11-50</code> | <code>&gt;50</code> | <code>unavailable</code></td><td>Lifetime run bucket at flush.</td></tr>
+    <tr><td><code>pollCountBucket</code></td><td>enum</td><td><code>1</code> | <code>2-10</code> | <code>11-50</code> | <code>51-200</code> | <code>&gt;200</code></td><td>Completed hour polls.</td></tr>
+    <tr><td><code>failedPollCountBucket</code></td><td>enum</td><td><code>0</code> | <code>1</code> | <code>2-10</code> | <code>&gt;10</code></td><td>Thrown polls in completed hour.</td></tr>
+    <tr><td><code>hourOffset</code></td><td>enum</td><td><code>1</code> | <code>2</code> | <code>3</code> | <code>4</code> | <code>5</code> | <code>6</code> | <code>7</code> | <code>8</code> | <code>9</code> | <code>10</code> | <code>11</code> | <code>12</code> | <code>13</code> | <code>14</code> | <code>15</code> | <code>16</code> | <code>17</code> | <code>18</code> | <code>19</code> | <code>20</code> | <code>21</code> | <code>22</code> | <code>23</code> | <code>24</code> | <code>&gt;24</code></td><td>Completed UTC hours between stored hour and flush hour. Arrival hour minus offset recovers the attributed hour except for <code>&gt;24</code>.</td></tr>
+  </tbody>
+</table></div>
+
+<p>The counters are lock-free and last-write-wins. Under concurrent pollers, counts are lower bounds; an event can be duplicated or lost. A completed hour with no later poll is never sent. A state write failure records nothing and flushes nothing. An older CLI can erase unflushed current or completed hours. The heartbeat has no poll latency, exact hour or date field. Error rows represent distinct classes per hour; the failed-poll bucket counts every thrown poll.</p>
+
+<pre class="doc-code"><code class="language-json">{
+  &quot;cliVersion&quot;: &quot;0.11.0&quot;,
+  &quot;os&quot;: &quot;linux&quot;,
+  &quot;nodeMajor&quot;: 22,
+  &quot;installHash&quot;: &quot;unavailable&quot;,
+  &quot;isCI&quot;: false,
+  &quot;runOrdinalBucket&quot;: &quot;2-3&quot;,
+  &quot;pollCountBucket&quot;: &quot;2-10&quot;,
+  &quot;failedPollCountBucket&quot;: &quot;0&quot;,
+  &quot;hourOffset&quot;: &quot;1&quot;
+}</code></pre>
 
 <h2 id="install-identifier">Install identifier</h2>
 
@@ -509,6 +635,7 @@ footer{
   <li><code>receiptCount</code></li>
   <li><code>firstRunAt</code></li>
   <li>once-only activation milestone booleans</li>
+  <li>optional statusline UTC hour, poll and failed-poll counts, reported surface tuples and error classes</li>
 </ul>
 
 <p>These exact counts stay on your machine. The <code>aireceipts stats</code> command prints the local receipt/run counters and labels them &quot;on this machine.&quot; Telemetry payloads use only buckets.</p>
@@ -552,7 +679,7 @@ DO_NOT_TRACK=1 aireceipts ...</code></pre>
 
 <pre class="doc-code"><code class="language-bash">aireceipts --telemetry-show</code></pre>
 
-<p>This prints whether telemetry is currently enabled and the exact events queued for the current run without sending anything. The command itself records nothing and skips the flush.</p>
+<p>This prints whether telemetry is currently enabled and the exact events queued for the current run without sending anything. In a development build using the shipped connection, it reports <code>reason: &quot;development-build&quot;</code>. The command itself records nothing and skips the flush. It cannot preview a future hourly heartbeat; the validated event examples above show its shape.</p>
 
 <h2 id="how-sending-works">How sending works</h2>
 
@@ -569,6 +696,7 @@ DO_NOT_TRACK=1 aireceipts ...</code></pre>
 <ul>
   <li>The ingestion key this package ships with is <strong>not a secret</strong>; Application Insights instrumentation keys are write-only and are commonly embedded in open-source clients. The shipped key: <code>InstrumentationKey=394da360-a50c-4700-bcf9-87b8d9d6e0ee</code> (ingestion endpoint <code>eastus-8.in.applicationinsights.azure.com</code>). &lt;!-- gitleaks:allow --&gt;</li>
   <li><code>AIRECEIPTS_TELEMETRY_CONNECTION</code> overrides the shipped default. Set it to your own Application Insights resource or to an empty string to force-disable telemetry.</li>
+  <li>With the shipped default connection string, a development build (<code>0.0.0</code> fallback version or package root containing <code>.git</code>) disables telemetry and creates no install id. An explicit <code>AIRECEIPTS_TELEMETRY_CONNECTION</code> override enables sends from that build. <code>--telemetry-show</code> reports whether it is disabled.</li>
   <li>A malformed connection string also degrades to <code>enabled: false</code> rather than sending to an incomplete endpoint.</li>
 </ul>
 

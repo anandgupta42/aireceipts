@@ -5,10 +5,11 @@ import type { RecordReceiptGeneratedInput } from "../../telemetry/index.js";
 import type { OutputModeValue, PricedRowCoverageValue, ReceiptSurfaceValue, TemplateTelemetryValue } from "../../telemetry/schemas.js";
 
 function pricedRowCoverage(models: readonly ReceiptModel[]): PricedRowCoverageValue {
+  const rows = models.flatMap((model) => model.toolRows);
+  if (rows.length === 0) return "n/a";
   if (models.every((model) => model.totalUsd === null)) {
     return "none";
   }
-  const rows = models.flatMap((model) => model.toolRows);
   return rows.length > 0 && models.every((model) => model.totalUsd !== null) && rows.every((row) => row.usd !== null)
     ? "all"
     : "some";

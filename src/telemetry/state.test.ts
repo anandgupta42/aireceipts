@@ -81,4 +81,14 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     }, home);
     expect(regenerated?.installId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
+
+  it("drops an invalid statusline key while preserving a valid install identity", async () => {
+    const initialized = await updateState((state) => { ensureInstallId(state, true); }, home);
+    const raw = JSON.parse(await readFile(path(), "utf8")) as Record<string, unknown>;
+    raw.statusline = { hour: "private/path", pollCount: -1, failedPollCount: 9, surfaces: ["x"], errorClasses: [] };
+    await writeFile(path(), JSON.stringify(raw));
+    const read = await readState(home);
+    expect(read.installId).toBe(initialized?.installId);
+    expect(read.statusline).toBeUndefined();
+  });
 });

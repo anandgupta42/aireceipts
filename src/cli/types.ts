@@ -34,12 +34,13 @@ export interface CommandContext {
   prompt(question: string): Promise<boolean>;
   /** Telemetry surface a command may read (recording/flush stays in `main()` — R6). */
   readonly telemetry: {
-    showPayload(env: NodeJS.ProcessEnv): { enabled: boolean; events: readonly unknown[] };
+    showPayload(env: NodeJS.ProcessEnv): { enabled: boolean; events: readonly unknown[]; reason?: "development-build" };
     noteReceiptGenerated(input: Omit<RecordReceiptGeneratedInput, "receiptOrdinal">, command?: string): Promise<void>;
     recordExportGenerated(input: RecordExportGeneratedInput): void;
     recordPrFlowCompleted(input: RecordPrFlowCompletedInput): void;
     recordHookConfigured(input: RecordHookConfiguredInput): void;
     recordIntegrationSurfaceRendered(input: RecordIntegrationSurfaceRenderedInput): void;
+    noteStatuslinePoll(info?: import("./commands/statusline.js").StatuslineTelemetryInfo, err?: unknown): Promise<void>;
     noteMilestone(milestone: MilestoneValue, command: string): Promise<void>;
   };
   /** The assembled `--help` text (registry-driven), for the help command. */

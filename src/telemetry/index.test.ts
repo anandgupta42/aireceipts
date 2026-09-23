@@ -7,6 +7,7 @@ import {
   noteReceiptGenerated,
   noteMilestone,
   noteRunStart,
+  noteStatuslinePoll,
   recordCliError,
   recordCliRun,
   recordExportGenerated,
@@ -227,6 +228,8 @@ describe("SPEC-0043 recorders", () => {
       configFile: true,
     });
 
+    await noteStatuslinePoll(undefined, undefined, { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.parse("2026-09-22T21:00:00Z"));
+    await noteStatuslinePoll(undefined, undefined, { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.parse("2026-09-22T22:00:00Z"));
     const names = peekQueuedEvents().map((e) => e.name);
     expect(new Set(names)).toEqual(new Set(EVENT_NAMES));
     for (const event of peekQueuedEvents()) {

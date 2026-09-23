@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   COMMAND_VALUES,
   EVENT_NAMES,
+  PROPERTIES_SCHEMA_BY_EVENT_NAME,
   activationMilestonePropertiesSchema,
   cliErrorPropertiesSchema,
   cliRunPropertiesSchema,
@@ -22,75 +24,41 @@ import {
 
 const INSTALL_HASH = "a".repeat(64);
 
-describe("SPEC-0043 R1: exactly nine event names", () => {
-  it("is exhaustive over the v2 catalog — no more, no less", () => {
-    expect([...EVENT_NAMES].sort()).toEqual(
-      [
-        "activation_milestone",
-        "cli_error",
-        "cli_run",
-        "export_generated",
-        "hook_configured",
-        "integration_surface_rendered",
-        "parse_failure",
-        "pr_flow_completed",
-        "receipt_generated",
-      ].sort(),
-    );
-  });
-});
-
-describe("SPEC-0043 R9: docs parity", () => {
+describe("SPEC-0094 R5: schema, docs, and example parity", () => {
   const doc = readFileSync(resolve(process.cwd(), "docs/telemetry.md"), "utf8");
-  const fieldsByEvent = {
-    cli_run: ["cliVersion", "os", "nodeMajor", "commandClass", "agentType", "durationBucket", "ok", "isCI", "installHash", "runOrdinalBucket", "exitClass"],
-    cli_error: ["errorClass", "command", "agentType", "inPackage"],
-    parse_failure: ["agentType", "adapterVersion", "signatureHash"],
-    receipt_generated: [
-      "cliVersion",
-      "installHash",
-      "isCI",
-      "surface",
-      "agentType",
-      "multiAgent",
-      "outputMode",
-      "template",
-      "pricedRowCoverage",
-      "hasStuckLoopWaste",
-      "hasTrivialSpansWaste",
-      "hasContextThrashWaste",
-      "hasPriceDelta",
-      "hasSubagents",
-      "hasPreEditShare",
-      "detailsView",
-      "turnCountBucket",
-      "toolCallCountBucket",
-      "receiptOrdinalBucket",
-    ],
-    export_generated: ["surface", "format", "wroteFile", "result"],
-    pr_flow_completed: [
-      "mode",
-      "artifactRequested",
-      "shareRequested",
-      "contributorCountBucket",
-      "commentResult",
-      "artifactResult",
-      "shareResult",
-      "handoffSectionIncluded",
-      "result",
-    ],
-    hook_configured: ["operation", "promptOutcome", "result"],
-    integration_surface_rendered: ["integration", "inputMode", "payloadValid", "customFormat", "scoped", "configFile", "result"],
-    activation_milestone: ["milestone", "command", "installAgeBucket"],
-  } as const;
 
-  it("documents every event and field", () => {
-    for (const event of EVENT_NAMES) {
-      expect(doc).toContain(`### \`${event}\``);
-      for (const field of fieldsByEvent[event]) {
-        expect(doc).toContain(`| \`${field}\` |`);
-      }
+  it("matches the tl;dr count and event list", () => {
+    const summary = doc.split("## tl;dr")[1]?.split("## Event catalog")[0] ?? "";
+    const catalogLine = summary.split("\n").find((line) => line.includes("-event catalog")) ?? "";
+    expect(catalogLine).toContain(`fixed ${EVENT_NAMES.length}-event catalog`);
+    const names = [...catalogLine.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+    expect(names).toEqual([...EVENT_NAMES]);
+  });
+
+  it.each(EVENT_NAMES)("documents %s fields, enums and a valid literal example", (event) => {
+    const section = doc.split(`### \`${event}\``)[1]?.split(/\n### |\n## /)[0];
+    expect(section, `missing section for ${event}`).toBeDefined();
+    const schema = PROPERTIES_SCHEMA_BY_EVENT_NAME[event];
+    const shape = schema.shape as Record<string, z.ZodTypeAny>;
+    const rows = [...(section ?? "").matchAll(/^\| `([^`]+)` \|[^\n]*$/gm)];
+    const documentedFields = rows.map((row) => row[1]);
+    expect(documentedFields.sort(), `${event} field mismatch`).toEqual(Object.keys(shape).sort());
+    for (const row of rows) {
+      const field = row[1]!;
+      const parts = row[0].split(/(?<!\\)\|/);
+      const type = parts[2]?.trim() ?? "";
+      const fieldSchema = shape[field]!;
+      const enumSchema = fieldSchema instanceof z.ZodOptional ? fieldSchema.unwrap() : fieldSchema;
+      if (type.startsWith("enum")) expect(enumSchema, `${event}.${field} is documented as enum`).toBeInstanceOf(z.ZodEnum);
+      if (!(enumSchema instanceof z.ZodEnum)) continue;
+      expect(type, `${event}.${field} must be documented as enum`).toMatch(/^enum/);
+      const documented = [...(parts[3] ?? "").matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+      expect(documented.sort(), `${event}.${field} enum mismatch`).toEqual([...enumSchema.options].sort());
     }
+    const examples = [...(section ?? "").matchAll(/```json\n([\s\S]*?)\n```/g)];
+    expect(examples.length, `${event} needs one JSON example`).toBe(1);
+    const payload = JSON.parse(examples[0]![1]!) as unknown;
+    expect(schema.safeParse(payload).success, `${event} example fails schema`).toBe(true);
   });
 });
 

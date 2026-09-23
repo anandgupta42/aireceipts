@@ -237,13 +237,15 @@ export async function runStatusline(
 }
 
 async function run(ctx: CommandContext): Promise<number> {
+  let telemetryInfo: StatuslineTelemetryInfo | undefined;
   const code = await runStatusline(
     ctx.stdin,
     loadFromDisk,
     (s) => ctx.stdout.write(s),
-    (info) => ctx.telemetry.recordIntegrationSurfaceRendered({ integration: "statusline", ...info }),
+    (info) => { telemetryInfo = info; },
     { format: ctx.options.format, cwd: ctx.options.cwd, writeError: (s) => ctx.stderr.write(s) },
   );
+  await ctx.telemetry.noteStatuslinePoll(telemetryInfo);
   if (code !== 0) {
     setExitClass(ctx, "invalid-arguments");
   }
@@ -254,9 +256,6 @@ export const command: CommandDef = {
   name: "statusline",
   priority: 90,
   matches: (options) => options.positional[0] === "statusline",
-  // SPEC-0075 R6 — `--cwd` is a polling integration: keep local counters and
-  // event recording, but do not turn a 15s prompt/tmux poll into a network send.
-  shouldFlushTelemetry: (options) => options.cwd === undefined,
   run,
   help: {
     order: 180,
