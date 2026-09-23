@@ -82,6 +82,12 @@ async function readStateWithMeta(homeOverride?: string): Promise<StateUpdateResu
     } catch { /* Best effort: state still starts fresh. */ }
     return { state: freshState(), recovered: true, installIdSource: movedAside ? "recovered_after_corrupt" : "new" };
   }
+  // A file written by a newer CLI (a pinned older hook can run beside a newer install)
+  // is never salvaged or rewritten: that would downgrade it. The run reports its
+  // identity as unavailable instead.
+  if (isRecord(parsed) && typeof parsed.schemaVersion === "number" && parsed.schemaVersion > 1) {
+    throw new Error(`unsupported state schemaVersion ${parsed.schemaVersion}`);
+  }
   const result = parseState(parsed);
   return { ...result, installIdSource: result.state.installId ? "existing" : "new" };
 }

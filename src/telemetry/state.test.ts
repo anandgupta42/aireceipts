@@ -49,9 +49,9 @@ describe("SPEC-0043 R7 local telemetry state", () => {
     expect(result).toMatchObject({ recovered: true, installIdSource: "existing", state: { installId: INSTALL_ID, firstRunAt: "2026-07-01", runCount: 0, receiptCount: 3, milestones: {} } });
   });
 
-  it("salvages an install id despite a wrong schemaVersion", async () => {
+  it("salvages an install id despite a wrong (not newer) schemaVersion", async () => {
     await mkdir(join(home, ".aireceipts"));
-    await writeFile(path(), JSON.stringify({ schemaVersion: 99, installId: INSTALL_ID, runCount: 2, receiptCount: 1, milestones: {} }));
+    await writeFile(path(), JSON.stringify({ schemaVersion: "1", installId: INSTALL_ID, runCount: 2, receiptCount: 1, milestones: {} }));
     const result = await updateStateWithMeta((state) => { ensureInstallId(state, true); }, home);
     expect(result?.state.installId).toBe(INSTALL_ID);
     expect(result?.recovered).toBe(true);
@@ -86,6 +86,18 @@ describe("SPEC-0043 R7 local telemetry state", () => {
 
     const parsed = JSON.parse(await readFile(path(), "utf8")) as { schemaVersion?: unknown };
     expect(parsed.schemaVersion).toBe(1);
+  });
+
+  it("never rewrites a state file from a newer schema version", async () => {
+    await mkdir(join(home, ".aireceipts"), { recursive: true });
+    const newer = JSON.stringify({ schemaVersion: 2, installId: INSTALL_ID, runCount: 3, receiptCount: 1, milestones: {}, heartbeat: { polls: 7 } });
+    await writeFile(path(), newer, "utf8");
+    const result = await updateStateWithMeta((state) => { state.runCount += 1; ensureInstallId(state, true); }, home);
+    expect(result).toBeUndefined();
+    expect(await readFile(path(), "utf8")).toBe(newer);
+    const entries = await readdir(join(home, ".aireceipts"));
+    expect(entries.filter((name) => name.startsWith("state.json.corrupt-"))).toHaveLength(0);
+    expect(await readState(home)).toMatchObject({ schemaVersion: 1, runCount: 0, receiptCount: 0 });
   });
 
   it("concurrent writers recovering the same corrupt file leave one parseable state and keep every backup", async () => {
