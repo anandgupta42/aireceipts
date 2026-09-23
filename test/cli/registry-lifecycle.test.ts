@@ -40,6 +40,7 @@ describe("SPEC-0018 R6 · main() telemetry lifecycle", () => {
     vi.spyOn(telemetry, "recordCliError").mockImplementation(() => {});
     vi.spyOn(telemetry, "noteRunStart").mockResolvedValue({
       installHash: "unavailable",
+      installIdSource: "unavailable",
       runOrdinalBucket: "1",
       isCI: false,
     });

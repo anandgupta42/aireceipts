@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,12 +20,14 @@ import {
 } from "./index.js";
 import { EVENT_NAMES, validateEvent, type TelemetryEvent } from "./schemas.js";
 import { __resetQueueForTests, peekQueuedEvents } from "./sender.js";
+import { readState } from "./state.js";
 
 const VALID_CONN = "InstrumentationKey=abc-123;IngestionEndpoint=https://example.in.applicationinsights.azure.com/";
 const HASH = "a".repeat(64);
 
 const RUN_BASE = {
   installHash: HASH,
+  installIdSource: "existing",
   runOrdinalBucket: "1",
   isCI: false,
 } as const;
@@ -210,6 +212,7 @@ describe("SPEC-0043 noteRunStart", () => {
   it("returns a 64-hex install hash when telemetry is enabled", async () => {
     const result = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.UTC(2026, 6, 4));
     expect(result.installHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.installIdSource).toBe("new");
     expect(result.runOrdinalBucket).toBe("1");
     expect(result.isCI).toBe(false);
   });
@@ -217,6 +220,22 @@ describe("SPEC-0043 noteRunStart", () => {
   it("does not create an install hash under a kill switch", async () => {
     const result = await noteRunStart("receipt", { DO_NOT_TRACK: "1", AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN }, Date.UTC(2026, 6, 4));
     expect(result.installHash).toBe("unavailable");
+    expect(result.installIdSource).toBe("unavailable");
+    expect((await readState(home)).installId).toBeUndefined();
+  });
+
+  it("reports an existing id on the next run", async () => {
+    const env = { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN };
+    const first = await noteRunStart("receipt", env);
+    const second = await noteRunStart("receipt", env);
+    expect(second.installIdSource).toBe("existing");
+    expect(second.installHash).toBe(first.installHash);
+  });
+
+  it("reports unavailable when local state cannot be written", async () => {
+    await writeFile(join(home, ".aireceipts"), "not a directory");
+    const result = await noteRunStart("receipt", { AIRECEIPTS_TELEMETRY_CONNECTION: VALID_CONN });
+    expect(result).toMatchObject({ installHash: "unavailable", installIdSource: "unavailable", runOrdinalBucket: "unavailable" });
   });
 
   it("records the first_run activation milestone only once", async () => {
@@ -263,6 +282,7 @@ describe("showTelemetryPayload: R5 --telemetry-show backing function", () => {
 
     expect(result.enabled).toBe(true);
     expect(result.events).toHaveLength(1);
+    expect(result.events[0]).toMatchObject({ properties: { installIdSource: "existing" } });
     expect(peekQueuedEvents()).toHaveLength(1);
   });
 

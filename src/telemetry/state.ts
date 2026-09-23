@@ -15,6 +15,7 @@ export interface TelemetryState {
 export interface StateUpdateResult {
   state: TelemetryState;
   recovered: boolean;
+  installIdSource: "existing" | "new" | "recovered_after_corrupt";
 }
 
 function freshState(): TelemetryState {
@@ -29,57 +30,57 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseState(raw: string): TelemetryState | undefined {
+function parseState(parsed: unknown): { state: TelemetryState; recovered: boolean } {
+  const state = freshState();
+  if (!isRecord(parsed)) return { state, recovered: true };
+  let recovered = parsed.schemaVersion !== 1;
+  for (const field of ["runCount", "receiptCount"] as const) {
+    const value = parsed[field];
+    if (typeof value === "number" && Number.isInteger(value) && value >= 0) state[field] = value;
+    else recovered = true;
+  }
+  if (isRecord(parsed.milestones)) {
+    for (const [key, value] of Object.entries(parsed.milestones)) {
+      if (value === true) state.milestones[key] = true;
+      else recovered = true;
+    }
+  } else recovered = true;
+  // Only a v4-shaped UUID may persist as the install id: a corrupted or hand-edited
+  // file could otherwise carry banned free text (a path, a hostname) into the salted
+  // hash that goes on the wire (SPEC-0043 R6). Anything else is treated as absent.
+  if (typeof parsed.installId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(parsed.installId)) {
+    state.installId = parsed.installId;
+  } else if (parsed.installId !== undefined) recovered = true;
+  if (typeof parsed.firstRunAt === "string") {
+    state.firstRunAt = parsed.firstRunAt;
+  } else if (parsed.firstRunAt !== undefined) recovered = true;
+  return { state, recovered };
+}
+
+async function readStateWithMeta(homeOverride?: string): Promise<StateUpdateResult> {
+  const path = statePath(homeOverride);
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { state: freshState(), recovered: false, installIdSource: "new" };
+    }
+    throw error;
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return undefined;
+    let movedAside = false;
+    try {
+      await rename(path, `${path}.corrupt-${new Date().toISOString().replace(/:/g, "")}`);
+      movedAside = true;
+    } catch { /* Best effort: state still starts fresh. */ }
+    return { state: freshState(), recovered: true, installIdSource: movedAside ? "recovered_after_corrupt" : "new" };
   }
-  if (!isRecord(parsed) || parsed.schemaVersion !== 1) {
-    return undefined;
-  }
-  const runCount = parsed.runCount;
-  const receiptCount = parsed.receiptCount;
-  const milestones = parsed.milestones;
-  if (
-    typeof runCount !== "number" ||
-    !Number.isInteger(runCount) ||
-    runCount < 0 ||
-    typeof receiptCount !== "number" ||
-    !Number.isInteger(receiptCount) ||
-    receiptCount < 0 ||
-    !isRecord(milestones)
-  ) {
-    return undefined;
-  }
-  const cleanMilestones: Record<string, true> = {};
-  for (const [key, value] of Object.entries(milestones)) {
-    if (value === true) {
-      cleanMilestones[key] = true;
-    }
-  }
-  const state: TelemetryState = { schemaVersion: 1, runCount, receiptCount, milestones: cleanMilestones };
-  // Only a v4-shaped UUID may persist as the install id: a corrupted or hand-edited
-  // file could otherwise carry banned free text (a path, a hostname) into the salted
-  // hash that goes on the wire (SPEC-0043 R6). Anything else is treated as absent.
-  if (typeof parsed.installId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsed.installId)) {
-    state.installId = parsed.installId;
-  }
-  if (typeof parsed.firstRunAt === "string") {
-    state.firstRunAt = parsed.firstRunAt;
-  }
-  return state;
-}
-
-async function readStateWithMeta(homeOverride?: string): Promise<{ state: TelemetryState; recovered: boolean }> {
-  try {
-    const raw = await readFile(statePath(homeOverride), "utf8");
-    const parsed = parseState(raw);
-    return parsed ? { state: parsed, recovered: false } : { state: freshState(), recovered: true };
-  } catch {
-    return { state: freshState(), recovered: false };
-  }
+  const result = parseState(parsed);
+  return { ...result, installIdSource: result.state.installId ? "existing" : "new" };
 }
 
 export async function readState(homeOverride?: string): Promise<TelemetryState> {
@@ -108,7 +109,7 @@ export async function updateStateWithMeta(
     const state = read.state;
     mutate(state);
     await writeState(statePath(homeOverride), state);
-    return { state, recovered: read.recovered };
+    return { state, recovered: read.recovered, installIdSource: read.installIdSource };
   } catch {
     return undefined;
   }

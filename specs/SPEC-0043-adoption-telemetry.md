@@ -157,6 +157,18 @@ instrumentation slices named in SPEC-0081's 2026-07-13 Tombstone: launch data sh
 controlled non-zero runs without diagnostic events, so classification must precede
 any conversion intervention.
 
+### Amendment — 2026-09-22 · install identity preservation
+
+Valid JSON with a bad state field now retains any valid UUID-shaped `installId`, string
+`firstRunAt`, and individually valid non-negative integer counters while resetting
+invalid fields. Recovery still marks the run ordinal unavailable. Unparseable state is
+moved aside as `state.json.corrupt-<timestamp>` before a fresh id is minted when
+telemetry is enabled. `cli_run` adds the closed `installIdSource` enum: `existing`,
+`new`, `recovered_after_corrupt`, or `unavailable`. Production telemetry showed one
+machine minting 53 of 124 observed install ids in 90 days, including 47 first runs
+with an unavailable ordinal. The new field is a bounded enum and sends no new data
+class; the raw id, state contents, and file path remain local.
+
 ## Scenarios
 
 - **Given** a user runs `aireceipts` on a Claude Code session with two stuck-loop waste
