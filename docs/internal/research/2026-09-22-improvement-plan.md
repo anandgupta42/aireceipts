@@ -2,7 +2,7 @@
 
 Revision 2 applies the 21 findings of the Codex review. The six evidence documents it cites are working papers that name third-party products and carry illustrative figures, so they are kept out of the public repo, in the maintainer's research vault under `Research/aireceipts-improvement-plan-2026-09/`: **deep-dive** (App Insights deep dive, 90 days of production telemetry), **mistakes** (agent failure modes and deterministic waste checks), **levers** (AI coding-agent cost levers), **landscape** (what other tools surface), **telemetry** (OSS CLI telemetry programs and Azure cost) and **parallel** (an independent deep-research report). Section references below point into those documents.
 
-**SPEC inventory.** 0085 is the next unused id locally.
+**SPEC inventory.** 0094 is the next free id. Ids 0083 to 0093 are taken on `main` or on open branches as of the evening of 2026-09-22 (0089 and 0091 landed on `main`; 0092 and 0093 are reserved by the OpenAI price PR), so this revision renumbers its proposals to 0094 to 0097.
 
 - `specs/` and the cached `origin/main` end at 0081.
 - 0082, 0083 and `review-patterns.json` are on `origin/feat/m5-opencode-discovery` and in the `aireceipts-handoff-coverage` worktree.
@@ -10,20 +10,20 @@ Revision 2 applies the 21 findings of the Codex review. The six evidence documen
 - At 2026-09-22T20:22Z, `gh` showed PR #254 `OPEN` and `CONFLICTING`, last updated 2026-07-13. No open PR was titled SPEC-008x.
 - Reviewer note: the reviewer's sandbox could not reach `gh`, but this session could. **Verify live before presenting.**
 
-This plan numbers only 0085 to 0088. Everything else is an amendment to an existing spec or an unnumbered backlog item.
+This plan numbers only 0094 to 0097. Everything else is an amendment to an existing spec or an unnumbered backlog item.
 
 ## 1. Executive summary
 
 1. **Raise retention from 90 to 180 days first.** The purge starts about 2026-09-30, and nothing else here blocks it.
 2. **Decide the cheaper-model policy (decision 0) alongside the price PRs.** The refresh is split one vendor per PR (SPEC-0005 R2): #371 tooling, #369 Anthropic, #370 OpenAI, #368 Google, #367 DeepSeek. 31 new ids (13 Anthropic, 10 OpenAI, 8 Google), drift down from 19 to 0. The OpenAI PR defers the three sub-mini rows, so it can merge under any option; the option decides when those rows land.
-3. **Ship a one-PR SPEC-0043 amendment before v0.12.0.** It adds `cliVersion` and `installHash` to `receipt_generated`. Without it, the release's coverage effect cannot be measured.
+3. **Ship a one-PR SPEC-0043 amendment before v0.12.0 (merged as #374).** It adds `cliVersion` and `installHash` to `receipt_generated`. Without it, the release's coverage effect cannot be measured.
 4. **Cut v0.12.0 through the full release checklist,** then the maintainer publishes.
-5. **Ship a defensive install-id fix now; investigate the root cause separately.** Success is measured by identity preservation, not "zero churn."
-6. **Disclose ingestion geo in `docs/telemetry.md` now.**
+5. **Ship a defensive install-id fix now (#375); investigate the root cause separately.** Success is measured by identity preservation, not "zero churn."
+6. **Disclose ingestion geo in `docs/telemetry.md` now (merged as #373).**
 7. **Merge PR #254 only after its telemetry passes I4.** Its raw `findingCount` must become a bucket first. New checks depend on the registry in #254.
-8. **SPEC-0085:** telemetry hygiene v2, with statusline dedupe, three separate datasets and the dead fields wired.
-9. **SPEC-0086:** cited model aliases plus a named unpriced-model line. It never prices an unknown model from a sibling (I2).
-10. **SPEC-0087 (cache facts) and SPEC-0088 (context carry):** every dollar carries one SPEC-0083 impact role, and unlike roles are never summed.
+8. **SPEC-0094:** telemetry hygiene v2, with statusline dedupe, three separate datasets and the dead fields wired.
+9. **SPEC-0095:** cited model aliases plus a named unpriced-model line. It never prices an unknown model from a sibling (I2).
+10. **SPEC-0096 (cache facts) and SPEC-0097 (context carry):** every dollar carries one SPEC-0083 impact role, and unlike roles are never summed.
 11. **Verification, risky-command and retry ideas become SPEC-0083 registry amendments,** entered in `shadow` state.
 12. **Attach failure is unproven.** A manual org-repo check this week decides whether it is a bug.
 
@@ -53,11 +53,11 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 - **Golden change.** Six Codex goldens change in the two lines that use `cheapestCurrentRow`: the "same tokens on" comparison and the trivial-spans `≈` estimate. The lowest current input rate is now `gpt-6-luna`, not `gpt-5.4-mini`.
 - **Deferred rows.** `gpt-5.4-nano`, `gpt-5-mini` and `gpt-5-nano` wait on decision 0.
 - **Discovery triage.** The first commit in #359 counted 94 by hiding dated snapshots, provider-prefixed aliases and anything with a `deprecation_date`. The review commits stop hiding: the final tripwire counts 122 (115 new ids plus 7 dated snapshots of priced models), lists ids the community dataset labels a non-text modality and ids whose deprecation date has passed without counting them, requires a canonical id to match the vendor's own id shape, and excludes only `ft:` fine-tune rows. Most of the 115 are legacy OpenAI chat ids (gpt-3.5, gpt-4, gpt-4o families) and Gemini previews. The `update-prices` loop owns triage, and the maintainer approves via button 2. Each discovery ends up supported with a cited row, omitted with a reason, or irrelevant.
-- **SPEC-0086.**
+- **SPEC-0095.**
   - A cited `aliases` array per model row. An alias resolves only when a vendor page lists that id as the same model at the same price.
   - No suffix stripping. Provider-prefixed Bedrock and Vertex ids stay unresolved.
-  - A cross-vendor alias uniqueness test.
-  - An unpriced-model line: `model <id> not in bundled price tables (2026-09-22); tokens only`. It is computed from the session date and the table date only (I1, I5).
+  - An alias uniqueness test: every alias must be unique against every other alias and every canonical model id within its vendor table, and across vendors. Resolution selects the vendor table first, so a within-vendor duplicate would let lookup order decide the dollar rate.
+  - An unpriced-model line: `model <id> not in bundled price tables (<table date>); tokens only`. The table date is a new top-level `generated_at` field written into each vendor table by the `update-prices` loop and checked by cite-check, never the clock or a maximum row date; when the id maps to no vendor table the line omits the date. Computed from the session and the bundled tables only (I1, I5).
   - It splits **coverage eligibility** (the row prices the session) from **comparison eligibility** (the row may be the cheaper-model candidate), per decision 0.
 - **Policy.** Cut a price-only patch release within 7 days of any merged price PR.
 - **Acceptance:**
@@ -68,45 +68,44 @@ This plan numbers only 0085 to 0088. Everything else is an amendment to an exist
 - **Invariants:** I2 and I3 hold, because aliases are cited and there is no fallback. I5 holds, because the goldens are reviewed.
 - **Telemetry:**
   - `receipt_generated.cliVersion` and `installHash`, through the SPEC-0043 amendment.
-  - `unpricedModelFamily`, a vendor enum.
-  - `priceTableAgeBucket`.
-- **Effort:** S for the PR and release, M for SPEC-0086.
+  - `priceTableAgeBucket`, a bounded enum derived from `generated_at`. No model or vendor family field: review rejected that as transcript-derived data that I4 does not authorize.
+- **Effort:** S for the PR and release, M for SPEC-0095.
 
-### B. Telemetry hygiene (SPEC-0085, amends SPEC-0043)
+### B. Telemetry hygiene (SPEC-0094, amends SPEC-0043)
 
 | Change | Vehicle | Effort |
 |---|---|---|
 | Retention to 180 days; a 1 GB/day cap with an alert | Azure, maintainer, now | S |
 | `receipt_generated` gets `cliVersion` and `installHash` | one-PR SPEC-0043 amendment; a v0.12.0 prerequisite | S |
-| **Defensive identity fix.** If JSON parses but counters or `schemaVersion` fail validation, keep a valid `installId`. Malformed JSON cannot yield the old UUID, so move the file aside, mint a new id, and record `installIdSource` (`existing|new|recovered_after_corrupt`). Needs fixtures for bad JSON, bad counters, and two concurrent writers. | one PR (`fix-issue`) | S |
+| **Defensive identity fix (shipped as #375).** If JSON parses but counters or a wrong-but-not-newer `schemaVersion` fail validation, keep a valid `installId`. A `schemaVersion` above the current one was written by a newer CLI and is never salvaged or rewritten (a pinned older hook can run beside a newer install); that run reports `unavailable`. Malformed JSON cannot yield the old UUID, so move the file aside, mint a new id, and record `installIdSource` (`existing|new|recovered_after_corrupt|unavailable`). Fixtures for bad JSON, bad counters, newer schema, and two concurrent writers. | one PR (`fix-issue`) | S |
 | **Root cause.** Find which writer produces the shape the parser rejects: a dev build, tests using the real HOME, or a truncated write. | investigation | S to M |
-| Geo disclosure now; blanking via the `ai.location.ip` override is decision 4 | docs PR, then SPEC-0085 | S |
-| Emit `integration_surface_rendered` only when its state changes | SPEC-0085 | S |
-| Hourly statusline activity heartbeat. Counters live in `state.json` across poll processes. A completed hour flushes on the next hour's first poll, so a final hour with no later poll is never sent, which is documented. No latency statistics. | SPEC-0085 | S to M |
-| `cli_run.agentType`; `recordParseFailure` called from each adapter | SPEC-0084 R1c; SPEC-0085 | S |
-| `pr_attach_completed` (`trigger=pre_push|ci`, bounded `result`) with no repo or org identity. Amends the hook-suppression contract at `src/cli/index.ts`. | SPEC-0085 | S |
-| `pricedRowCoverage=n/a` for zero-tool receipts; no sends from `0.0.0` or git-checkout builds; a `record*` and docs parity test | SPEC-0085 | S |
+| Geo disclosure now; blanking via the `ai.location.ip` override is decision 4 | docs PR, then SPEC-0094 | S |
+| Emit `integration_surface_rendered` only when its state changes | SPEC-0094 | S |
+| Hourly statusline activity heartbeat. Counters live in `state.json` across poll processes. A completed hour flushes on the next hour's first poll, so a final hour with no later poll is never sent, which is documented. No latency statistics. | SPEC-0094 | S to M |
+| `cli_run.agentType`; `recordParseFailure` called from each adapter | SPEC-0084 R1c; SPEC-0094 | S |
+| `pr_attach_completed` (`trigger=pre_push|ci`, bounded `result`) with no repo or org identity. Amends the hook-suppression contract at `src/cli/index.ts`. | SPEC-0094 | S |
+| `pricedRowCoverage=n/a` for zero-tool receipts; no sends from `0.0.0` or git-checkout builds; a `record*` and docs parity test | SPEC-0094 | S |
 
 **Datasets.** Each dataset is defined separately. Churn is evaluated on raw data before any exclusion.
 
-- **Adoption:** excludes `isCI`, the maintainer hashes, the 2026-07-11 matrix sweep, and hashes whose first event is `unavailable`.
-  - Human WAU and hook WAU (`invokedBy`) are separate series.
+- **Adoption:** excludes `isCI` rows, the maintainer hashes, the 2026-07-11 matrix sweep, and every row whose `installHash` is the literal `unavailable` (such rows cannot be linked to any install, so the exclusion is defined on the rows themselves; installs are identified only by 64-hex hashes).
+  - Human WAU and hook WAU are separate series only once `cli_run.invokedBy` (SPEC-0094 R3) ships; until then there is one WAU series, because the SessionEnd hook runs the same `npx aireceipts-cli --mini` command a human would.
   - Statusline-only activity has its own retention series.
   - Activation is the first successful `receipt_generated` with tool calls.
   - Power install is 5 or more active days in a trailing 28.
   - Retention is the HEART week-over-week cohort grid.
-- **Reliability:** all non-CI rows, maintainer included. It covers exit classes, `parse_failure` and statusline success.
+- **Reliability:** all non-CI rows, maintainer included. It covers exit classes, statusline success, and `parse_failure` only once that event carries `isCI` (SPEC-0094 R2 adds it); until then parse failures are reported unfiltered and labeled as such.
 - **CI:** `isCI=true` rows only. It covers `pr-check` and the CI half of `pr_attach_completed`.
 - Every event any metric needs carries `installHash`, `cliVersion` and `isCI`: `receipt_generated`, `activation_milestone`, `hook_configured` and `pr_attach_completed`.
 
 - **Acceptance:**
   - Statusline rows per active install fall by 95% or more.
-  - In new versions, `installIdSource=existing` exceeds 99% of runs, and the `recovered_after_corrupt` rate is reported.
+  - In new versions, the `recovered_after_corrupt` rate stays under 0.5% of runs, and no install with prior state (an earlier `cli_run` from the same hash) later reports `new`; legitimate `new` first runs are reported as their own series, never counted as churn.
   - A test proves `parse_failure` has a caller.
   - The parity test is green.
 - **Invariants:** I4 holds: every new field is a bounded enum or boolean, plus the salted `installHash` and the semver `cliVersion` that SPEC-0043 already permits on `cli_run`. `--telemetry-show` prints the new payloads, and the kill switches still win.
 
-### C. New facts and checks (SPEC-0087, SPEC-0088, SPEC-0083 amendments)
+### C. New facts and checks (SPEC-0096, SPEC-0097, SPEC-0083 amendments)
 
 **Preconditions:**
 
@@ -132,12 +131,12 @@ Descriptive metrics such as cache share are receipt facts, not warnings. They ar
 
 | # | Item | Predicate (unknown states in brackets) | Role | Vehicle |
 |---|---|---|---|---|
-| 1 | Cache write after idle gap | Claude Code only. Codex only where `cache_write_input_tokens` exists; otherwise, and for Gemini: unavailable. For consecutive main-chain requests on one model, readable = prior request's input + cacheRead + cacheCreation + output, and missed = max(0, readable minus cacheRead). The rule fires when missed ≥ max(2,000, 5% of readable) and the gap exceeds the TTL. The TTL is 1h if only `cacheCreation1h`>0, 5m if only 5m. [Mixed or no split: TTL unknown. Compaction, model or version change: attributed to that cause, not idle.] Source: levers 1a, mistakes P3. | same-token-reprice: missed x (write rate minus read rate) | 0087 |
-| 2 | Cache read share | cacheRead / (input + cacheRead + cacheCreation), per model. [Fields absent: not shown.] Gemini shows read share only. | descriptive, none | 0087 |
-| 3 | TTL arithmetic | For 5m sessions: rebuilds after 5 to 60 min gaps against the 1h write premium. Both numbers shown, conditional. | same-token-reprice | 0087 |
-| 4 | Large tool result | Estimated output ≥10k tokens (≈). A truncation marker is a separate count that makes no size claim. Carry = estimate x later main-chain requests until compaction, at the read rate, assuming the prefix persisted. Subagent contexts are separate. | conditional-estimate, ≈ | 0088 |
-| 5 | Duplicate unchanged read | Read-class tools per vendor map; shell reads only via the SPEC-0083 R4 lexer. Same (path, offset, limit) and output hash, in the same context, with no compaction between. Post-compaction re-reads are a separate count. Extends SPEC-0068 and stays outside waste math. | none (tokens ≈) | 0088 |
-| 6 | First-request input | input + cacheRead + cacheCreation of the first main-chain request. This includes the first prompt. Carry = that x (requests minus 1) x read rate, conditional on the prefix persisting and stopping at compaction. [Usage absent: unavailable.] | same-token-reprice, conditional | 0088 |
+| 1 | Cache write after idle gap | Claude Code only. Codex only where `cache_write_input_tokens` exists; otherwise, and for Gemini: unavailable. For consecutive main-chain requests on one model, readable = prior request's input + cacheRead + cacheCreation + output, and missed = max(0, readable minus cacheRead). The rule fires when missed ≥ max(2,000, 5% of readable) and the gap exceeds the TTL. The TTL is 1h if only `cacheCreation1h`>0, 5m if only 5m. [Mixed or no split: TTL unknown. Compaction, model or version change: attributed to that cause, not idle.] Source: levers 1a, mistakes P3. | same-token-reprice: missed x (write rate minus read rate) | 0096 |
+| 2 | Cache read share | cacheRead / (input + cacheRead + cacheCreation), per model. [Fields absent: not shown.] Gemini shows read share only. | descriptive, none | 0096 |
+| 3 | TTL arithmetic | For 5m sessions: rebuilds after 5 to 60 min gaps against the 1h write premium. Both numbers shown, conditional. | same-token-reprice | 0096 |
+| 4 | Large tool result | Estimated output ≥10k tokens (≈). A truncation marker is a separate count that makes no size claim. Carry = estimate x later main-chain requests until compaction, at the read rate, assuming the prefix persisted. Subagent contexts are separate. | conditional-estimate, ≈ | 0097 |
+| 5 | Duplicate unchanged read | Read-class tools per vendor map; shell reads only via the SPEC-0083 R4 lexer. Same (path, offset, limit) and output hash, in the same context, with no compaction between. Post-compaction re-reads are a separate count. Extends SPEC-0068 and stays outside waste math. | none (tokens ≈) | 0097 |
+| 6 | First-request input | input + cacheRead + cacheCreation of the first main-chain request. This includes the first prompt. Carry = that x (requests minus 1) x read rate, conditional on the prefix persisting and stopping at compaction. [Usage absent: unavailable.] | conditional-estimate, ≈ | 0097 |
 | 7 | Edit-fail retries | At least 3 edit-class calls (vendor map) on one present path with explicit `error` status within 10 flattened calls; `running` is not failure. Superseded by R6 `repeated-identical-error` when they overlap. | observed-attributed | registry amendment |
 | 8 | Last change unchecked | This is the existing R7 `last-change-not-checked` (shadow). Amend it to add lint and config exclusions per mistakes P4. | none | registry amendment |
 | 9 | Risky commands | Lexer-parsed shell matches from the mistakes P9 list: `rm -rf` outside cwd, `git reset --hard`, `git clean -f`, `git checkout -- .`, `git restore .`, `git branch -D`, `filter-repo`, `DROP`, `TRUNCATE`, `kubectl delete`, `terraform destroy`, and force push to a branch the session did not create [branch origin unknown: say so]. Outcome is one of `ran` (ok), `failed` (error), `blocked` (denial marker) or `unknown` (running or missing). | none | registry amendment |
@@ -187,7 +186,7 @@ Each promoted registry entry's canonical `recommendation` must fit the slip's 48
 
    If decision 2 depends on upgrading retained users, do this before v0.12.0.
 4. **Empty `mini` receipts.** Suppress a receipt only when every usage field sums to 0 tokens. Sessions with nonzero tokens or cost always render. The deep-dive's 22% counts zero-tool sessions with 0 or 1 turns, which is a different set. This is golden-gated.
-5. **Backlog, statusline incremental parse.** Cache key: device, inode, size, mtime, a head and tail 4 KB hash, and the parser version. Required tests prove cached and full parse are equivalent across append, truncation, replacement, equal-size rewrite and parser change. The performance gate is a repeatable local benchmark on 1, 10 and 50 MB fixtures, cold and warm, at p50 and p95. It replaces telemetry latency targets.
+5. **Backlog, statusline incremental parse.** Cache key: device, inode, size, mtime, the parser version, and a sha256 of the full file content (endpoint samples alone cannot detect an equal-size in-place rewrite in the middle of a transcript; hashing is far cheaper than parsing, and a size or mtime change short-circuits it). Required tests prove cached and full parse are equivalent across append, truncation, replacement, equal-size rewrite and parser change. The performance gate is a repeatable local benchmark on 1, 10 and 50 MB fixtures, cold and warm, at p50 and p95. It replaces telemetry latency targets.
 6. **Monitored outcomes, not completion gates:** weekly new clean installs, always-on activation per cohort, and `pr_attach_completed` success rate.
 
 ## 4. Sequenced roadmap
@@ -200,20 +199,20 @@ Each promoted registry entry's canonical `recommendation` must fit the slip's 48
 | Now 4 | Attach check (F1) and hook-version investigation (F3) | investigation |
 | Now 5 | **Release v0.12.0.** Checklist: main CI green; version matches; `/release-manager` `VERDICT: GO` for the exact SHA; `preflight-release.mjs` exits 0; changelog; `/review-docs`; specs flipped; inventory updated; release PR; **maintainer publishes** | agent prepares |
 | **Next 6** | PR #254: bucket `findingCount`, rebase, review; merge only if the gates pass | existing PR |
-| Next 7 | SPEC-0085 | spec |
-| Next 8 | SPEC-0086 | spec |
+| Next 7 | SPEC-0094 | spec |
+| Next 8 | SPEC-0095 | spec |
 | Next 9 | SPEC-0084 R1 to R3; hook migration if not earlier; empty-`mini` suppression | spec, one PR each |
-| Next 10 | SPEC-0087 | spec, needs #254 |
-| **Later 11** | SPEC-0088; registry amendments 7 to 9 | spec, amendments |
+| Next 10 | SPEC-0096 | spec, needs #254 |
+| **Later 11** | SPEC-0097; registry amendments 7 to 9 | spec, amendments |
 | Later 12 | Backlog: statusline parse, merged-session subtotal, next-tier checks | select, then spec |
 
 ## 5. Maintainer decisions (recommended option first)
 
-0. **Cheaper-model candidate policy.** (a) Comparison-eligible rows kept as cited data per vendor family; the three deferred OpenAI rows land as coverage-only once SPEC-0086 ships the separation, and stay out until then. (b) Today's rule: lowest current input rate; the deferred rows then land immediately and the cheaper-model line follows them. (c) Cheapest model the session's agent can select, which needs cited per-agent lists.
+0. **Cheaper-model candidate policy.** (a) Comparison-eligible rows kept as cited data per vendor family; the three deferred OpenAI rows land as coverage-only once SPEC-0095 ships the separation, and stay out until then. (b) Today's rule: lowest current input rate; the deferred rows then land immediately and the cheaper-model line follows them. (c) Cheapest model the session's agent can select, which needs cited per-agent lists.
 1. **DeepSeek time-of-day pricing.** (a) Tokens-only, as current policy requires. (b) An off-peak `≥` floor, a **proposed** amendment to the omitted-model policy in the price-table README that is not permitted today. (c) A `time_of_day_tiers` schema plus a cited holiday calendar (L).
 2. **v0.12.0 scope.** (a) Price PR, SPEC-0043 amendment and identity fix. (b) Also wait for SPEC-0084 R1.
 3. **Statusline telemetry.** (a) Hourly activity heartbeat, with performance gated by the local benchmark. (b) (a) plus a disclosed bucketed share of polls over 2s. (c) 1-in-50 sampling, which undercounts installs (telemetry B0).
-4. **Geo.** (a) Disclose now and blank it in SPEC-0085. (b) Disclose only.
+4. **Geo.** (a) Disclose now and blank it in SPEC-0094. (b) Disclose only.
 5. **Promotion field minimum.** (a) 300 evaluated rows. (b) The R7 corpus audit only.
 6. **Vendor spend figures in `week`, such as $13 per active day.** (a) Omit. (b) Cited footnote.
 7. **Retention.** (a) 180 days. (b) 90 days plus vault exports.
