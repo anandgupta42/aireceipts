@@ -69,6 +69,21 @@ function comparableField(row, keys) {
   return null;
 }
 
+// aireceipts prices coding-agent transcripts, which are chat/responses requests. Rows the
+// community dataset labels with another modality are still listed (its labels are not
+// authoritative: it marks at least one generative Gemini model as `embedding`), but they
+// are grouped separately and not counted.
+const TEXT_MODES = new Set(["chat", "responses"]);
+
+// When the dataset names a provider, trust that evidence. For unlabeled rows,
+// accept only ids with a recognized vendor prefix.
+const VENDOR_ID_PATTERNS = {
+  anthropic: /^claude-/,
+  deepseek: /^deepseek-/,
+  google: /^gemini-/,
+  openai: /^(gpt-|o\d|chatgpt-)/,
+};
+
 function datasetEntriesForVendor(dataset, vendor) {
   const matches = VENDOR_MATCHERS[vendor];
   if (!matches) return [];
@@ -145,19 +160,73 @@ function compareRows(tables, dataset, today) {
   return { drift, skipped };
 }
 
-function discoveryFeed(tables, dataset) {
+// A vendor's dated-snapshot suffix (`-20251101`, `-2025-08-07`) stripped, so a snapshot
+// of a model we already price can be grouped (never hidden: the resolver matches ids
+// exactly, so an unlisted snapshot is still unpriced).
+function undated(modelId) {
+  return modelId.replace(/-\d{8}$/, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+}
+
+// The community dataset lists routing aliases (`deepseek/deepseek-chat`,
+// `vertex_ai/gemini-2.5-pro`); the vendor id is the part after the last prefix.
+function canonicalId(modelId) {
+  return modelId.slice(modelId.lastIndexOf("/") + 1);
+}
+
+function isRetired(row, today) {
+  const date = row?.deprecation_date;
+  return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < today;
+}
+
+/**
+ * Four groups per vendor, all reported, nothing hidden: `newIds` (no row, no known base
+ * model), `snapshotIds` (dated snapshot of a priced model; the exact id still has no row),
+ * `otherModeIds` (the dataset labels every alias with a non-text modality; listed, not
+ * counted) and `retiredIds` (every alias has a deprecation_date already passed; listed, not
+ * counted). Aliases are aggregated per canonical id before classification, so one retired
+ * routing alias cannot suppress an undated one.
+ */
+function discoveryFeed(tables, dataset, today) {
   const feed = [];
   for (const table of tables) {
     const known = new Set([
       ...Object.keys(table.models ?? {}),
       ...(Array.isArray(table.omitted) ? table.omitted.map((entry) => entry.model) : []),
     ]);
-    const missing = datasetEntriesForVendor(dataset, table.vendor)
-      .map(([modelId]) => modelId)
-      .filter((modelId) => !known.has(modelId));
-    if (missing.length > 0) feed.push({ vendor: table.vendor, modelIds: missing });
+    const idPattern = VENDOR_ID_PATTERNS[table.vendor];
+    const rowsById = new Map();
+    for (const [rawId, row] of datasetEntriesForVendor(dataset, table.vendor)) {
+      const modelId = canonicalId(rawId);
+      // `ft:<base>` rows are fine-tuning price entries, not vendor model ids.
+      if (modelId.startsWith("ft:") || known.has(modelId)) continue;
+      if (table.vendor === "openai") {
+        // OpenAI also uses ids such as codex-mini-latest; a labeled third-party
+        // provider must not slip through because its id happens to start with gpt-.
+        if (row.litellm_provider !== "openai" &&
+            (row.litellm_provider || !idPattern.test(modelId))) continue;
+      } else if (idPattern && !idPattern.test(modelId)) continue;
+      if (!rowsById.has(modelId)) rowsById.set(modelId, []);
+      rowsById.get(modelId).push(row);
+    }
+    const newIds = [];
+    const snapshotIds = [];
+    const otherModeIds = [];
+    const retiredIds = [];
+    for (const [modelId, rows] of rowsById) {
+      if (rows.every((row) => isRetired(row, today))) retiredIds.push(modelId);
+      else if (rows.every((row) => typeof row.mode === "string" && !TEXT_MODES.has(row.mode))) otherModeIds.push(modelId);
+      else if (known.has(undated(modelId))) snapshotIds.push(modelId);
+      else newIds.push(modelId);
+    }
+    if (newIds.length + snapshotIds.length + otherModeIds.length + retiredIds.length > 0) {
+      feed.push({ vendor: table.vendor, newIds, snapshotIds, otherModeIds, retiredIds });
+    }
   }
   return feed;
+}
+
+function discoveryCount(feed) {
+  return feed.reduce((sum, entry) => sum + entry.newIds.length + entry.snapshotIds.length, 0);
 }
 
 function renderReport({ drift, discovery, skipped, status }) {
@@ -169,7 +238,7 @@ function renderReport({ drift, discovery, skipped, status }) {
     "",
     `Status: ${status}`,
     `Drift count: ${drift.length}`,
-    `Discovery count: ${discovery.reduce((sum, entry) => sum + entry.modelIds.length, 0)}`,
+    `Discovery count: ${discoveryCount(discovery)} (new ids ${discovery.reduce((s, e) => s + e.newIds.length, 0)}, dated snapshots of priced models ${discovery.reduce((s, e) => s + e.snapshotIds.length, 0)})`,
     "",
     "## Drift",
     "",
@@ -191,8 +260,22 @@ function renderReport({ drift, discovery, skipped, status }) {
   } else {
     for (const entry of discovery) {
       lines.push(`### ${entry.vendor}`, "");
-      for (const modelId of entry.modelIds) lines.push(`- ${modelId}`);
-      lines.push("");
+      if (entry.newIds.length > 0) {
+        lines.push("New ids (no row, no priced base model):", "");
+        for (const modelId of entry.newIds) lines.push(`- ${modelId}`);
+        lines.push("");
+      }
+      if (entry.snapshotIds.length > 0) {
+        lines.push("Dated snapshots of priced models (exact id has no row; the resolver matches ids exactly):", "");
+        for (const modelId of entry.snapshotIds) lines.push(`- ${modelId}`);
+        lines.push("");
+      }
+      if (entry.otherModeIds.length > 0) {
+        lines.push(`Labeled a non-text modality by the community dataset (${entry.otherModeIds.length}, not counted; the label may be wrong): ${entry.otherModeIds.join(", ")}`, "");
+      }
+      if (entry.retiredIds.length > 0) {
+        lines.push(`Retired per the community dataset (${entry.retiredIds.length}, not counted): ${entry.retiredIds.join(", ")}`, "");
+      }
     }
   }
 
@@ -241,14 +324,14 @@ async function main() {
 
   const today = todayIso();
   const { drift, skipped } = compareRows(tables, dataset, today);
-  const discovery = discoveryFeed(tables, dataset);
-  const discoveryCount = discovery.reduce((sum, entry) => sum + entry.modelIds.length, 0);
-  const status = drift.length > 0 ? "drift" : discoveryCount > 0 ? "discovery" : "clean";
+  const discovery = discoveryFeed(tables, dataset, today);
+  const discovered = discoveryCount(discovery);
+  const status = drift.length > 0 ? "drift" : discovered > 0 ? "discovery" : "clean";
   const report = renderReport({ drift, discovery, skipped, status });
 
   console.log(report);
   await maybeWrite(opts.report, report);
-  await maybeWrite(opts.summaryJson, `${JSON.stringify({ status, driftCount: drift.length, discoveryCount })}\n`);
+  await maybeWrite(opts.summaryJson, `${JSON.stringify({ status, driftCount: drift.length, discoveryCount: discovered })}\n`);
 
   if (drift.length > 0) process.exit(EXIT_DRIFT);
 }

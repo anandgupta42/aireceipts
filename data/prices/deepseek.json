@@ -16,7 +16,7 @@
               "excerpt": "The prices listed below are in units of per 1M tokens. ... MODEL deepseek-v4-flash — PRICING: 1M INPUT TOKENS (CACHE HIT) $0.0028; 1M INPUT TOKENS (CACHE MISS) $0.14; 1M OUTPUT TOKENS $0.28. [mapping: CACHE MISS -> input, CACHE HIT -> input_cached; the page lists no off-peak/discount or otherwise time-variant tier — this is the standard flat rate.]"
             },
             {
-              "url": "https://api-docs.deepseek.com/updates",
+              "url": "https://api-docs.deepseek.com/updates/",
               "observed_at": "2026-09-22",
               "excerpt": "With the official release of the DeepSeek V4 model family, we will update and adjust API pricing. To allocate resources more reasonably, we will adopt peak/off-peak pricing, with off-peak prices set at half of the peak-hour prices, encouraging users to schedule their tasks based on actual usage. The new prices will take effect at 16:00 (UTC Time) on August 16, 2026."
             },
@@ -44,7 +44,7 @@
               "excerpt": "The prices listed below are in units of per 1M tokens. ... MODEL deepseek-v4-pro — PRICING: 1M INPUT TOKENS (CACHE HIT) $0.003625; 1M INPUT TOKENS (CACHE MISS) $0.435; 1M OUTPUT TOKENS $0.87. [mapping: CACHE MISS -> input, CACHE HIT -> input_cached; the page lists no off-peak/discount or otherwise time-variant tier — this is the standard flat rate.]"
             },
             {
-              "url": "https://api-docs.deepseek.com/updates",
+              "url": "https://api-docs.deepseek.com/updates/",
               "observed_at": "2026-09-22",
               "excerpt": "With the official release of the DeepSeek V4 model family, we will update and adjust API pricing. To allocate resources more reasonably, we will adopt peak/off-peak pricing, with off-peak prices set at half of the peak-hour prices, encouraging users to schedule their tasks based on actual usage. The new prices will take effect at 16:00 (UTC Time) on August 16, 2026."
             },
