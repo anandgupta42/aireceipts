@@ -78,7 +78,7 @@ async function run(): Promise<{ code: number; body: string }> {
     runGit: gitOk as never,
     runGh: () => ({ stdout: "[]", stderr: "", code: 0, missing: false }),
     // The REAL rollup — reads the fixtures on disk, exercising the exact bug path.
-    rollup: (parentFilePath, window, excluded) => rollupChildren(parentFilePath, window, {}, excluded),
+    rollup: async (parentFilePath, window, excluded) => (await rollupChildren(parentFilePath, window, {}, excluded)).rows,
     cwd: "/home/dev/repo",
     out: (s) => out.push(s),
     err: (s) => err.push(s),
@@ -89,7 +89,7 @@ async function run(): Promise<{ code: number; body: string }> {
 
 describe("B5 — grandchild subagent counted once, not twice", () => {
   it("discovery sanity: P's recursive discovery walk finds BOTH the middle and the grandchild", async () => {
-    const children = await rollupChildren(PARENT, { kind: "full" }, {});
+    const { rows: children } = await rollupChildren(PARENT, { kind: "full" }, {});
     const paths = children.map((c) => c.filePath);
     expect(paths).toContain(CHILD_A);
     expect(paths).toContain(GRANDCHILD_B);
@@ -177,7 +177,7 @@ describe("B5 regression — normal shapes are unaffected", () => {
       loadSession: async (summary) => loadById(summary.source, summary.id),
       runGit: gitOk as never,
       runGh: () => ({ stdout: "[]", stderr: "", code: 0, missing: false }),
-      rollup: (parentFilePath, window, excluded) => rollupChildren(parentFilePath, window, {}, excluded),
+      rollup: async (parentFilePath, window, excluded) => (await rollupChildren(parentFilePath, window, {}, excluded)).rows,
       cwd: "/home/dev/repo",
       out: (s) => out.push(s),
       err: () => {},

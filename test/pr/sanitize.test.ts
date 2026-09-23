@@ -14,6 +14,12 @@ import {
 import { PR_RECEIPT_SCHEMA_VERSION, type PrReceiptPayload } from "../../src/pr/payloadTypes.js";
 import { buildPrReceiptPayload, serializePrReceipt } from "../../src/pr/payload.js";
 import { renderPrBody } from "../../src/pr/body.js";
+import { rollupChildren } from "../../src/pr/rollup.js";
+import { attachSubagentRollup } from "../../src/receipt/subagents.js";
+import { buildReceiptModel } from "../../src/receipt/model.js";
+import { renderReceipt } from "../../src/receipt/render.js";
+import type { Session } from "../../src/parse/types.js";
+import { emptyUsage, withTotal } from "../../src/parse/util.js";
 import type { StuckLoopWasteLine, TrivialSpansWasteLine } from "../../src/receipt/model.js";
 
 const emptyTokens = () => ({ input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 });
@@ -154,6 +160,45 @@ describe("deserializePrReceipt", () => {
       const body = renderPrBody(result.payload.bodyInput, result.payload.extras);
       expect(body).toMatch(/TOTAL unpriced[.]+≥ 200 tokens/);
       expect(body).toContain("2 sessions had partial price coverage");
+    }
+  });
+
+  it("round-trips a readable unpriced child while naming its model on the parent", async () => {
+    const timestamp = Date.UTC(2026, 7, 10);
+    const tokens = withTotal({ ...emptyUsage(), input: 100, output: 20 });
+    const parent: Session = {
+      id: "parent", source: "claude-code", filePath: "parent.jsonl", model: "claude-opus-4-8",
+      startedAt: timestamp, endedAt: timestamp + 2,
+      totals: { tokens, turnCount: 1, toolCallCount: 0 },
+      turns: [{ index: 0, timestamp, model: "claude-opus-4-8", usage: tokens, toolCalls: [] }],
+    };
+    const unknownId = "claude-unknown-child-model";
+    const child: Session = {
+      ...parent, id: "child", filePath: "child.jsonl", model: unknownId,
+      turns: [{ index: 0, timestamp: timestamp + 1, model: unknownId, usage: tokens, toolCalls: [] }],
+    };
+    const deps = { discover: async () => [child.filePath], load: async () => child };
+    const { rows } = await rollupChildren(parent.filePath, { kind: "full" }, deps);
+    const model = await attachSubagentRollup(await buildReceiptModel(parent), parent.filePath, deps);
+    expect(model.caveats.filter((c) => c.kind === "unpriced-model").map((c) => c.rawId)).toEqual([unknownId]);
+    expect(renderReceipt(model, { color: false })).toContain(unknownId);
+
+    const payload = buildPrReceiptPayload({
+      contributors: [{
+        role: "builder", sessionId: parent.id,
+        slice: { kind: "full", startTurn: 0, endTurn: 0, turnCount: 1 },
+        modelMix: [], usd: model.totalUsd, tokens: model.totalTokens, subagents: rows,
+      }],
+      excludedCount: 0,
+    }, { details: [{ label: "parent", row: [], text: renderReceipt(model, { color: false }) }] });
+    const json = serializePrReceipt(payload);
+    expect(Object.keys(JSON.parse(json).bodyInput.contributors[0].subagents[0])).toEqual([
+      "name", "model", "usd", "tokens", "unreadable", "filePath",
+    ]);
+    const result = deserializePrReceipt(json);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(sanitizePrReceiptPayload(result.payload).extras.details?.[0].text).toContain(unknownId);
     }
   });
 

@@ -169,8 +169,8 @@ describe("SPEC-0061 R2 caveats — floors, dollars and tokens never blended", ()
   });
 
   it("a child cache-rate gap stays visible in the combined floor caveats", () => {
-    const rows = [childRow({ costLowerBoundCacheTier: true })];
-    expect(subagentCaveats(rows, foldSubagentRows(rows)!, true)).toContainEqual({
+    const rows = [childRow()];
+    expect(subagentCaveats(rows, foldSubagentRows(rows)!, true, 1)).toContainEqual({
       kind: "cost-lower-bound-cache-tier",
       text: "1 subagent had observed cache tokens with no cited applicable rate — floor excludes them",
     });

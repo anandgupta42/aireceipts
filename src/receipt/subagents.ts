@@ -75,7 +75,7 @@ function plural(n: number): string {
  * unpriced, the child floor stays drawn separately and the caveat explains
  * that split (traceable, never silent).
  */
-export function subagentCaveats(rows: SubagentRow[], agg: SubagentAggregate, parentPriced: boolean): CaveatFinding[] {
+export function subagentCaveats(rows: SubagentRow[], agg: SubagentAggregate, parentPriced: boolean, childCacheTierGapCount = 0): CaveatFinding[] {
   const findings: CaveatFinding[] = [];
   if (agg.unreadableCount > 0) {
     findings.push({
@@ -121,11 +121,10 @@ export function subagentCaveats(rows: SubagentRow[], agg: SubagentAggregate, par
       text: `${formatInt(missingCacheWrites)} GPT-5.6 Codex subagent${plural(missingCacheWrites)} omitted cache-write tokens — floor excludes any write premium`,
     });
   }
-  const missingCacheRates = rows.filter((r) => r.costLowerBoundCacheTier).length;
-  if (missingCacheRates > 0) {
+  if (childCacheTierGapCount > 0) {
     findings.push({
       kind: "cost-lower-bound-cache-tier",
-      text: `${formatInt(missingCacheRates)} subagent${plural(missingCacheRates)} had observed cache tokens with no cited applicable rate — floor excludes them`,
+      text: `${formatInt(childCacheTierGapCount)} subagent${plural(childCacheTierGapCount)} had observed cache tokens with no cited applicable rate — floor excludes them`,
     });
   }
   return findings;
@@ -153,21 +152,21 @@ async function attachSubagentRollupWithRows(
   deps?: Partial<SubagentRollupDeps>,
 ): Promise<AttachedRollup> {
   try {
-    const rows = await rollupChildren(parentFilePath, { kind: "full" }, deps);
+    const { rows, childCaveats, childCacheTierGapCount } = await rollupChildren(parentFilePath, { kind: "full" }, deps);
     const agg = foldSubagentRows(rows);
     if (!agg) {
       return { model, rows, status: "complete" };
     }
     const seen = new Set(model.caveats.filter((c) => c.kind === "unpriced-model").map((c) => c.rawId ?? c.detail));
     const childModels: CaveatFinding[] = [];
-    for (const row of rows) for (const caveat of row.unpricedModelCaveats ?? []) {
+    for (const caveat of childCaveats) {
       const id = caveat.rawId ?? caveat.detail;
       if (seen.has(id)) continue;
       seen.add(id);
       childModels.push(caveat);
     }
     return {
-      model: { ...model, subagents: agg, caveats: [...model.caveats, ...childModels, ...subagentCaveats(rows, agg, model.totalUsd !== null)] },
+      model: { ...model, subagents: agg, caveats: [...model.caveats, ...childModels, ...subagentCaveats(rows, agg, model.totalUsd !== null, childCacheTierGapCount)] },
       rows,
       status: "complete",
     };

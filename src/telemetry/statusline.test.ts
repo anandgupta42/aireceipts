@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { noteRunStart, noteStatuslinePoll, showTelemetryPayload } from "./index.js";
-import { isDevelopmentBuild } from "./helpers.js";
+import { __setDevelopmentBuildRootForTests, isDevelopmentBuild } from "./helpers.js";
 import { __resetQueueForTests, flushTelemetry, peekQueuedEvents } from "./sender.js";
 import { readState, updateState } from "./state.js";
 
@@ -40,6 +40,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   __resetQueueForTests();
+  __setDevelopmentBuildRootForTests();
   if (savedHome === undefined) delete process.env.AIRECEIPTS_HOME;
   else process.env.AIRECEIPTS_HOME = savedHome;
   await rm(home, { recursive: true, force: true });
@@ -174,6 +175,8 @@ describe("SPEC-0094 R4 dev build", () => {
   });
 
   it("creates no install id with the shipped default and explains the disabled preview", async () => {
+    await mkdir(join(home, ".git"));
+    __setDevelopmentBuildRootForTests(home);
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     await noteRunStart("receipt", {}, BASE);
     await noteStatuslinePoll(SURFACE, undefined, {}, BASE);
