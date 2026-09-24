@@ -52,6 +52,15 @@ describe("SPEC-0094 R5 dataset definitions", () => {
     expect(adoption[1]?.[2]).not.toContain("by day = startofday(timestamp)");
   });
 
+  it("anchors cohort first-seen on attributed activity and excludes negative weeks", () => {
+    const cohort = blocks.find(([, title]) => title === "Adoption: week-over-week cohort grid")?.[2];
+    expect(cohort).toBeDefined();
+    expect(cohort).toContain("let first_seen_activity = union");
+    expect(cohort).toContain("attributed_heartbeats | project installHash, activityTime = attributedHour");
+    expect(cohort).toContain("firstSeen = min(activityTime)");
+    expect(cohort).toContain("| where weeksSinceFirst >= 0");
+  });
+
   it("rejects a misspelled bracket field and event", () => {
     expect(() => checkReferences("bad field", 'customEvents | where name == "cli_run" | extend x = tostring(customDimensions["installHahs"])')).toThrow();
     expect(() => checkReferences("bad let field", 'let attributed_heartbeats = customEvents\n| extend hourOffset = tostring(customDimensions.hourOffest);\nattributed_heartbeats | count')).toThrow();

@@ -7,7 +7,7 @@ const observed = new WeakMap<CommandContext, Set<string>>();
 export const ALLOWED: Record<Session["source"], readonly string[]> = {
   "claude-code": ["claude-code:malformed_jsonl", "claude-code:malformed_usage"],
   codex: ["codex:malformed_jsonl", "codex:malformed_usage"],
-  cursor: ["cursor:missing_bubble"],
+  cursor: ["cursor:missing_bubble", "cursor:malformed_record"],
   gemini: ["gemini:malformed_jsonl"],
   opencode: ["opencode:malformed_record"],
 };

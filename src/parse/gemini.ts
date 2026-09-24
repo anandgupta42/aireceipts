@@ -112,6 +112,23 @@ function toToolCall(raw: GeminiToolCall): ToolCall {
   };
 }
 
+function malformedMessageField(msg: GeminiMessage): boolean {
+  const tokens = msg.tokens as unknown;
+  if (tokens !== undefined && (tokens === null || typeof tokens !== "object" || Array.isArray(tokens)
+    || ["input", "output", "cached", "thoughts", "tool", "total"].some((key) => {
+      const value = (tokens as Record<string, unknown>)[key];
+      return value !== undefined && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0);
+    }))) return true;
+  if (msg.toolCalls !== undefined && (!Array.isArray(msg.toolCalls)
+    || msg.toolCalls.some((call) => !call || typeof call !== "object" || Array.isArray(call)
+      || (call.name !== undefined && typeof call.name !== "string")
+      || (call.status !== undefined && typeof call.status !== "string")))) return true;
+  if (msg.content !== undefined && typeof msg.content !== "string" && !Array.isArray(msg.content)) return true;
+  return Array.isArray(msg.content) && msg.content.some((part) => part === null
+    || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part)
+      || ("text" in part && typeof part.text !== "string"))));
+}
+
 /** A parsed message plus enough metadata to materialize a Turn later. */
 interface ParsedRecords {
   sessionId?: string;
@@ -127,12 +144,16 @@ interface ParsedRecords {
   droppedRecords?: number;
   nonObjectRecords?: number;
   malformedCheckpointEntries?: number;
+  malformedDirectMessages?: number;
+  malformedNestedFields?: number;
 }
 
 async function readRecords(filePath: string): Promise<ParsedRecords> {
   const out: ParsedRecords = { messages: new Map() };
   let nonObjectRecords = 0;
   let malformedCheckpointEntries = 0;
+  let malformedDirectMessages = 0;
+  let malformedNestedFields = 0;
 
   out.droppedRecords = await readJsonl(filePath, (record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) {
@@ -140,6 +161,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
       return;
     }
     const top = record as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(top, "$rewindTo") && typeof top.$rewindTo !== "string") malformedNestedFields++;
 
     // Rewind: drop the named message and everything appended after it.
     if (typeof top.$rewindTo === "string") {
@@ -157,24 +179,34 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
 
     // `$set.messages` is a checkpoint that clears + rebuilds the message list.
+    if (Object.prototype.hasOwnProperty.call(top, "$set") && (!top.$set || typeof top.$set !== "object" || Array.isArray(top.$set))) {
+      malformedNestedFields++;
+      return;
+    }
     if (top.$set && typeof top.$set === "object") {
       const set = top.$set as Record<string, unknown>;
       if (Array.isArray(set.messages)) {
         out.messages.clear();
         for (const m of set.messages) {
-          if (m && typeof m === "object" && typeof (m as GeminiMessage).id === "string") {
+          if (m && typeof m === "object" && !Array.isArray(m) && typeof (m as GeminiMessage).id === "string") {
+            if ((m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") malformedNestedFields++;
+            if (malformedMessageField(m as GeminiMessage)) malformedNestedFields++;
             out.messages.set((m as GeminiMessage).id as string, m as GeminiMessage);
           } else {
             malformedCheckpointEntries++;
           }
         }
+      } else if (Object.prototype.hasOwnProperty.call(set, "messages")) {
+        malformedNestedFields++;
       }
       return;
     }
 
     const type = top.type;
+    if (type !== undefined && typeof type !== "string") malformedNestedFields++;
     if (type === "user" || type === "gemini") {
       const msg = top as GeminiMessage;
+      if (malformedMessageField(msg)) malformedNestedFields++;
       const ts = parseTimestamp(msg.timestamp);
       if (ts !== undefined) {
         out.startedAt = out.startedAt === undefined ? ts : Math.min(out.startedAt, ts);
@@ -188,6 +220,8 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
       }
       if (typeof msg.id === "string") {
         out.messages.set(msg.id, msg);
+      } else {
+        malformedDirectMessages++;
       }
       return;
     }
@@ -210,6 +244,8 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
 
   out.nonObjectRecords = nonObjectRecords;
   out.malformedCheckpointEntries = malformedCheckpointEntries;
+  out.malformedDirectMessages = malformedDirectMessages;
+  out.malformedNestedFields = malformedNestedFields;
   return out;
 }
 
@@ -224,7 +260,9 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
       continue;
     }
     const usage = mapUsage(msg.tokens);
-    const toolCalls = Array.isArray(msg.toolCalls) ? msg.toolCalls.map(toToolCall) : [];
+    const toolCalls = Array.isArray(msg.toolCalls)
+      ? msg.toolCalls.filter((call): call is GeminiToolCall => !!call && typeof call === "object" && !Array.isArray(call)).map(toToolCall)
+      : [];
     toolCallCount += toolCalls.length;
     if (usage) {
       totalUsage = addUsage(totalUsage, usage);
@@ -316,7 +354,7 @@ export class GeminiAdapter implements SessionAdapter {
       const { summary, turns, droppedRecords } = buildSession(id, records);
       // SPEC-0044 B3: present only when > 0 (absent → clean).
       return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}),
-        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 || (records.malformedCheckpointEntries ?? 0) > 0
+        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 || (records.malformedCheckpointEntries ?? 0) > 0 || (records.malformedDirectMessages ?? 0) > 0 || (records.malformedNestedFields ?? 0) > 0
           ? { parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
     } catch {
       return null;

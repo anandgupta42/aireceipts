@@ -160,7 +160,7 @@ function unwrap(top: Record<string, unknown>): Record<string, unknown> {
   const candidates = ["payload", "item", "response"];
   for (const key of candidates) {
     const v = top[key];
-    if (v && typeof v === "object") {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
       return v as Record<string, unknown>;
     }
   }
@@ -224,6 +224,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   let requestEvidenceValid = true;
   let malformedUsage = false;
   let nonObjectRecords = 0;
+  let malformedNestedRecords = 0;
   let toolCallCount = 0;
   const turns: Turn[] = [];
   const toolCallById = new Map<string, ToolCall>();
@@ -263,6 +264,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       return;
     }
     const top = record as Record<string, unknown>;
+    if (["payload", "item", "response"].some((key) => Object.prototype.hasOwnProperty.call(top, key)
+      && top[key] !== null && (typeof top[key] !== "object" || Array.isArray(top[key])))) malformedNestedRecords++;
     const ts = parseTimestamp(top.timestamp ?? top.created_at ?? top.time);
     if (ts !== undefined) {
       startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
@@ -314,7 +317,9 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     // Cumulative-usage envelopes (Codex ≥0.137): `total_token_usage` is a
     // last-wins snapshot that already sums prior turns; `last_token_usage` is
     // the delta billed to the turn that just completed.
-    const info = item.info as Record<string, unknown> | undefined;
+    const info = item.info && typeof item.info === "object" && !Array.isArray(item.info)
+      ? item.info as Record<string, unknown> : undefined;
+    if (item.info !== undefined && !info) malformedNestedRecords++;
     if (info) {
       const hasTotalUsage = Object.prototype.hasOwnProperty.call(info, "total_token_usage");
       const hasReportedDelta = Object.prototype.hasOwnProperty.call(info, "last_token_usage");
@@ -442,9 +447,17 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       current = null; // a real user message ends the prior turn
       return;
     }
+    if (type === "user_message") {
+      malformedNestedRecords++;
+      return;
+    }
 
     if (type === "message") {
       const role = item.role;
+      if (role !== "user" && role !== "assistant") malformedNestedRecords++;
+      if (item.content !== undefined && typeof item.content !== "string" && !Array.isArray(item.content)) malformedNestedRecords++;
+      if (Array.isArray(item.content) && item.content.some((part) => part === null
+        || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part))))) malformedNestedRecords++;
       if (role === "user") {
         firstUserText ??= extractText(item.content);
         current = null;
@@ -458,6 +471,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
 
     if (type === "function_call" || type === "tool_call" || type === "custom_tool_call") {
+      if ((item.name !== undefined && typeof item.name !== "string")
+        || (item.call_id !== undefined && typeof item.call_id !== "string")) malformedNestedRecords++;
       toolCallCount++;
       const callId = String(item.call_id ?? item.id ?? "");
       const name = sanitizeText(String(item.name ?? "tool"));
@@ -557,7 +572,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
-        parseFailureShapes: [...(droppedRecords + nonObjectRecords > 0 ? ["codex:malformed_jsonl"] : []), ...(malformedUsage ? ["codex:malformed_usage"] : [])],
+        parseFailureShapes: [...(droppedRecords + nonObjectRecords + malformedNestedRecords > 0 ? ["codex:malformed_jsonl"] : []), ...(malformedUsage ? ["codex:malformed_usage"] : [])],
         ...(usageReconciliationFailed ? { usageReconciliationFailed: true as const } : {}),
         ...(usageReconciliationFailed && totalUsage.total > 0 ? { unattributedUsage: totalUsage } : {}),
       }

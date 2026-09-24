@@ -308,12 +308,21 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   const compactionByTurn = new Map<number, number | undefined>();
 
   let nonObjectRecords = 0;
+  let malformedMessageRecords = 0;
+  let malformedContentParts = 0;
   const jsonDroppedRecords = await readJsonl(filePath, (raw) => {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
       nonObjectRecords += 1;
       return;
     }
     const r = raw as RawRecord;
+    if ((r.type === "assistant" || r.type === "user")
+      && (!r.message || typeof r.message !== "object" || Array.isArray(r.message))) {
+      malformedMessageRecords++;
+      return;
+    }
+    if (Array.isArray(r.message?.content) && r.message.content.some((block) =>
+      !block || typeof block !== "object" || Array.isArray(block))) malformedContentParts++;
 
     // SPEC-0017 R1 — extract compactions BEFORE the isMeta/command-echo filters
     // below drop these records. `turns.length` is the index the next assistant
@@ -375,6 +384,10 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
     if (r.type === "assistant" && r.message) {
       const msg = r.message;
+      if ((msg.id !== undefined && typeof msg.id !== "string")
+        || (msg.model !== undefined && typeof msg.model !== "string")) malformedMessageRecords++;
+      if (Object.prototype.hasOwnProperty.call(msg, "content")
+        && typeof msg.content !== "string" && !Array.isArray(msg.content)) malformedContentParts++;
       // CLI-injected command echo, not a billed model response.
       if (typeof msg.content === "string" && COMMAND_ECHO_RE.test(msg.content)) {
         return;
@@ -435,7 +448,14 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
+          if (!block || typeof block !== "object" || Array.isArray(block)) {
+            malformedContentParts++;
+            continue;
+          }
+          if (block.type !== undefined && typeof block.type !== "string") malformedContentParts++;
           if (block.type === "tool_use") {
+            if ((block.id !== undefined && typeof block.id !== "string")
+              || (block.name !== undefined && typeof block.name !== "string")) malformedContentParts++;
             // Cumulative/parallel snapshots may repeat a previously emitted
             // tool block. A provider tool-use id identifies the logical call;
             // id-less blocks cannot be matched safely and remain distinct.
@@ -443,7 +463,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
               continue;
             }
             const call: ToolCall = {
-              name: sanitizeText(block.name ?? "tool"),
+              name: sanitizeText(typeof block.name === "string" ? block.name : "tool"),
               input: block.input,
               status: "running",
               startedAt: ts,
@@ -461,6 +481,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
     if (r.type === "user" && r.message) {
       const msg = r.message;
+      if (Object.prototype.hasOwnProperty.call(msg, "content")
+        && typeof msg.content !== "string" && !Array.isArray(msg.content)) malformedContentParts++;
       if (typeof msg.content === "string") {
         if (COMMAND_ECHO_RE.test(msg.content)) {
           return;
@@ -470,9 +492,15 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       }
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
+          if (!block || typeof block !== "object" || Array.isArray(block)) {
+            malformedContentParts++;
+            continue;
+          }
+          if (block.type !== undefined && typeof block.type !== "string") malformedContentParts++;
           if (block.type === "text" && typeof block.text === "string") {
             firstUserText ??= block.text;
           } else if (block.type === "tool_result") {
+            if (block.tool_use_id !== undefined && typeof block.tool_use_id !== "string") malformedContentParts++;
             const id = block.tool_use_id;
             const output = stringifyToolResult(block.content);
             const status = block.is_error ? "error" : "ok";
@@ -541,7 +569,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
-        parseFailureShapes: [...(jsonDroppedRecords + nonObjectRecords > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
+        parseFailureShapes: [...(jsonDroppedRecords + nonObjectRecords + malformedMessageRecords + malformedContentParts > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
         ...(anonymousUsage.total > 0 ? { unattributedUsage: anonymousUsage } : {}),
       }
     : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined };

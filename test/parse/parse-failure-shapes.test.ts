@@ -16,7 +16,7 @@ import type { CommandContext } from "../../src/cli/types.js";
 import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
 import type { Session } from "../../src/parse/types.js";
 
-interface InventoryRow { adapter: string; path: string; shape: string }
+interface InventoryRow { adapter: string; path: string; shape: string; reason?: string }
 const root = process.cwd();
 const inventory = JSON.parse(readFileSync(resolve(root, "test/fixtures/parse-failure-inventory.json"), "utf8")) as InventoryRow[];
 const sqlite = await import("node:sqlite").catch(() => null);
@@ -37,6 +37,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       expect(adapter.adapterVersion).toMatch(/^[0-9]{1,3}$/);
       for (const row of rows) {
         expect(row.path).toBeTruthy();
+        if (row.shape === "not measurable by this spec") expect(row.reason).toBeTruthy();
         if (row.shape !== "not measurable by this spec") expect(row.shape.startsWith(`${adapter.id}:`)).toBe(true);
       }
     }
@@ -155,6 +156,56 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
+  it("attaches Gemini's shape for id-less direct messages without changing receipt bytes", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-idless-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const clean = readFileSync(resolve(root, "test/fixtures/gemini/clean-session.jsonl"), "utf8");
+      await writeFile(file, clean);
+      const baseline = await loadById("gemini", file);
+      await writeFile(file, `${clean}\n${JSON.stringify({ type: "gemini", tokens: { input: 90 } })}\n${JSON.stringify({ type: "user", content: "ignored" })}\n`);
+      const session = await loadById("gemini", file);
+      expect(session?.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(session?.droppedRecords).toBeUndefined();
+      expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel(baseline!), { color: false }));
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each([[], 42])("attaches Claude's shape for non-object message %j without changing receipt bytes", async (message) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-message-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const clean = readFileSync(resolve(root, "test/fixtures/claude-code/clean-multi-tool-2-models.jsonl"), "utf8");
+      await writeFile(file, clean);
+      const baseline = await loadById("claude-code", file);
+      await writeFile(file, `${clean}\n${JSON.stringify({ type: "assistant", message })}\n`);
+      const session = await loadById("claude-code", file);
+      expect(session?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+      expect(session?.droppedRecords).toBeUndefined();
+      expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel(baseline!), { color: false }));
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains Claude's session when an assistant content part is null", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-part-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const clean = readFileSync(resolve(root, "test/fixtures/claude-code/clean-multi-tool-2-models.jsonl"), "utf8");
+      await writeFile(file, `${clean}\n${JSON.stringify({ type: "assistant", message: { content: [null] } })}\n`);
+      const session = await loadById("claude-code", file);
+      expect(session?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+      expect(session?.droppedRecords).toBeUndefined();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it.skipIf(sqlite === null).each(["[]", '"bubble text"'])("treats Cursor's %s bubble as missing", async (value) => {
     const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-nonobject-"));
@@ -175,6 +226,30 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
         .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }), { color: false }));
       expect(clean?.totals.toolCallCount).toBe(2);
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(sqlite === null)("attaches Cursor's malformed-record shape for a bad header", async () => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-header-"));
+    const dbPath = resolve(temp, "state.vscdb");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const composerId = makeCursorDb({ dbPath });
+      const db = new sqlite!.DatabaseSync(dbPath);
+      const key = `composerData:${composerId}`;
+      const row = db.prepare("SELECT value FROM cursorDiskKV WHERE key = ?").get(key) as { value: string };
+      const composer = JSON.parse(row.value) as { fullConversationHeadersOnly: unknown[] };
+      composer.fullConversationHeadersOnly.push(null);
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), key);
+      db.close();
+      process.env.CURSOR_DB_PATH = dbPath;
+      const session = await new CursorAdapter().loadSession(composerId);
+      expect(session?.parseFailureShapes).toContain("cursor:malformed_record");
     } finally {
       if (previous === undefined) delete process.env.CURSOR_DB_PATH;
       else process.env.CURSOR_DB_PATH = previous;

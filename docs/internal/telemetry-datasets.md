@@ -208,12 +208,18 @@ let attributed_heartbeats = customEvents
 | where isCI != "true" and hourOffset != ">24"
 | extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
 | summarize by installHash, attributedHour;
-// Arrival rows, including >24 heartbeats, establish install existence and first-seen time.
+// Arrival rows, including >24 heartbeats, establish install existence and metadata.
 let install_rows = customEvents
 | where name in ("cli_run", "statusline_heartbeat")
 | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
-         os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
+         os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket),
+         hourOffset = tostring(customDimensions.hourOffset)
 | where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
+let first_seen_activity = union (install_rows
+    | where name == "cli_run" or (name == "statusline_heartbeat" and hourOffset == ">24")
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
+| summarize firstSeen = min(activityTime) by installHash;
 let lifetime_days = union (install_rows
     | where name == "cli_run"
     | project installHash, activityTime = timestamp),
@@ -221,7 +227,8 @@ let lifetime_days = union (install_rows
 | summarize lifetimeActiveDays = dcount(startofday(activityTime)) by installHash;
 let anchors = install_rows
 | summarize arg_min(timestamp, os, runOrdinalBucket) by installHash
-| project installHash, firstSeen = timestamp, os, runOrdinalBucket
+| project installHash, os, runOrdinalBucket
+| join kind=inner first_seen_activity on installHash
 | join kind=leftouter lifetime_days on installHash
 | extend lifetimeActiveDays = coalesce(lifetimeActiveDays, 0)
 | where runOrdinalBucket != "unavailable"
@@ -236,6 +243,7 @@ union (customEvents
 | join kind=inner (anchors | project installHash, cohortWeek = startofweek(firstSeen)) on installHash
 | summarize activeInstalls = dcount(installHash) by cohortWeek, activeWeek = startofweek(activityTime)
 | extend weeksSinceFirst = datetime_diff("week", activeWeek, cohortWeek)
+| where weeksSinceFirst >= 0
 | project cohortWeek, weeksSinceFirst, activeInstalls
 | order by cohortWeek asc, weeksSinceFirst asc
 ```

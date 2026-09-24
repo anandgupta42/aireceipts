@@ -35,6 +35,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
   const consented = await confirmPrompt("Send anonymous benchmark data for this session?", ctx.stdin, ctx.stdout);
   if (!consented) {
+    setAgentType(ctx, undefined);
     return 0;
   }
 

@@ -132,7 +132,7 @@ function mapTokens(tc: ComposerData["tokenCount"]) {
 }
 
 function summaryOf(c: ComposerData, id: string): SessionSummary {
-  const headers = c.fullConversationHeadersOnly ?? [];
+  const headers = Array.isArray(c.fullConversationHeadersOnly) ? c.fullConversationHeadersOnly : [];
   return {
     id,
     source: "cursor",
@@ -146,7 +146,7 @@ function summaryOf(c: ComposerData, id: string): SessionSummary {
           ? Math.max(0, c.lastUpdatedAt - c.createdAt)
           : undefined,
       // headers carry role via `type`; 1 = user, anything else = assistant-ish.
-      turnCount: headers.filter((h) => h.type !== 1).length,
+      turnCount: headers.filter((h) => h && typeof h === "object" && h.type !== 1).length,
       toolCallCount: 0, // requires loading bubble bodies — not known at list time
     },
     filePath: dbPath(),
@@ -214,27 +214,44 @@ export class CursorAdapter implements SessionAdapter {
       }
       const bubbleRows = db.all(`SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${id}:%'`);
       const byId = new Map<string, Bubble>();
+      let malformedRecord = false;
       for (const r of bubbleRows) {
         const key = String(r.key ?? "");
         const bid = key.split(":")[2];
         const b = parseJson<Bubble>(r.value);
         if (b !== null && typeof b === "object" && !Array.isArray(b) && bid) {
           byId.set(bid, b);
+        } else {
+          malformedRecord = true;
         }
       }
 
-      const order = composer.fullConversationHeadersOnly ?? [];
+      const order = Array.isArray(composer.fullConversationHeadersOnly) ? composer.fullConversationHeadersOnly : [];
+      if (composer.fullConversationHeadersOnly !== undefined && !Array.isArray(composer.fullConversationHeadersOnly)) malformedRecord = true;
+      if (composer.tokenCount !== undefined && typeof composer.tokenCount !== "number"
+        && (!composer.tokenCount || typeof composer.tokenCount !== "object" || Array.isArray(composer.tokenCount))) malformedRecord = true;
+      if (composer.tokenCount && typeof composer.tokenCount === "object" &&
+        [composer.tokenCount.inputTokens, composer.tokenCount.outputTokens].some((value) => value !== undefined
+          && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0))) malformedRecord = true;
       const turns: Turn[] = [];
       let toolCallCount = 0;
       let missingBubble = false;
       let current: Turn | null = null;
 
       for (const h of order) {
+        if (!h || typeof h !== "object" || Array.isArray(h) || typeof h.bubbleId !== "string") {
+          malformedRecord = true;
+          continue;
+        }
+        if (h.type !== undefined && typeof h.type !== "number") malformedRecord = true;
         const b = byId.get(h.bubbleId);
         if (!b) {
           missingBubble = true;
           continue;
         }
+        if (b.type !== undefined && typeof b.type !== "number") malformedRecord = true;
+        if (b.toolFormerData !== undefined && (!b.toolFormerData || typeof b.toolFormerData !== "object"
+          || Array.isArray(b.toolFormerData))) malformedRecord = true;
         const isUser = h.type === 1 || b.type === 1;
         if (isUser) {
           current = null; // a user bubble ends the prior assistant turn
@@ -255,7 +272,10 @@ export class CursorAdapter implements SessionAdapter {
 
       const base = summaryOf(composer, id);
       return { ...base, totals: { ...base.totals, turnCount: turns.length, toolCallCount }, turns,
-        ...(missingBubble ? { parseFailureShapes: ["cursor:missing_bubble"] } : {}) };
+        ...(missingBubble || malformedRecord ? { parseFailureShapes: [
+          ...(missingBubble ? ["cursor:missing_bubble"] : []),
+          ...(malformedRecord ? ["cursor:malformed_record"] : []),
+        ] } : {}) };
     } finally {
       db.close();
     }

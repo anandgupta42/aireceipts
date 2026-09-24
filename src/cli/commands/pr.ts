@@ -59,6 +59,8 @@ async function run(ctx: CommandContext): Promise<number> {
       "pr",
     );
     await ctx.telemetry.noteMilestone("first_pr", "pr");
+  } else if (!result.bodyRendered) {
+    setAgentType(ctx, undefined);
   }
   ctx.telemetry.recordPrFlowCompleted({
     mode: ctx.options.post ? "post" : "dry_run",

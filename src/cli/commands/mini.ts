@@ -12,6 +12,7 @@ import { setAgentType } from "../agentType.js";
 import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
+  let rendered = false;
   try {
     const resolved = await resolveSelector(ctx.options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
     if ("error" in resolved) {
@@ -26,6 +27,7 @@ async function run(ctx: CommandContext): Promise<number> {
     // SPEC-0061 R4 — subagent rollup; attach is itself fail-safe (parent-only on error).
     const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
     ctx.stdout.write(`${renderMiniReceipt(model)}\n`);
+    rendered = true;
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({
         surface: "mini",
@@ -40,6 +42,7 @@ async function run(ctx: CommandContext): Promise<number> {
     );
   } catch {
     // Fire-and-forget: a mini-receipt failure must never surface as a hook error.
+    if (!rendered) setAgentType(ctx, undefined);
   }
   return 0;
 }

@@ -757,6 +757,7 @@ export class OpenCodeAdapter implements SessionAdapter {
     let endedAt: number | undefined;
     let droppedRecords = 0;
     let malformedMessageUsage = false;
+    let malformedNestedRecord = false;
 
     for (const row of messages) {
       const msg = parseJsonObject<RawMessageData>(row.data);
@@ -773,8 +774,12 @@ export class OpenCodeAdapter implements SessionAdapter {
         continue;
       }
       if (row.type !== "assistant") {
+        if (row.type !== "user") malformedNestedRecord = true;
         continue;
       }
+      if (msg.content !== undefined && (!Array.isArray(msg.content) || msg.content.some((part) =>
+        !part || typeof part !== "object" || Array.isArray(part)))) malformedNestedRecord = true;
+      if (msg.time !== undefined && (!msg.time || typeof msg.time !== "object" || Array.isArray(msg.time))) malformedNestedRecord = true;
       const ts = timestampOf(msg.time?.created, row.time_created);
       const done = timestampOf(msg.time?.completed, row.time_updated, ts);
       if (ts !== undefined) {
@@ -829,7 +834,8 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.unattributed ? { unattributedUsage: reconciled.unattributed } : {}),
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["opencode:malformed_record"] } : {}),
+      ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 || malformedNestedRecord ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 
@@ -853,6 +859,8 @@ export class OpenCodeAdapter implements SessionAdapter {
     for (const row of parts) {
       const parsed = parseJsonObject<RawPartData>(row.data);
       if (!parsed) malformedPart = true;
+      if (parsed && ((parsed.state !== undefined && (!parsed.state || typeof parsed.state !== "object" || Array.isArray(parsed.state)))
+        || (parsed.time !== undefined && (!parsed.time || typeof parsed.time !== "object" || Array.isArray(parsed.time))))) malformedPart = true;
       const call = parsed ? toToolCall(parsed) : null;
       if (!call) {
         continue;
@@ -868,6 +876,7 @@ export class OpenCodeAdapter implements SessionAdapter {
     let endedAt: number | undefined;
     let droppedRecords = 0;
     let malformedMessageUsage = false;
+    let malformedNestedRecord = false;
 
     for (const row of messages) {
       const msg = parseJsonObject<RawMessageData>(row.data);
@@ -878,8 +887,10 @@ export class OpenCodeAdapter implements SessionAdapter {
         continue;
       }
       if (msg.role !== "assistant") {
+        if (msg.role !== "user") malformedNestedRecord = true;
         continue;
       }
+      if (msg.time !== undefined && (!msg.time || typeof msg.time !== "object" || Array.isArray(msg.time))) malformedNestedRecord = true;
       const ts = timestampOf(msg.time?.created, row.time_created);
       const done = timestampOf(msg.time?.completed, row.time_updated, ts);
       if (ts !== undefined) {
@@ -934,7 +945,7 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
       ...(droppedRecords > 0 ? { droppedRecords } : {}),
-      ...(droppedRecords > 0 || malformedPart ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
+      ...(droppedRecords > 0 || malformedPart || malformedNestedRecord ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 
