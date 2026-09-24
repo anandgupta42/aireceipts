@@ -2,11 +2,11 @@ import { buildSetupReport, setupReportToJson } from "../../setup/report.js";
 import { renderSetupReport } from "../../setup/render.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { noSessionsMessage } from "../common/session.js";
-import { loadObservedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 import { loadSession } from "../../parse/load.js";
 
 async function run(ctx: CommandContext): Promise<number> {
-  const report = await buildSetupReport(ctx.now(), (summary) => loadObservedSession(ctx, () => loadSession(summary)));
+  const report = await buildSetupReport(ctx.now(), (summary) => loadObservedSession(ctx, () => loadSession(summary)), observedChildRollupDeps(ctx));
   if (ctx.options.json) {
     ctx.stdout.write(`${JSON.stringify(setupReportToJson(report), null, 2)}\n`);
     return 0;

@@ -10,7 +10,7 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
-import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const loadedSessions: Session[] = [];
@@ -42,7 +42,7 @@ async function run(ctx: CommandContext): Promise<number> {
       return session;
     },
     rollup: async (parentFilePath, window, excluded) =>
-      (await rollupChildren(parentFilePath, window, { onChildLoaded: (child) => observeLoadedSession(ctx, child) }, excluded)).rows,
+      (await rollupChildren(parentFilePath, window, observedChildRollupDeps(ctx), excluded)).rows,
   }));
   if (result.bodyRendered && result.receipt) {
     setAgentType(ctx, sharedAgentType(result.receipt.models));

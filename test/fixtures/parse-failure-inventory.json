@@ -1,5 +1,6 @@
 [
   {"adapter":"claude-code","path":"full-read JSONL line fails JSON.parse and readJsonl skips it","shape":"claude-code:malformed_jsonl"},
+  {"adapter":"claude-code","path":"valid JSON non-object line is skipped during full load","shape":"claude-code:malformed_jsonl"},
   {"adapter":"claude-code","path":"assistant usage token field, cache tier split, or component sum is malformed","shape":"claude-code:malformed_usage"},
   {"adapter":"claude-code","path":"file absent before full load","shape":"not measurable by this spec"},
   {"adapter":"claude-code","path":"full read throws and loadSession returns null","shape":"not measurable by this spec"},

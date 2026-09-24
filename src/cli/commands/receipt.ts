@@ -3,7 +3,7 @@
 // fallthrough when no other command's selector fires (byte-identical to the old
 // parser's final `return { command: "receipt" }`).
 import { loadSession } from "../../index.js";
-import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 import { evaluateBudget } from "../../budget/index.js";
 import { getExporter } from "../../receipt/exporters.js";
 import { buildFullSessionReceiptModel } from "../../receipt/subagents.js";
@@ -73,7 +73,7 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   setAgentType(ctx, session.source);
   // SPEC-0061 — fold the session's subagents into the model before any format renders.
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
+  const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
   const svgOut = svgOutOf(options);
   if (svgOut.svg) {
     await writeSvg(ctx, renderReceiptSvg(model, { theme: svgOut.theme, template, details: options.details }), svgOut.output ?? "receipt.svg");

@@ -235,6 +235,34 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
   });
 
+  it("observes a malformed Claude child selected by setup exactly once", async () => {
+    const parent = join(home, ".claude", "projects", "setup-child-telemetry", "parent.jsonl");
+    const child = join(home, ".claude", "projects", "setup-child-telemetry", "parent", "subagents", "agent-torn.jsonl");
+    mkdirSync(resolve(parent, ".."), { recursive: true });
+    mkdirSync(resolve(child, ".."), { recursive: true });
+    const clean = readFileSync(join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl"), "utf8");
+    const latest = clean.replaceAll("2026-06-18", "2099-06-18");
+    writeFileSync(parent, latest);
+    writeFileSync(child, `${latest}\n{torn\n`);
+    const previousTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const previousConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      expect(await main(["setup", "--json"])).toBe(0);
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties.agentType).toBe("claude-code");
+      expect(failures[0]?.properties.signatureHash).toBe(hashSignature("claude-code:malformed_jsonl"));
+    } finally {
+      rmSync(resolve(parent, ".."), { recursive: true, force: true });
+      if (previousTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = previousTelemetry;
+      if (previousConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = previousConnection;
+    }
+  });
+
   it.each(["week", "setup", "check-budget"])("observes one malformed full load through %s", async (command) => {
     const chatDir = join(home, ".gemini", "tmp", "project", "chats");
     mkdirSync(chatDir, { recursive: true });

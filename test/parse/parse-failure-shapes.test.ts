@@ -134,6 +134,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
   });
 
   it.each([
+    ["claude-code", "claude-code/clean-multi-tool-2-models.jsonl", "claude-code:malformed_jsonl"],
     ["codex", "codex/clean-session.jsonl", "codex:malformed_jsonl"],
     ["gemini", "gemini/clean-session.jsonl", "gemini:malformed_jsonl"],
   ] as const)("attaches %s shape for a valid JSON non-object line", async (source, fixture, shape) => {

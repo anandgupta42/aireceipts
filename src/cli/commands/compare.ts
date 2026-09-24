@@ -14,7 +14,7 @@ import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import type { ExportFormatValue, OutputModeValue } from "../../telemetry/schemas.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
-import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function recordCompareTelemetry(
   ctx: CommandContext,
@@ -94,8 +94,8 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   setAgentType(ctx, sharedAgentType([sessionA, sessionB]));
   const [modelA, modelB] = await Promise.all([
-    buildFullSessionReceiptModel(sessionA, { onChildLoaded: (child) => observeLoadedSession(ctx, child) }),
-    buildFullSessionReceiptModel(sessionB, { onChildLoaded: (child) => observeLoadedSession(ctx, child) }),
+    buildFullSessionReceiptModel(sessionA, observedChildRollupDeps(ctx)),
+    buildFullSessionReceiptModel(sessionB, observedChildRollupDeps(ctx)),
   ]);
   const totals = {
     turnCount: sessionA.totals.turnCount + sessionB.totals.turnCount,

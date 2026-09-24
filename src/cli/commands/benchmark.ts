@@ -8,7 +8,7 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType } from "../agentType.js";
-import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const { options } = ctx;
@@ -25,7 +25,7 @@ async function run(ctx: CommandContext): Promise<number> {
     return 1;
   }
   setAgentType(ctx, session.source);
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
+  const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
   const payload = buildBenchmarkPayload(model, session.totals.turnCount);
 
   if (options.dryRun) {

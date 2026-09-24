@@ -307,7 +307,12 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   // summary (or two summary shapes) at the same position collapse to one event.
   const compactionByTurn = new Map<number, number | undefined>();
 
+  let nonObjectRecords = 0;
   const jsonDroppedRecords = await readJsonl(filePath, (raw) => {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      nonObjectRecords += 1;
+      return;
+    }
     const r = raw as RawRecord;
 
     // SPEC-0017 R1 — extract compactions BEFORE the isMeta/command-echo filters
@@ -536,7 +541,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
-        parseFailureShapes: [...(jsonDroppedRecords > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
+        parseFailureShapes: [...(jsonDroppedRecords + nonObjectRecords > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
         ...(anonymousUsage.total > 0 ? { unattributedUsage: anonymousUsage } : {}),
       }
     : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined };

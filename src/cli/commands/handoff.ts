@@ -13,7 +13,7 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
-import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 /**
  * SPEC-0013 R1: aggregate waste across the trailing-7-day window (SPEC-0008's
@@ -53,7 +53,7 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   const sources: Session[] = [session];
   setAgentType(ctx, sharedAgentType(sources));
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
+  const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
   // SPEC-0042 R1/R2 — counts come from the loaded Session; the render stays pure.
   const counts: HandoffCounts = {
     turns: session.turns.length,
