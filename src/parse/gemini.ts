@@ -126,11 +126,13 @@ interface ParsedRecords {
   /** SPEC-0044 B3 — malformed JSONL records skipped while reading. */
   droppedRecords?: number;
   nonObjectRecords?: number;
+  malformedCheckpointEntries?: number;
 }
 
 async function readRecords(filePath: string): Promise<ParsedRecords> {
   const out: ParsedRecords = { messages: new Map() };
   let nonObjectRecords = 0;
+  let malformedCheckpointEntries = 0;
 
   out.droppedRecords = await readJsonl(filePath, (record) => {
     if (!record || typeof record !== "object" || Array.isArray(record)) {
@@ -162,6 +164,8 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
         for (const m of set.messages) {
           if (m && typeof m === "object" && typeof (m as GeminiMessage).id === "string") {
             out.messages.set((m as GeminiMessage).id as string, m as GeminiMessage);
+          } else {
+            malformedCheckpointEntries++;
           }
         }
       }
@@ -205,6 +209,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
   });
 
   out.nonObjectRecords = nonObjectRecords;
+  out.malformedCheckpointEntries = malformedCheckpointEntries;
   return out;
 }
 
@@ -311,7 +316,8 @@ export class GeminiAdapter implements SessionAdapter {
       const { summary, turns, droppedRecords } = buildSession(id, records);
       // SPEC-0044 B3: present only when > 0 (absent → clean).
       return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}),
-        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 ? { parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
+        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 || (records.malformedCheckpointEntries ?? 0) > 0
+          ? { parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
     } catch {
       return null;
     }

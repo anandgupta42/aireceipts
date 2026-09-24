@@ -218,7 +218,7 @@ export class CursorAdapter implements SessionAdapter {
         const key = String(r.key ?? "");
         const bid = key.split(":")[2];
         const b = parseJson<Bubble>(r.value);
-        if (b && bid) {
+        if (b !== null && typeof b === "object" && !Array.isArray(b) && bid) {
           byId.set(bid, b);
         }
       }

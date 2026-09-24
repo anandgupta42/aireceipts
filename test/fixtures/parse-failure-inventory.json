@@ -11,6 +11,7 @@
   {"adapter":"codex","path":"full read throws and loadSession returns null","shape":"not measurable by this spec"},
   {"adapter":"gemini","path":"full-read JSONL line fails JSON.parse and readJsonl skips it","shape":"gemini:malformed_jsonl"},
   {"adapter":"gemini","path":"valid JSON non-object line is skipped during full load","shape":"gemini:malformed_jsonl"},
+  {"adapter":"gemini","path":"checkpoint message entry is non-object or lacks a string id","shape":"gemini:malformed_jsonl"},
   {"adapter":"gemini","path":"file absent before full load","shape":"not measurable by this spec"},
   {"adapter":"gemini","path":"full read throws and loadSession returns null","shape":"not measurable by this spec"},
   {"adapter":"opencode","path":"current message row has malformed JSON","shape":"opencode:malformed_record"},
@@ -23,6 +24,7 @@
   {"adapter":"opencode","path":"full load throws and returns null","shape":"not measurable by this spec"},
   {"adapter":"cursor","path":"ordered bubble row is absent","shape":"cursor:missing_bubble"},
   {"adapter":"cursor","path":"ordered bubble row contains malformed JSON","shape":"cursor:missing_bubble"},
+  {"adapter":"cursor","path":"ordered bubble row contains valid non-object JSON","shape":"cursor:missing_bubble"},
   {"adapter":"cursor","path":"invalid composer id","shape":"not measurable by this spec"},
   {"adapter":"cursor","path":"database unavailable","shape":"not measurable by this spec"},
   {"adapter":"cursor","path":"composer row absent or malformed","shape":"not measurable by this spec"}

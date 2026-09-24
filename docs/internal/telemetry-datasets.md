@@ -1,6 +1,7 @@
 # Telemetry datasets
 
-These queries use UTC arrival time (`timestamp`) in Application Insights `customEvents`.
+These queries use UTC arrival time (`timestamp`) for install existence and raw row counts.
+Activity from heartbeats uses the attributed UTC hour.
 All event properties are stored as strings in `customDimensions`. Run each block in
 Log Analytics against the production workspace before merging a telemetry release.
 Counts can lag ingestion and statusline final hours can be lost. Do not put maintainer
@@ -39,26 +40,41 @@ share are row-level because those rows cannot identify unique installs.
 
 ```kql
 let maintainer_hashes = dynamic([]);
-let anchors = customEvents
-| where name in ("cli_run", "statusline_heartbeat")
+let attributed_heartbeats = customEvents
+| where name == "statusline_heartbeat"
 | extend installHash = tostring(customDimensions.installHash),
          isCI = tostring(customDimensions.isCI),
-         os = tostring(customDimensions.os),
-         runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
-| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true"
-| order by timestamp asc
-| summarize arg_min(timestamp, os, runOrdinalBucket),
-            lifetimeActiveDays = dcount(startofday(timestamp)) by installHash
-| project installHash, firstSeen = timestamp, os, runOrdinalBucket, lifetimeActiveDays
+         hourOffset = tostring(customDimensions.hourOffset)
+| where isCI != "true" and hourOffset != ">24"
+| extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
+| summarize by installHash, attributedHour;
+// Arrival rows, including >24 heartbeats, establish install existence and first-seen time.
+let install_rows = customEvents
+| where name in ("cli_run", "statusline_heartbeat")
+| extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
+         os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
+| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
+let lifetime_days = union (install_rows
+    | where name == "cli_run"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
+| summarize lifetimeActiveDays = dcount(startofday(activityTime)) by installHash;
+let anchors = install_rows
+| summarize arg_min(timestamp, os, runOrdinalBucket) by installHash
+| project installHash, firstSeen = timestamp, os, runOrdinalBucket
+| join kind=leftouter lifetime_days on installHash
+| extend lifetimeActiveDays = coalesce(lifetimeActiveDays, 0)
 | where runOrdinalBucket != "unavailable"
 | where not(startofday(firstSeen) == datetime(2026-07-11) and os == "linux" and lifetimeActiveDays == 1)
 | where installHash !in (maintainer_hashes);
-customEvents
-| where name in ("cli_run", "statusline_heartbeat")
-| extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
-| where isCI != "true"
+union (customEvents
+    | where name == "cli_run"
+    | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
+    | where isCI != "true"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
 | join kind=inner (anchors | project installHash) on installHash
-| summarize weeklyActiveInstalls = dcount(installHash) by week = startofweek(timestamp)
+| summarize weeklyActiveInstalls = dcount(installHash) by week = startofweek(activityTime)
 | order by week asc
 ```
 
@@ -69,63 +85,95 @@ lifetime active day. This predicate is applied to each adoption query below.
 
 ```kql
 let maintainer_hashes = dynamic([]);
-let anchors = customEvents
+let attributed_heartbeats = customEvents
+| where name == "statusline_heartbeat"
+| extend installHash = tostring(customDimensions.installHash),
+         isCI = tostring(customDimensions.isCI),
+         hourOffset = tostring(customDimensions.hourOffset)
+| where isCI != "true" and hourOffset != ">24"
+| extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
+| summarize by installHash, attributedHour;
+// Arrival rows, including >24 heartbeats, establish install existence and first-seen time.
+let install_rows = customEvents
 | where name in ("cli_run", "statusline_heartbeat")
 | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
          os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
-| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true"
-| order by timestamp asc
-| summarize arg_min(timestamp, os, runOrdinalBucket), lifetimeActiveDays = dcount(startofday(timestamp)) by installHash
-| project installHash, firstSeen = timestamp, os, runOrdinalBucket, lifetimeActiveDays
+| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
+let lifetime_days = union (install_rows
+    | where name == "cli_run"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
+| summarize lifetimeActiveDays = dcount(startofday(activityTime)) by installHash;
+let anchors = install_rows
+| summarize arg_min(timestamp, os, runOrdinalBucket) by installHash
+| project installHash, firstSeen = timestamp, os, runOrdinalBucket
+| join kind=leftouter lifetime_days on installHash
+| extend lifetimeActiveDays = coalesce(lifetimeActiveDays, 0)
 | where runOrdinalBucket != "unavailable"
 | where not(startofday(firstSeen) == datetime(2026-07-11) and os == "linux" and lifetimeActiveDays == 1)
 | where installHash !in (maintainer_hashes);
+// Arrival rows retain >24 heartbeats for install existence.
 let allHeartbeats = customEvents
 | where name == "statusline_heartbeat"
-| extend installHash = tostring(customDimensions.installHash),
-         hourOffset = tostring(customDimensions.hourOffset), isCI = tostring(customDimensions.isCI)
+| extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
 | where isCI != "true"
 | join kind=inner (anchors | project installHash) on installHash;
-let installCounts = allHeartbeats
-| summarize installCount = dcount(installHash) by day = startofday(timestamp);
-let installDays = allHeartbeats
-| where hourOffset != ">24"
-| extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
-| distinct installHash, attributedHour
+let installCount = toscalar(allHeartbeats | summarize dcount(installHash));
+let installDays = attributed_heartbeats
+| join kind=inner (anchors | project installHash) on installHash
 | extend day = startofday(attributedHour)
 | distinct installHash, day
 | summarize statuslineInstallDays = count() by day;
-installCounts | join kind=fullouter installDays on day
-| project day = coalesce(day, day1), installCount = coalesce(installCount, 0),
-          statuslineInstallDays = coalesce(statuslineInstallDays, 0)
+installDays
+| extend installsSeen = installCount
+| project day, statuslineInstallDays, installsSeen
 | order by day asc
 ```
 
-A `>24` heartbeat counts toward installs but cannot be placed into an hour or
-an attributed day. Hourly heartbeats are deduplicated by installHash and
-attributed hour before making the day series.
+A `>24` heartbeat counts toward `installsSeen` but cannot be placed into an hour or
+an attributed day. `installsSeen` is an overall count repeated alongside the daily
+series. Hourly heartbeats are deduplicated by installHash and attributed hour
+before making the day series.
 
 ## Adoption: activation and power installs
 
 ```kql
 let maintainer_hashes = dynamic([]);
-let anchors = customEvents
+let attributed_heartbeats = customEvents
+| where name == "statusline_heartbeat"
+| extend installHash = tostring(customDimensions.installHash),
+         isCI = tostring(customDimensions.isCI),
+         hourOffset = tostring(customDimensions.hourOffset)
+| where isCI != "true" and hourOffset != ">24"
+| extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
+| summarize by installHash, attributedHour;
+// Arrival rows, including >24 heartbeats, establish install existence and first-seen time.
+let install_rows = customEvents
 | where name in ("cli_run", "statusline_heartbeat")
 | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
          os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
-| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true"
-| order by timestamp asc
-| summarize arg_min(timestamp, os, runOrdinalBucket), lifetimeActiveDays = dcount(startofday(timestamp)) by installHash
-| project installHash, firstSeen = timestamp, os, runOrdinalBucket, lifetimeActiveDays
+| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
+let lifetime_days = union (install_rows
+    | where name == "cli_run"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
+| summarize lifetimeActiveDays = dcount(startofday(activityTime)) by installHash;
+let anchors = install_rows
+| summarize arg_min(timestamp, os, runOrdinalBucket) by installHash
+| project installHash, firstSeen = timestamp, os, runOrdinalBucket
+| join kind=leftouter lifetime_days on installHash
+| extend lifetimeActiveDays = coalesce(lifetimeActiveDays, 0)
 | where runOrdinalBucket != "unavailable"
 | where not(startofday(firstSeen) == datetime(2026-07-11) and os == "linux" and lifetimeActiveDays == 1)
 | where installHash !in (maintainer_hashes);
-let activity = customEvents
-| where name in ("cli_run", "statusline_heartbeat")
-| extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
-| where isCI != "true"
+let activity = union (customEvents
+    | where name == "cli_run"
+    | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
+    | where isCI != "true"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
 | join kind=inner (anchors | project installHash) on installHash
-| distinct installHash, activeDay = startofday(timestamp);
+| distinct installHash, activeDay = startofday(activityTime);
 let activation = customEvents
 | where name == "receipt_generated"
 | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
@@ -152,23 +200,41 @@ activation | join kind=fullouter power on day
 
 ```kql
 let maintainer_hashes = dynamic([]);
-let anchors = customEvents
+let attributed_heartbeats = customEvents
+| where name == "statusline_heartbeat"
+| extend installHash = tostring(customDimensions.installHash),
+         isCI = tostring(customDimensions.isCI),
+         hourOffset = tostring(customDimensions.hourOffset)
+| where isCI != "true" and hourOffset != ">24"
+| extend attributedHour = bin(timestamp, 1h) - toint(hourOffset) * 1h
+| summarize by installHash, attributedHour;
+// Arrival rows, including >24 heartbeats, establish install existence and first-seen time.
+let install_rows = customEvents
 | where name in ("cli_run", "statusline_heartbeat")
 | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI),
          os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket)
-| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true"
-| order by timestamp asc
-| summarize arg_min(timestamp, os, runOrdinalBucket), lifetimeActiveDays = dcount(startofday(timestamp)) by installHash
-| project installHash, firstSeen = timestamp, os, runOrdinalBucket, lifetimeActiveDays
+| where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
+let lifetime_days = union (install_rows
+    | where name == "cli_run"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
+| summarize lifetimeActiveDays = dcount(startofday(activityTime)) by installHash;
+let anchors = install_rows
+| summarize arg_min(timestamp, os, runOrdinalBucket) by installHash
+| project installHash, firstSeen = timestamp, os, runOrdinalBucket
+| join kind=leftouter lifetime_days on installHash
+| extend lifetimeActiveDays = coalesce(lifetimeActiveDays, 0)
 | where runOrdinalBucket != "unavailable"
 | where not(startofday(firstSeen) == datetime(2026-07-11) and os == "linux" and lifetimeActiveDays == 1)
 | where installHash !in (maintainer_hashes);
-customEvents
-| where name in ("cli_run", "statusline_heartbeat")
-| extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
-| where isCI != "true"
+union (customEvents
+    | where name == "cli_run"
+    | extend installHash = tostring(customDimensions.installHash), isCI = tostring(customDimensions.isCI)
+    | where isCI != "true"
+    | project installHash, activityTime = timestamp),
+      (attributed_heartbeats | project installHash, activityTime = attributedHour)
 | join kind=inner (anchors | project installHash, cohortWeek = startofweek(firstSeen)) on installHash
-| summarize activeInstalls = dcount(installHash) by cohortWeek, activeWeek = startofweek(timestamp)
+| summarize activeInstalls = dcount(installHash) by cohortWeek, activeWeek = startofweek(activityTime)
 | extend weeksSinceFirst = datetime_diff("week", activeWeek, cohortWeek)
 | project cohortWeek, weeksSinceFirst, activeInstalls
 | order by cohortWeek asc, weeksSinceFirst asc

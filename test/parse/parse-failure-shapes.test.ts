@@ -133,6 +133,55 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
+  it("attaches Gemini's shape for a malformed checkpoint entry without changing receipt bytes", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-checkpoint-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const checkpoint = { $set: { messages: [
+        { id: "kept", type: "gemini", model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } },
+        { type: "gemini", model: "gemini-2.5-flash", tokens: { input: 90 } },
+      ] } };
+      await writeFile(file, `${JSON.stringify(checkpoint)}\n`);
+      const session = await loadById("gemini", file);
+      expect(session?.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(session?.droppedRecords).toBeUndefined();
+      expect(session?.totals.turnCount).toBe(1);
+      expect(session?.totals.tokens.total).toBe(12);
+      const baseline = { ...session!, parseFailureShapes: undefined };
+      expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel(baseline), { color: false }));
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(sqlite === null).each(["[]", '"bubble text"'])("treats Cursor's %s bubble as missing", async (value) => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-nonobject-"));
+    const dbPath = resolve(temp, "state.vscdb");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const composerId = makeCursorDb({ dbPath });
+      process.env.CURSOR_DB_PATH = dbPath;
+      const adapter = new CursorAdapter();
+      const clean = await adapter.loadSession(composerId);
+      const db = new sqlite!.DatabaseSync(dbPath);
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(value, `bubbleId:${composerId}:bubble-0002`);
+      db.close();
+      const session = await adapter.loadSession(composerId);
+      expect(session?.parseFailureShapes).toContain("cursor:missing_bubble");
+      expect(session?.totals.turnCount).toBe(1);
+      expect(session?.totals.toolCallCount).toBe(1);
+      expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }), { color: false }));
+      expect(clean?.totals.toolCallCount).toBe(2);
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["claude-code", "claude-code/clean-multi-tool-2-models.jsonl", "claude-code:malformed_jsonl"],
     ["codex", "codex/clean-session.jsonl", "codex:malformed_jsonl"],

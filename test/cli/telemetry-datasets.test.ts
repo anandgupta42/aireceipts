@@ -36,8 +36,25 @@ describe("SPEC-0094 R5 dataset definitions", () => {
     }
   });
 
+  it("uses the same attributed heartbeat pairs in every adoption dataset", () => {
+    const adoption = blocks.filter(([, title]) => title?.startsWith("Adoption:"));
+    expect(adoption).toHaveLength(4);
+    const normalized = adoption.map(([, , query]) => query!.match(/let attributed_heartbeats = [\s\S]*?\| summarize by installHash, attributedHour;/)?.[0]);
+    expect(normalized.every(Boolean)).toBe(true);
+    expect(new Set(normalized).size).toBe(1);
+    for (const [, , query] of adoption) {
+      expect(query).toContain('hourOffset != ">24"');
+      expect(query).toContain("bin(timestamp, 1h) - toint(hourOffset) * 1h");
+      expect(query).toMatch(/attributed_heartbeats\s*\| (?:project installHash, activityTime = attributedHour|join kind=inner)/);
+      expect(query).not.toMatch(/startofweek\(timestamp\)|activeDay = startofday\(timestamp\)/);
+    }
+    expect(adoption[1]?.[2]).toContain("let installCount = toscalar(allHeartbeats | summarize dcount(installHash));");
+    expect(adoption[1]?.[2]).not.toContain("by day = startofday(timestamp)");
+  });
+
   it("rejects a misspelled bracket field and event", () => {
     expect(() => checkReferences("bad field", 'customEvents | where name == "cli_run" | extend x = tostring(customDimensions["installHahs"])')).toThrow();
+    expect(() => checkReferences("bad let field", 'let attributed_heartbeats = customEvents\n| extend hourOffset = tostring(customDimensions.hourOffest);\nattributed_heartbeats | count')).toThrow();
     expect(() => checkReferences("bad event", 'customEvents | where name in ("cli_run", "cli_rnu")')).toThrow();
     expect(references('where name == "cli_run" or name in ("cli_error", "parse_failure") | extend x = tostring(customDimensions.installHash)'))
       .toEqual({ events: ["cli_run", "cli_error", "parse_failure"], fields: ["installHash"] });
