@@ -804,7 +804,6 @@ export class OpenCodeAdapter implements SessionAdapter {
       }
       if (msg.role !== undefined && typeof msg.role !== "string") {
         malformedNestedRecord = true;
-        continue;
       }
       if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) malformedNestedRecord = true;
       if (row.type === "user") {

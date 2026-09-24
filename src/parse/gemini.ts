@@ -176,6 +176,9 @@ function retainValidMessageParts(msg: GeminiMessage): GeminiMessage {
       }
     }
     clean.tokens = tokens as GeminiTokens;
+  } else if (Object.prototype.hasOwnProperty.call(msg, "tokens")) {
+    clean.tokens = undefined;
+    clean.usageMalformed = true;
   }
   return clean;
 }
@@ -221,7 +224,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
       : "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
     if ((top.type !== undefined && typeof top.type !== "string")
       || ((top.type === "user" || top.type === "gemini")
-        ? !validFields(top, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model!, tokens: { type: "object" } })
+        ? !validFields(top, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model! })
         : !validFields(top, table))) {
       malformedNestedFields++;
       return;
@@ -256,7 +259,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
           if (m && typeof m === "object" && !Array.isArray(m) && typeof (m as GeminiMessage).id === "string") {
             if (typeof (m as GeminiMessage).type === "string"
               && (m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") continue;
-            if (!validFields(m, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model!, tokens: { type: "object" } })) {
+            if (!validFields(m, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model! })) {
               malformedNestedFields++;
               continue;
             }

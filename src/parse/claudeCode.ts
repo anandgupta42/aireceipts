@@ -357,9 +357,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         && (!r.message || typeof r.message !== "object" || Array.isArray(r.message)))
       || (r.type === "assistant" && r.message &&
         ((r.message.id !== undefined && typeof r.message.id !== "string")
-          || (r.message.model !== undefined && typeof r.message.model !== "string")))
-      || (r.type === "assistant" && r.message && r.message.usage !== undefined
-        && (!r.message.usage || typeof r.message.usage !== "object" || Array.isArray(r.message.usage)))) {
+          || (r.message.model !== undefined && typeof r.message.model !== "string")))) {
       malformedMessageRecords++;
       return;
     }

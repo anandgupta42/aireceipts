@@ -48,6 +48,83 @@ async function jsonlProperty(
 }
 
 describe("known transcript field types", () => {
+  it.each([
+    ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+      message: { id: "msg_1", model: "claude-opus-4-8", content: [
+        { type: "text", text: "answer" }, { type: "tool_use", id: "tool_1", name: "Read", input: {} }],
+      usage: { input_tokens: 10, output_tokens: 2 } } }, "usage", "claude-code:malformed_usage"],
+    ["gemini", { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+      model: "gemini-2.5-flash", content: "answer", toolCalls: [{ id: "tool_1", name: "read_file" }],
+      tokens: { input: 10, output: 2 } }, "tokens", "gemini:malformed_jsonl"],
+  ] as const)("retains %s evidence for malformed usage containers", async (agent, clean, field, shape) => {
+    const temp = await mkdtemp(resolve(tmpdir(), `aireceipts-${agent}-container-`));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      const without = structuredClone(clean) as Json;
+      const owner = agent === "claude-code" ? without.message as Json : without;
+      delete owner[field];
+      const user = agent === "claude-code"
+        ? { type: "user", timestamp: "2026-09-24T11:59:59Z", message: { content: "prompt" } }
+        : { id: "user", type: "user", timestamp: "2026-09-24T11:59:59Z", content: "prompt" };
+      await writeFile(file, `${JSON.stringify(user)}\n${JSON.stringify(without)}\n`);
+      const baseline = (await loadById(agent, file))!;
+      let malformedReceipt: string | undefined;
+      for (const bad of [42, [], null]) {
+        const record = structuredClone(clean) as Json;
+        (agent === "claude-code" ? record.message as Json : record)[field] = bad;
+        await writeFile(file, `${JSON.stringify(user)}\n${JSON.stringify(record)}\n`);
+        const result = (await loadById(agent, file))!;
+        expect(result.parseFailureShapes).toContain(shape);
+        expect(result.totals.turnCount).toBe(baseline.totals.turnCount);
+        expect(result.totals.toolCallCount).toBe(baseline.totals.toolCallCount);
+        expect(result.turns.map((turn) => turn.toolCalls.map((call) => call.name)))
+          .toEqual(baseline.turns.map((turn) => turn.toolCalls.map((call) => call.name)));
+        expect(result.title).toBe(baseline.title);
+        expect(result.totals.tokens.total).toBe(0);
+        const receipt = await buildReceiptModel(result);
+        expect(receipt.totalUsd).toBeNull();
+        const bytes = renderReceipt(receipt);
+        malformedReceipt ??= bytes;
+        expect(bytes).toBe(malformedReceipt);
+      }
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains Codex message and tool evidence for malformed usage containers", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-codex-container-"));
+    const file = resolve(temp, "session.jsonl");
+    const records: Json[] = [
+      { type: "response_item", payload: { type: "message", role: "user", content: "prompt" } },
+      { type: "response_item", payload: { type: "message", role: "assistant", content: "answer" } },
+      { type: "response_item", payload: { type: "function_call", name: "read_file", call_id: "call_1" } },
+      { type: "event_msg", payload: { type: "token_count", info: { total_token_usage: { input_tokens: 10 } } } },
+    ];
+    try {
+      const write = async (rows: Json[]) => writeFile(file, `${rows.map(JSON.stringify).join("\n")}\n`);
+      const without = structuredClone(records);
+      delete ((without[3]!.payload as Json).info as Json).total_token_usage;
+      await write(without);
+      const baseline = (await loadById("codex", file))!;
+      for (const bad of [42, [], null]) {
+        const changed = structuredClone(records);
+        ((changed[3]!.payload as Json).info as Json).total_token_usage = bad;
+        await write(changed);
+        const result = (await loadById("codex", file))!;
+        expect(result.parseFailureShapes, JSON.stringify(bad)).toContain("codex:malformed_usage");
+        expect(result.totals.turnCount).toBe(baseline.totals.turnCount);
+        expect(result.totals.toolCallCount).toBe(baseline.totals.toolCallCount);
+        expect(result.title).toBe(baseline.title);
+        expect(result.turns.map((turn) => turn.toolCalls.map((call) => call.name)))
+          .toEqual(baseline.turns.map((turn) => turn.toolCalls.map((call) => call.name)));
+        expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+      }
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it("preserves main's boolean guard outcomes for truthy wrong types", async () => {
     const at = "2026-09-24T12:00:00Z";
     const cases: Array<{ agent: "claude-code" | "codex"; field: string; expected: boolean;
@@ -285,8 +362,12 @@ describe("known transcript field types", () => {
         const result = (await loadById("gemini", file))!;
         expect(result.parseFailureShapes).toContain("gemini:malformed_jsonl");
         expect(result.totals.tokens).toEqual(baseline.totals.tokens);
-        expect(result.turns).toHaveLength(2);
-        expect(renderReceipt(await buildReceiptModel(result))).toBe(baselineReceipt);
+        expect(result.turns).toHaveLength(typeof bad === "number" ? 2 : 3);
+        if (typeof bad === "number") {
+          expect(renderReceipt(await buildReceiptModel(result))).toBe(baselineReceipt);
+        } else {
+          expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+        }
       }
     } finally {
       await rm(temp, { recursive: true, force: true });
@@ -375,6 +456,92 @@ describe("known transcript field types", () => {
 const sqlite = await import("node:sqlite").catch(() => null);
 
 describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
+  it("retains Cursor turns and tools for malformed tokenCount containers", async () => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-container-"));
+    const file = resolve(temp, "state.vscdb");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const id = makeCursorDb({ dbPath: file });
+      process.env.CURSOR_DB_PATH = file;
+      const adapter = new CursorAdapter();
+      const db = new sqlite!.DatabaseSync(file);
+      const key = `composerData:${id}`;
+      const original = JSON.parse((db.prepare("SELECT value FROM cursorDiskKV WHERE key = ?").get(key) as { value: string }).value) as Json;
+      const without = structuredClone(original);
+      delete without.tokenCount;
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(without), key);
+      const baseline = (await adapter.loadSession(id))!;
+      for (const bad of [42, [], null]) {
+        const changed = structuredClone(original);
+        changed.tokenCount = bad;
+        db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(changed), key);
+        const result = (await adapter.loadSession(id))!;
+        expect(result.parseFailureShapes).toContain("cursor:malformed_record");
+        expect(result.totals.turnCount).toBe(baseline.totals.turnCount);
+        expect(result.totals.toolCallCount).toBe(baseline.totals.toolCallCount);
+        expect(result.title).toBe(baseline.title);
+        expect(result.turns.map((turn) => turn.toolCalls.map((call) => call.name)))
+          .toEqual(baseline.turns.map((turn) => turn.toolCalls.map((call) => call.name)));
+        expect(result.totals.tokens.total).toBe(0);
+        expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+      }
+      db.close();
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains opencode turns and tools for malformed tokens containers", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-opencode-container-"));
+    const file = resolve(temp, "session.db");
+    try {
+      await copyFile(resolve("test/fixtures/opencode/clean-multi-vendor.db"), file);
+      const adapter = new OpenCodeAdapter({ dbPath: file });
+      const db = new sqlite!.DatabaseSync(file);
+      const originals = ["msg_assistant_1", "msg_assistant_2"].map((key) => ({ key,
+        data: JSON.parse((db.prepare("SELECT data FROM session_message WHERE id = ?").get(key) as { data: string }).data) as Json }));
+      for (const { key, data } of originals) {
+        const without = structuredClone(data);
+        delete without.tokens;
+        db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(without), key);
+      }
+      const baseline = (await adapter.loadSession(file))!;
+      for (const bad of [42, [], null]) {
+        for (const { key, data } of originals) {
+          const changed = structuredClone(data);
+          changed.tokens = bad;
+          db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(changed), key);
+        }
+        const result = (await adapter.loadSession(file))!;
+        expect(result.parseFailureShapes).toContain("opencode:malformed_record");
+        expect(result.totals.turnCount).toBe(baseline.totals.turnCount);
+        expect(result.totals.toolCallCount).toBe(baseline.totals.toolCallCount);
+        expect(result.title).toBe(baseline.title);
+        expect(result.turns.map((turn) => turn.toolCalls.map((call) => call.name)))
+          .toEqual(baseline.turns.map((turn) => turn.toolCalls.map((call) => call.name)));
+        expect(result.turns.map((turn) => turn.usage?.total)).toEqual([0, 0]);
+        expect(result.turns.map((turn) => turn.pricingUnits)).toEqual([[], []]);
+        expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+      }
+      for (const { key, data } of originals) {
+        const changed = structuredClone(data);
+        delete changed.tokens;
+        changed.role = 42;
+        db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(changed), key);
+      }
+      const malformedRole = (await adapter.loadSession(file))!;
+      expect(malformedRole.parseFailureShapes).toContain("opencode:malformed_record");
+      expect(malformedRole.totals.turnCount).toBe(baseline.totals.turnCount);
+      expect(malformedRole.totals.toolCallCount).toBe(baseline.totals.toolCallCount);
+      db.close();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it("Cursor rejects non-object composers and wrong typed tool fields", async () => {
     const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-fields-"));

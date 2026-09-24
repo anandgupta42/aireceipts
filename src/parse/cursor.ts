@@ -254,7 +254,7 @@ export class CursorAdapter implements SessionAdapter {
       }
 
       if (!validFields(composer, composerFields)) malformedRecord = true;
-      if (composer.tokenCount !== undefined && typeof composer.tokenCount !== "number"
+      if (composer.tokenCount !== undefined
         && (!composer.tokenCount || typeof composer.tokenCount !== "object" || Array.isArray(composer.tokenCount))) malformedRecord = true;
       if (composer.tokenCount && typeof composer.tokenCount === "object" &&
         [(composer.tokenCount as { inputTokens?: unknown }).inputTokens, (composer.tokenCount as { outputTokens?: unknown }).outputTokens].some((value) => value !== undefined

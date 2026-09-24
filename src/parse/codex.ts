@@ -72,10 +72,10 @@ interface MappedCodexUsage {
  * unobserved component is excluded from the observable floor.
  */
 function mapUsage(raw: unknown): MappedCodexUsage {
-  if (raw === undefined || raw === null) {
+  if (raw === undefined) {
     return { malformed: false };
   }
-  if (typeof raw !== "object" || Array.isArray(raw)) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { malformed: true };
   }
 
