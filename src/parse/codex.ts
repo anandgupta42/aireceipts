@@ -353,7 +353,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       currentModel = item.model;
       model ??= currentModel;
     } else if (item.model !== undefined) {
-      currentModel = undefined;
+      currentModel = "";
     }
     // R1a: first-seen cwd (attribution-only), reported on session_meta/turn_context.
     if (cwd === undefined && typeof item.cwd === "string" && item.cwd) {

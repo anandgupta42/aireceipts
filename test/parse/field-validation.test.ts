@@ -8,6 +8,9 @@ import { CursorAdapter } from "../../src/parse/cursor.js";
 import { OpenCodeAdapter } from "../../src/parse/opencode.js";
 import { buildReceiptModel } from "../../src/receipt/model.js";
 import { renderReceipt } from "../../src/receipt/render.js";
+import { attributeByTool } from "../../src/pricing/attribution.js";
+import { defaultDataDir } from "../../src/pricing/priceTable.js";
+import { priceSessionTurn } from "../../src/pricing/resolve.js";
 
 const wrongTypes: unknown[] = [42, [], {}, null, false];
 type Json = Record<string, unknown>;
@@ -48,6 +51,61 @@ async function jsonlProperty(
 }
 
 describe("known transcript field types", () => {
+  it.each(["gemini", "claude-code", "codex"] as const)(
+    "keeps %s tokens unpriced after a wrong typed model follows a valid model", async (agent) => {
+      const temp = await mkdtemp(resolve(tmpdir(), `aireceipts-${agent}-bad-model-`));
+      const file = resolve(temp, "session.jsonl");
+      const at = "2026-06-20T12:00:00Z";
+      const records: Json[] = agent === "gemini" ? [
+        { id: "first", type: "gemini", timestamp: at, model: "gemini-2.5-flash",
+          tokens: { input: 10, output: 2 } },
+        { id: "second", type: "gemini", timestamp: at, model: 42,
+          tokens: { input: 20, output: 3 } },
+      ] : agent === "claude-code" ? [
+        { type: "assistant", timestamp: at, message: { id: "msg_1", model: "claude-opus-4-8",
+          usage: { input_tokens: 10, output_tokens: 2 } } },
+        { type: "assistant", timestamp: at, message: { id: "msg_2", model: 42,
+          usage: { input_tokens: 20, output_tokens: 3 } } },
+      ] : [
+        { type: "event_msg", timestamp: at, payload: { type: "token_count", model: "gpt-5.6-sol",
+          usage: { input_tokens: 10, output_tokens: 2 } } },
+        { type: "event_msg", timestamp: at, payload: { type: "token_count", model: 42,
+          usage: { input_tokens: 20, output_tokens: 3 } } },
+      ];
+      try {
+        await writeFile(file, `${records.map(JSON.stringify).join("\n")}\n`);
+        const session = (await loadById(agent, file))!;
+        expect(session.parseFailureShapes).toContain(`${agent}:malformed_jsonl`);
+        expect(session.totals.tokens.total).toBeGreaterThan(0);
+        const attribution = await attributeByTool(session);
+        expect(attribution.unpricedTokens.total).toBeGreaterThan(0);
+        expect(attribution.unpricedUsageTurnCount).toBeGreaterThan(0);
+        expect((await priceSessionTurn(session, session.turns.at(-1)!, defaultDataDir()))?.usd ?? null).toBeNull();
+        if (agent === "gemini") {
+          expect(renderReceipt(await buildReceiptModel(session))).toMatchSnapshot();
+        }
+      } finally {
+        await rm(temp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.each(["assistant", "user"] as const)("retains Claude timing for a malformed %s message", async (type) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-bad-message-time-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await writeFile(file, [
+        { type: "user", timestamp: "2026-06-20T12:00:00Z", message: { content: "prompt" } },
+        { type, timestamp: "2026-06-20T12:02:00Z", message: 42 },
+      ].map(JSON.stringify).join("\n") + "\n");
+      const session = (await loadById("claude-code", file))!;
+      expect(session.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+      expect(session.totals.durationMs).toBe(120_000);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
       message: { id: "msg_1", model: "claude-opus-4-8", content: [
@@ -793,10 +851,12 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       expect(malformedHeader.totals.tokens).toEqual(clean?.totals.tokens);
       composer.fullConversationHeadersOnly = "damaged";
       db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
-      expect((await adapter.listSessions()).map((summary) => summary.id)).toContain(id);
-      const damagedHeaders = (await adapter.loadSession(id))!;
-      expect(damagedHeaders.parseFailureShapes).toContain("cursor:malformed_record");
-      expect(damagedHeaders.totals.tokens).toEqual(clean?.totals.tokens);
+      expect((await adapter.listSessions()).map((summary) => summary.id)).not.toContain(id);
+      expect(await adapter.loadSession(id)).toBeNull();
+      delete composer.fullConversationHeadersOnly;
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
+      expect((await adapter.listSessions()).map((summary) => summary.id)).not.toContain(id);
+      expect(await adapter.loadSession(id)).toBeNull();
       for (const value of ["42", "[]", "false", '"text"']) {
         db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(value, composerKey);
         expect(await adapter.loadSession(id)).toBeNull();

@@ -215,11 +215,8 @@ let install_rows = customEvents
          os = tostring(customDimensions.os), runOrdinalBucket = tostring(customDimensions.runOrdinalBucket),
          hourOffset = tostring(customDimensions.hourOffset)
 | where installHash matches regex "^[0-9a-f]{64}$" and isCI != "true";
-let first_seen_activity = union (install_rows
-    | where name == "cli_run" or (name == "statusline_heartbeat" and hourOffset == ">24")
-    | project installHash, activityTime = timestamp),
-      (attributed_heartbeats | project installHash, activityTime = attributedHour)
-| summarize firstSeen = min(activityTime) by installHash;
+let first_seen_activity = install_rows
+| summarize firstSeen = min(timestamp) by installHash;
 let lifetime_days = union (install_rows
     | where name == "cli_run"
     | project installHash, activityTime = timestamp),

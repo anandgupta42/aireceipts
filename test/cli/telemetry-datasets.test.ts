@@ -66,12 +66,13 @@ describe("SPEC-0094 R5 dataset definitions", () => {
     expect(adoption[1]?.[2]).not.toContain("by day = startofday(timestamp)");
   });
 
-  it("anchors cohort first-seen on attributed activity and excludes negative weeks", () => {
+  it("anchors cohort first-seen on arrival and excludes negative attributed weeks", () => {
     const cohort = blocks.find(([, title]) => title === "Adoption: week-over-week cohort grid")?.[2];
     expect(cohort).toBeDefined();
-    expect(cohort).toContain("let first_seen_activity = union");
+    expect(cohort).toContain("let first_seen_activity = install_rows");
     expect(cohort).toContain("attributed_heartbeats | project installHash, activityTime = attributedHour");
-    expect(cohort).toContain("firstSeen = min(activityTime)");
+    expect(cohort).toContain("firstSeen = min(timestamp)");
+    expect(cohort).toContain("startofday(firstSeen) == datetime(2026-07-11)");
     expect(cohort).toContain("| where weeksSinceFirst >= 0");
   });
 

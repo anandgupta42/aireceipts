@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`known transcript field types > keeps gemini tokens unpriced after a wrong typed model follows a valid model 1`] = `
+"- - - - - - - - - - - - - - - - - - - - - - - - -
+                    AIRECEIPTS                    
+    Gemini CLI · Jun 20 2026 12:00:00 UTC · 0s    
+              gemini-2.5-flash 100%               
+
+pre-edit: no named edit tool observed
+  (share before the first named edit tool)
+
+(thinking/reply)............≥ $0.000008  (2 turns)
+
+≈ re-priced eligible trivial spans.....≈ $0.000001
+  (1 tiny turns, priced at gemini-2.5-flash-lite)
+
+caveat: session span is non-positive but carries token usage
+caveat: 1 of 2 usage turns include unpriced tokens — TOTAL excludes those tokens
+--------------------------------------------------
+KNOWN PRICED SUBTOTAL..................≥ $0.000008
+KNOWN UNPRICED TOKENS.......................23 tok
+standard API-equivalent floor; not an invoice
+partial pricing coverage; invoice total unknown
+- - - - - - - - - - - - - - - - - - - - - - - - -
+                npx aireceipts-cli                
+         github.com/anandgupta42/receipts         
+- - - - - - - - - - - - - - - - - - - - - - - - -"
+`;

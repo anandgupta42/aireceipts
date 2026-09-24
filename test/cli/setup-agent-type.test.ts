@@ -4,7 +4,7 @@ import type { CommandContext } from "../../src/cli/types.js";
 import { agentTypeOf } from "../../src/cli/agentType.js";
 import { command } from "../../src/cli/commands/setup.js";
 import { buildSetupReport } from "../../src/setup/report.js";
-import { recordCliRun } from "../../src/telemetry/index.js";
+import { recordCliError, recordCliRun } from "../../src/telemetry/index.js";
 import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
 
 vi.mock("../../src/setup/report.js", () => ({
@@ -42,5 +42,21 @@ describe("setup agent type telemetry", () => {
       ok: true, installHash: "unavailable", installIdSource: "unavailable",
       runOrdinalBucket: "unavailable", isCI: false });
     expect(peekQueuedEvents().find((event) => event.name === "cli_run")?.properties.agentType).toBe(expected);
+  });
+
+  it("retains the loaded adapter when report construction throws", async () => {
+    vi.mocked(buildSetupReport).mockImplementation(async (_now, load) => {
+      await load({ source: "codex" } as Session);
+      await load({ source: "codex" } as Session);
+      throw new Error("report failed");
+    });
+    const ctx = {
+      now: () => 0,
+      options: { json: true },
+      stdout: { write: vi.fn() },
+    } as unknown as CommandContext;
+    await expect(command.run(ctx)).rejects.toThrow("report failed");
+    recordCliError({ command: "setup", agentType: agentTypeOf(ctx), err: new Error("report failed") });
+    expect(peekQueuedEvents().find((event) => event.name === "cli_error")?.properties.agentType).toBe("codex");
   });
 });

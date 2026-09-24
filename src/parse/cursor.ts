@@ -207,10 +207,7 @@ export class CursorAdapter implements SessionAdapter {
         // A draft has no conversation. Validate header contents only on full load.
         const hasHeaders = plainObject(c) && Array.isArray(c.fullConversationHeadersOnly)
           && c.fullConversationHeadersOnly.length > 0;
-        const hasBubbles = plainObject(c) && ID_RE.test(id) && !hasHeaders && db.all(
-          `SELECT key FROM cursorDiskKV WHERE key LIKE 'bubbleId:${id}:%' LIMIT 1`,
-        ).length > 0;
-        if (plainObject(c) && id && (hasHeaders || hasBubbles)) {
+        if (plainObject(c) && id && hasHeaders) {
           out.push(summaryOf(c as ComposerData, id));
         }
       }
@@ -239,7 +236,7 @@ export class CursorAdapter implements SessionAdapter {
         .filter((h) => h && typeof h === "object" && !Array.isArray(h) && typeof h.bubbleId === "string")
         .map((h) => h.bubbleId));
       const bubbleRows = db.all(`SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${id}:%'`);
-      if (order.length === 0 && bubbleRows.length === 0) return null;
+      if (order.length === 0) return null;
       const byId = new Map<string, Bubble>();
       let malformedRecord = !Array.isArray(composer.fullConversationHeadersOnly);
       for (const r of bubbleRows) {

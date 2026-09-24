@@ -350,17 +350,19 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (gitBranch === undefined && typeof r.gitBranch === "string" && r.gitBranch) gitBranch = r.gitBranch;
     if (r.isSidechain === true) rawSidechain = true;
 
+    // Common timing evidence survives a malformed message payload.
+    if (!r.isMeta) {
+      const ts = parseTimestamp(r.timestamp);
+      if (ts !== undefined) {
+        startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
+        endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
+      }
+    }
+
     const unknownType = typeof r.type === "string" && r.type !== "assistant" && r.type !== "user"
       && r.type !== "ai-title" && r.type !== "fork-context-ref" && r.type !== "summary"
       && r.type !== "system" && !COMPACT_BOUNDARY_TYPES.has(r.type);
     if (unknownType) {
-      if (!r.isMeta) {
-        const ts = parseTimestamp(r.timestamp);
-        if (ts !== undefined) {
-          startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
-          endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
-        }
-      }
       return;
     }
     if ((r.message !== undefined && typeof r.type !== "string")
@@ -420,10 +422,6 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
 
     const ts = parseTimestamp(r.timestamp);
-    if (ts !== undefined) {
-      startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
-      endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
-    }
 
     if (r.type === "assistant" && r.message) {
       const msg = r.message;
@@ -435,8 +433,9 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       if (typeof msg.content === "string" && COMMAND_ECHO_RE.test(msg.content)) {
         return;
       }
-      const messageModel = typeof msg.model === "string" ? msg.model : undefined;
-      model ??= messageModel;
+      const malformedModel = msg.model !== undefined && typeof msg.model !== "string";
+      const messageModel = typeof msg.model === "string" ? msg.model : malformedModel ? "" : undefined;
+      if (!malformedModel) model ??= messageModel;
 
       // Reuse the open turn for this message id (see `turnByMessageId`); a
       // record without an id can't be matched to a response, so it stays its
@@ -450,7 +449,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
           turnByMessageId.set(messageId, turn);
         }
       }
-      turn.model ??= messageModel;
+      if (malformedModel) turn.model = "";
+      else turn.model ??= messageModel;
       const mappedUsage = mapUsage(msg.usage, Object.prototype.hasOwnProperty.call(msg, "usage"));
       if (mappedUsage.malformed) {
         malformedUsageRecords++;

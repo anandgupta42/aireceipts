@@ -347,10 +347,11 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
     turns.push({
       index: turns.length,
       timestamp: parseTimestamp(msg.timestamp),
-      model: typeof msg.model === "string" ? msg.model : records.model,
+      model: typeof msg.model === "string" ? msg.model : msg.model === undefined ? records.model : undefined,
       usage,
       outputTokens: usage?.output,
-      ...(malformedUsageMessages.has(msg) ? { pricingUnits: [] } : {}),
+      ...(malformedUsageMessages.has(msg) || (msg.model !== undefined && typeof msg.model !== "string")
+        ? { pricingUnits: [] } : {}),
       toolCalls,
     });
   }

@@ -11,7 +11,10 @@ async function run(ctx: CommandContext): Promise<number> {
   const loadedSessions: Session[] = [];
   const report = await buildSetupReport(ctx.now(), async (summary) => {
     const session = await loadObservedSession(ctx, () => loadSession(summary));
-    if (session) loadedSessions.push(session);
+    if (session) {
+      loadedSessions.push(session);
+      setAgentType(ctx, sharedAgentType(loadedSessions));
+    }
     return session;
   }, observedChildRollupDeps(ctx));
   setAgentType(ctx, sharedAgentType(loadedSessions));
