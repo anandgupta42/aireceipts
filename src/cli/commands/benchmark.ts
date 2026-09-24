@@ -25,7 +25,7 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   ctx.telemetry.observeSession?.(session);
   setAgentType(ctx, session.source);
-  const model = await buildFullSessionReceiptModel(session);
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
   const payload = buildBenchmarkPayload(model, session.totals.turnCount);
 
   if (options.dryRun) {

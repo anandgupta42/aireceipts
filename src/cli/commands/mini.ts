@@ -24,7 +24,7 @@ async function run(ctx: CommandContext): Promise<number> {
     ctx.telemetry.observeSession?.(session);
     setAgentType(ctx, session.source);
     // SPEC-0061 R4 — subagent rollup; attach is itself fail-safe (parent-only on error).
-    const model = await buildFullSessionReceiptModel(session);
+    const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
     ctx.stdout.write(`${renderMiniReceipt(model)}\n`);
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({

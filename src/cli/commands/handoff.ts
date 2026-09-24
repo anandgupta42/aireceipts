@@ -50,19 +50,20 @@ async function run(ctx: CommandContext): Promise<number> {
     return 1;
   }
   ctx.telemetry.observeSession?.(session);
-  const model = await buildFullSessionReceiptModel(session);
+  const sources: Session[] = [session];
+  setAgentType(ctx, sharedAgentType(sources));
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
   // SPEC-0042 R1/R2 — counts come from the loaded Session; the render stays pure.
   const counts: HandoffCounts = {
     turns: session.turns.length,
     toolCalls: session.totals.toolCallCount,
     compactions: session.compactions?.length ?? 0,
   };
-  const sources: Session[] = [session];
   const aggregates = await recentWasteAggregates(ctx.now(), (loaded) => {
     ctx.telemetry.observeSession?.(loaded);
     sources.push(loaded);
+    setAgentType(ctx, sharedAgentType(sources));
   });
-  setAgentType(ctx, sharedAgentType(sources));
   const suggestions = standingRuleSuggestions(aggregates, threshold);
   // SPEC-0042 R3 — the global `--json` flag is honored (it was previously
   // ignored here). JSON always emits the full structure, empty arrays included.

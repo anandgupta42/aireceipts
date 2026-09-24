@@ -172,7 +172,8 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
     }
     ctx.telemetry.observeSession?.(session);
     renderedSessions.push(session);
-    const model = await buildFullSessionReceiptModel(session);
+    setAgentType(ctx, sharedAgentType(renderedSessions));
+    const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
     // I5: renderer bytes + trailing newline — what `aireceipts <selector>` writes
     // with colour off and no budget configured.
     await ctx.fs.writeFile(join(options.outDir, planned.fileName), `${renderReceipt(model, { color: false })}\n`);
@@ -180,7 +181,6 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
     entries.push({ ...base, fileName: planned.fileName, loadFailed: false });
   }
   await ctx.fs.writeFile(join(options.outDir, "index.txt"), buildManifest(written));
-  setAgentType(ctx, sharedAgentType(renderedSessions));
 
   const report: BackfillReport = {
     discoveredCount: plan.discoveredCount,

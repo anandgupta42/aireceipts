@@ -92,8 +92,8 @@ async function run(ctx: CommandContext): Promise<number> {
   ctx.telemetry.observeSession?.(sessionB);
   setAgentType(ctx, sharedAgentType([sessionA, sessionB]));
   const [modelA, modelB] = await Promise.all([
-    buildFullSessionReceiptModel(sessionA),
-    buildFullSessionReceiptModel(sessionB),
+    buildFullSessionReceiptModel(sessionA, { onChildLoaded: ctx.telemetry.observeSession }),
+    buildFullSessionReceiptModel(sessionB, { onChildLoaded: ctx.telemetry.observeSession }),
   ]);
   const totals = {
     turnCount: sessionA.totals.turnCount + sessionB.totals.turnCount,

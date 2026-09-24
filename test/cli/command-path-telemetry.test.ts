@@ -36,6 +36,7 @@ vi.mock("node:os", async (importOriginal) => {
 import * as telemetry from "../../src/telemetry/index.js";
 import * as budget from "../../src/budget/index.js";
 import * as preview from "../../src/receipt/preview.js";
+import { hashSignature } from "../../src/telemetry/signature.js";
 import { peekQueuedEvents, __resetQueueForTests } from "../../src/telemetry/sender.js";
 import { validateEvent, RECEIPT_SURFACE_VALUES, COUNT_BUCKET_VALUES, ORDINAL_BUCKET_VALUES, type TelemetryEvent } from "../../src/telemetry/schemas.js";
 import { main } from "../../src/cli/index.js";
@@ -199,6 +200,28 @@ describe("SPEC-0043 command-path telemetry", () => {
       if (oldConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
       else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = oldConnection;
     }
+  });
+
+  it("observes a malformed Claude subagent once on receipt and never on statusline polls", async () => {
+    const parent = join(home, ".claude", "projects", "child-telemetry", "parent.jsonl");
+    const child = join(home, ".claude", "projects", "child-telemetry", "parent", "subagents", "agent-torn.jsonl");
+    mkdirSync(resolve(parent, ".."), { recursive: true });
+    mkdirSync(resolve(child, ".."), { recursive: true });
+    const clean = readFileSync(join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl"), "utf8");
+    writeFileSync(parent, clean);
+    writeFileSync(child, `${clean}\n{torn\n{also-torn\n`);
+    expect(await main([parent])).toBe(0);
+    const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.properties.agentType).toBe("claude-code");
+    expect(failures[0]?.properties.signatureHash).toBe(hashSignature("claude-code:malformed_jsonl"));
+    __resetQueueForTests();
+    expect(await withStdinPayload(JSON.stringify({ transcript_path: parent }), () => main(["statusline"]))).toBe(0);
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
+    __resetQueueForTests();
+    expect(await main(["--list"])).toBe(0);
+    expect(await main(["--list"])).toBe(0); // summary-cache hit, no full child load
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
   });
 
   it("a setup run emits cli_run with its own commandClass", async () => {

@@ -3,12 +3,15 @@
 // upserts via gh; without it, a dry run prints the body.
 import { defaultPrDeps, runPrDetailed } from "../../pr/index.js";
 import { loadSession } from "../../parse/load.js";
+import type { Session } from "../../parse/types.js";
+import { rollupChildren } from "../../pr/rollup.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
 
 async function run(ctx: CommandContext): Promise<number> {
+  const loadedSessions: Session[] = [];
   const result = await runPrDetailed({
     post: ctx.options.post,
     session: ctx.options.prSession,
@@ -22,9 +25,15 @@ async function run(ctx: CommandContext): Promise<number> {
   }, defaultPrDeps({
     loadSession: async (summary) => {
       const session = await loadSession(summary);
-      if (session) ctx.telemetry.observeSession?.(session);
+      if (session) {
+        ctx.telemetry.observeSession?.(session);
+        loadedSessions.push(session);
+        setAgentType(ctx, sharedAgentType(loadedSessions));
+      }
       return session;
     },
+    rollup: async (parentFilePath, window, excluded) =>
+      (await rollupChildren(parentFilePath, window, { onChildLoaded: ctx.telemetry.observeSession }, excluded)).rows,
   }));
   if (result.bodyRendered && result.receipt) {
     setAgentType(ctx, sharedAgentType(result.receipt.models));

@@ -56,8 +56,9 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  const model = await buildReceiptModel(session);
+  ctx.telemetry.observeSession?.(session);
   setAgentType(ctx, sharedAgentType([session]));
+  const model = await buildReceiptModel(session);
   ctx.stderr.write(`${BANNER}\n`);
   // No `color` option → same auto-detection (NO_COLOR / TTY) as the default
   // receipt command; the trailing newline matches how the golden is written.

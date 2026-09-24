@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseOptions } from "../../src/cli/options.js";
+import { agentTypeOf } from "../../src/cli/agentType.js";
 import type { CommandContext } from "../../src/cli/types.js";
 import { command as backfillCommand, runBackfill } from "../../src/cli/commands/backfill.js";
 import type { BackfillDeps } from "../../src/cli/commands/backfill.js";
@@ -18,6 +19,8 @@ import { buildReceiptModel } from "../../src/receipt/model.js";
 import { renderReceipt } from "../../src/receipt/render.js";
 import { loadById } from "../../src/parse/load.js";
 import { toCommandTelemetry } from "../../src/telemetry/helpers.js";
+import { recordCliError } from "../../src/telemetry/index.js";
+import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
 import { COMMAND_VALUES, EXPORT_FORMAT_VALUES, EXPORT_SURFACE_VALUES } from "../../src/telemetry/schemas.js";
 import type { AgentSource, Session, SessionSummary, TokenUsage, Turn } from "../../src/parse/types.js";
 
@@ -127,7 +130,30 @@ async function tempDir(): Promise<string> {
   return dir;
 }
 afterEach(async () => {
+  __resetQueueForTests();
   await Promise.all(tempDirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
+});
+
+describe("backfill error agent context", () => {
+  it.each([
+    ["one source", [session("first", "codex", 100, NOW), session("second", "codex", 100, NOW - DAY)], "codex"],
+    ["mixed sources", [session("first", "codex", 100, NOW), session("second", "gemini", 100, NOW - DAY)], "unknown"],
+  ] as const)("records %s when the second receipt write throws", async (_name, sessions, expected) => {
+    const dir = await tempDir();
+    const { ctx } = fakeContext(["backfill", "--out", dir]);
+    let writes = 0;
+    ctx.fs.writeFile = async () => {
+      writes += 1;
+      if (writes === 2) throw new Error("write failed");
+    };
+    try {
+      await runBackfill(ctx, deps([...sessions]));
+      throw new Error("expected the second write to fail");
+    } catch (err) {
+      recordCliError({ command: "backfill", agentType: agentTypeOf(ctx), err });
+    }
+    expect(peekQueuedEvents().find((event) => event.name === "cli_error")?.properties.agentType).toBe(expected);
+  });
 });
 
 describe("parse — backfill (R1)", () => {

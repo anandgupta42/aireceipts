@@ -47,6 +47,7 @@ export type RollupWindow =
 interface RollupDeps {
   discover: (parentFilePath: string) => Promise<string[]>;
   load: (childFilePath: string) => Promise<Session | null>;
+  onChildLoaded?: (session: Session) => void;
 }
 
 const defaultDeps: RollupDeps = {
@@ -83,7 +84,7 @@ export async function rollupChildren(
   /** SPEC-0038 R3 dedup — children independently credited as contributors are skipped here (filePath key), so no token counts twice. */
   excluded?: ReadonlySet<string>,
 ): Promise<ChildRollup> {
-  const { discover, load } = { ...defaultDeps, ...deps };
+  const { discover, load, onChildLoaded } = { ...defaultDeps, ...deps };
   const childFiles = await discover(parentFilePath);
   const rows: SubagentRow[] = [];
   const childCaveats: CaveatFinding[] = [];
@@ -103,6 +104,7 @@ export async function rollupChildren(
       rows.push({ name: agentId, usd: null, tokens: emptyUsage(), unreadable: true, filePath: childFile });
       continue;
     }
+    onChildLoaded?.(session);
     if (!childOverlaps(session, window)) {
       continue;
     }

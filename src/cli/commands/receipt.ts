@@ -73,7 +73,7 @@ async function run(ctx: CommandContext): Promise<number> {
   ctx.telemetry.observeSession?.(session);
   setAgentType(ctx, session.source);
   // SPEC-0061 — fold the session's subagents into the model before any format renders.
-  const model = await buildFullSessionReceiptModel(session);
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
   const svgOut = svgOutOf(options);
   if (svgOut.svg) {
     await writeSvg(ctx, renderReceiptSvg(model, { theme: svgOut.theme, template, details: options.details }), svgOut.output ?? "receipt.svg");
