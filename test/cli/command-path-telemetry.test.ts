@@ -134,6 +134,17 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect((runs[0].properties as Record<string, unknown>).agentType).toBe(props.agentType);
   });
 
+  it("keeps a list of same-agent summaries at unknown", async () => {
+    const summaries = await listFullSessions();
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(new Set(summaries.map((summary) => summary.source))).toEqual(new Set(["opencode"]));
+
+    expect(await main(["--list"])).toBe(0);
+    const runs = peekQueuedEvents().filter((event) => event.name === "cli_run");
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.properties).toMatchObject({ commandClass: "list", agentType: "unknown" });
+  });
+
   it.each(["claude-code", "codex", "cursor", "gemini", "opencode"] as const)("matches cli_run and receipt_generated for %s through main", async (source) => {
     const roots = [
       ["claude-code", join(home, ".claude", "projects", "test", "session.jsonl"), "claude-code/clean-multi-tool-2-models.jsonl"],

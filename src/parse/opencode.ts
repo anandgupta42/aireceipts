@@ -140,7 +140,7 @@ function parseJsonObject<T>(value: unknown): T | null {
   }
   try {
     const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as T) : null;
   } catch {
     return null;
   }

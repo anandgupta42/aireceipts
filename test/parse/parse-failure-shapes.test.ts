@@ -145,7 +145,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       const clean = await loadById(source, file);
       expect(clean).not.toBeNull();
       const cleanReceipt = renderReceipt(await buildReceiptModel(clean!), { color: false });
-      for (const value of ["42", "null"]) {
+      for (const value of ["42", "null", "[]", "[1,2]"]) {
         await writeFile(file, `${transcript}\n${value}\n`);
         const session = await loadById(source, file);
         expect(session?.parseFailureShapes).toContain(shape);

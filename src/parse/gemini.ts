@@ -133,7 +133,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
   let nonObjectRecords = 0;
 
   out.droppedRecords = await readJsonl(filePath, (record) => {
-    if (!record || typeof record !== "object") {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
       nonObjectRecords++;
       return;
     }

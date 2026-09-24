@@ -898,7 +898,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     });
   });
 
-  it("marks malformed legacy parts without changing session data or receipt bytes", async () => {
+  it.each(["{torn", "[]", "[1,2]"])("marks malformed legacy part %s without changing session data or receipt bytes", async (partData) => {
     const dir = tempDir();
     dirs.push(dir);
     const dbPath = path.join(dir, "legacy-malformed-part.db");
@@ -913,7 +913,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     const db = new DatabaseSync(malformedPath);
     db.prepare("INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)")
       .run("part_torn", "msg_legacy_asst_1", "ses_legacy_shape", Date.parse("2026-06-30T12:01:04Z"),
-        Date.parse("2026-06-30T12:01:05Z"), "{torn");
+        Date.parse("2026-06-30T12:01:05Z"), partData);
     db.close();
     const malformed = await new OpenCodeAdapter({ dbPath: malformedPath }).loadSession(`${malformedPath}#ses_legacy_shape`);
     expect(malformed?.parseFailureShapes).toEqual(["opencode:malformed_record"]);

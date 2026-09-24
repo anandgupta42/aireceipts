@@ -258,7 +258,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   }
 
   const droppedRecords = await readJsonl(filePath, (record) => {
-    if (!record || typeof record !== "object") {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
       nonObjectRecords++;
       return;
     }

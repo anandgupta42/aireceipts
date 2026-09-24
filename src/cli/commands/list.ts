@@ -6,7 +6,6 @@ import { formatAbsoluteUtc, formatInt } from "../../receipt/format.js";
 import { summaryToJson } from "../../receipt/json.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { noSessionsMessage } from "../common/session.js";
-import { setAgentType, sharedAgentType } from "../agentType.js";
 
 function listLine(index: number, summary: SessionSummary): string {
   const start = summary.startedAt !== undefined ? formatAbsoluteUtc(summary.startedAt) : "start time unknown";
@@ -28,7 +27,6 @@ async function run(ctx: CommandContext): Promise<number> {
     ctx.stdout.write(`${await noSessionsMessage()}\n`);
     return 0;
   }
-  setAgentType(ctx, sharedAgentType(sessions));
   if (ctx.options.json) {
     ctx.stdout.write(`${JSON.stringify(sessions.map(summaryToJson), null, 2)}\n`);
     ctx.telemetry.recordExportGenerated({ surface: "list", format: "json", wroteFile: false, result: "success" });
