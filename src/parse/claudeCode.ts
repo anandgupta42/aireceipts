@@ -81,9 +81,10 @@ const textBlockFields: FieldTable = { ...blockTypeFields, text: { type: "string"
 const toolUseFields: FieldTable = {
   ...blockTypeFields, id: { type: "string" }, name: { type: "string" }, input: { type: "any" },
 };
-const toolResultFields: FieldTable = {
-  ...blockTypeFields, tool_use_id: { type: "string" }, content: { type: "any" }, is_error: { type: "boolean" },
+const toolResultCoreFields: FieldTable = {
+  ...blockTypeFields, tool_use_id: { type: "string" }, content: { type: "any" },
 };
+const toolResultFields: FieldTable = { ...toolResultCoreFields, is_error: { type: "boolean" } };
 const messageFields: FieldTable = {
   id: { type: "string" }, model: { type: "string" },
   content: { type: "stringOrArray" },
@@ -95,7 +96,7 @@ const recordFields: FieldTable = {
   isCompactSummary: { type: "boolean" }, message: { type: "object" },
   cwd: { type: "string" }, gitBranch: { type: "string" }, isSidechain: { type: "boolean" },
 };
-function validBlock(block: unknown): block is RawContentBlock {
+function validBlock(block: unknown): boolean {
   if (!validFields(block, blockTypeFields)) return false;
   const type = (block as RawContentBlock).type;
   const table = type === "text" ? textBlockFields : type === "tool_use" ? toolUseFields
@@ -388,7 +389,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (r.type === "ai-title" && typeof r.aiTitle === "string") {
       aiTitle = r.aiTitle;
     }
-    if (r.isMeta === true) {
+    if (r.isMeta) {
       return;
     }
 
@@ -534,7 +535,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         for (const block of msg.content as RawContentBlock[]) {
           if (!validBlock(block)) {
             malformedContentParts++;
-            continue;
+            // Main still used a wrong-typed is_error's truthiness to settle the tool call.
+            if (block?.type !== "tool_result" || !validFields(block, toolResultCoreFields)) continue;
           }
           if (block.type === "text" && typeof block.text === "string") {
             firstUserText ??= block.text;

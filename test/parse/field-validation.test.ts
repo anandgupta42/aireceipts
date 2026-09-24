@@ -48,6 +48,63 @@ async function jsonlProperty(
 }
 
 describe("known transcript field types", () => {
+  it("preserves main's boolean guard outcomes for truthy wrong types", async () => {
+    const at = "2026-09-24T12:00:00Z";
+    const cases: Array<{ agent: "claude-code" | "codex"; field: string; expected: boolean;
+      records: Json[]; set: (records: Json[], value: unknown) => void }> = [
+      { agent: "claude-code", field: "isMeta", expected: true,
+        records: [{ type: "user", timestamp: at, message: { content: "internal metadata prompt" } }],
+        set: (records, value) => { records[0]!.isMeta = value; } },
+      { agent: "claude-code", field: "isCompactSummary", expected: false,
+        records: [{ type: "user", timestamp: at, message: { content: "summary text" } }],
+        set: (records, value) => { records[0]!.isCompactSummary = value; } },
+      { agent: "claude-code", field: "isSidechain", expected: false,
+        records: [{ type: "user", timestamp: at, message: { content: "prompt" } }],
+        set: (records, value) => { records[0]!.isSidechain = value; } },
+      { agent: "claude-code", field: "is_error", expected: true,
+        records: [
+          { type: "assistant", timestamp: at, message: { id: "msg_1", model: "claude-opus-4-8",
+            content: [{ type: "tool_use", id: "tool_1", name: "Read", input: {} }] } },
+          { type: "user", timestamp: at, message: { content: [
+            { type: "tool_result", tool_use_id: "tool_1", content: "failed" }] } },
+        ],
+        set: (records, value) => { (((records[1]!.message as Json).content as Json[])[0] as Json).is_error = value; } },
+      { agent: "codex", field: "success", expected: true,
+        records: [
+          { type: "response_item", timestamp: at, payload: { type: "function_call", name: "read_file", call_id: "call_1" } },
+          { type: "response_item", timestamp: at, payload: { type: "function_call_output", call_id: "call_1", output: "done" } },
+        ],
+        set: (records, value) => { (records[1]!.payload as Json).success = value; } },
+    ];
+    const truthyWrongTypes: unknown[] = ["true", 1, [], {}];
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-boolean-guards-"));
+    const file = resolve(temp, "session.jsonl");
+    const writeRecords = async (records: Json[]) => writeFile(file, `${records.map(JSON.stringify).join("\n")}\n`);
+    try {
+      for (const scenario of cases) {
+        const baselineRecords = structuredClone(scenario.records);
+        scenario.set(baselineRecords, scenario.expected);
+        await writeRecords(baselineRecords);
+        const baseline = (await loadById(scenario.agent, file))!;
+        const expectedReceipt = renderReceipt(await buildReceiptModel(baseline));
+        await fc.assert(fc.asyncProperty(fc.constantFrom(...truthyWrongTypes), async (bad) => {
+          const records = structuredClone(scenario.records);
+          scenario.set(records, bad);
+          await writeRecords(records);
+          const result = (await loadById(scenario.agent, file))!;
+          expect(result.parseFailureShapes, scenario.field).toContain(`${scenario.agent}:malformed_jsonl`);
+          expect(renderReceipt(await buildReceiptModel(result)), scenario.field).toBe(expectedReceipt);
+          expect(result.isSidechain, scenario.field).toBe(baseline.isSidechain);
+          expect(result.compactions, scenario.field).toEqual(baseline.compactions);
+          expect(result.turns.flatMap((turn) => turn.toolCalls.map((call) => call.status)), scenario.field)
+            .toEqual(baseline.turns.flatMap((turn) => turn.toolCalls.map((call) => call.status)));
+        }), { numRuns: 16 });
+      }
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
       message: { id: "msg_1", model: "claude-opus-4-8", content: [{ type: "text", text: "answer" }],
