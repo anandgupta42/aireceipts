@@ -531,6 +531,40 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     });
   });
 
+  it.each(["current", "legacy"] as const)("discovers %s sessions with a torn message row and marks the full load", async (schema) => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, `opencode-torn-${schema}.db`);
+    makeSessionMessageDb(dbPath);
+    if (schema === "legacy") addLegacySession(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const sessionId = schema === "current" ? "ses_current_shape" : "ses_legacy_shape";
+    const clean = await adapter.loadSession(`${dbPath}#${sessionId}`);
+    expect(clean).not.toBeNull();
+
+    const db = new DatabaseSync(dbPath);
+    const t0 = Date.parse("2026-06-30T12:02:00.000Z");
+    if (schema === "current") {
+      db.prepare("INSERT INTO session_message (id, session_id, type, seq, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run("msg_torn", sessionId, "assistant", 3, t0, t0, "{torn");
+    } else {
+      db.prepare("INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)")
+        .run("msg_torn", sessionId, t0, t0, "{torn");
+    }
+    db.close();
+
+    const summaries = await adapter.listSessions();
+    expect(summaries.map((summary) => summary.id)).toContain(`${dbPath}#${sessionId}`);
+    expect(summaries.find((summary) => summary.id === `${dbPath}#${sessionId}`)?.totals.turnCount).toBe(clean!.totals.turnCount);
+    const full = await adapter.listSessions({ full: true });
+    const session = full.find((candidate) => candidate.id === `${dbPath}#${sessionId}`);
+    expect(session?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+    expect(session?.droppedRecords).toBe(1);
+    expect(session?.turns).toEqual(clean!.turns);
+    expect(renderReceipt(await buildReceiptModel(session!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }, dataDir), { color: false }));
+  });
+
   it.each([
     ["null", { input: null, output: 100, reasoning: 25, cache: { read: 50, write: 10 } }, 185],
     ["string", { input: 500, output: "100", reasoning: 25, cache: { read: 50, write: 10 } }, 585],

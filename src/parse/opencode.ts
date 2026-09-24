@@ -520,6 +520,7 @@ async function openOpencodeDb(dbPath: string): Promise<SqliteReader | null> {
 }
 
 function currentSummarySql(where = ""): string {
+  const messageData = "CASE WHEN json_valid(m.data) THEN m.data ELSE '{}' END";
   return `
     SELECT
       s.id,
@@ -538,44 +539,44 @@ function currentSummarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM session_message m
-        WHERE m.session_id = s.id AND m.type = 'assistant'
+        WHERE m.session_id = s.id AND m.type = 'assistant' AND json_valid(m.data)
       ) AS turn_count,
       (
         SELECT COUNT(*)
-        FROM session_message m, json_each(m.data, '$.content') c
+        FROM session_message m, json_each(${messageData}, '$.content') c
         WHERE m.session_id = s.id AND m.type = 'assistant' AND json_extract(c.value, '$.type') = 'tool'
       ) AS tool_count,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.input'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.input'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_input,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.output'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.output'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_output,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.reasoning'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.reasoning'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_reasoning,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.read'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.read'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_cache_read,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.write'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.write'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_cache_write,
       (
-        SELECT COALESCE(json_extract(m.data, '$.model.id'), json_extract(m.data, '$.modelID'), json_extract(m.data, '$.model'))
+        SELECT COALESCE(json_extract(${messageData}, '$.model.id'), json_extract(${messageData}, '$.modelID'), json_extract(${messageData}, '$.model'))
         FROM session_message m
         WHERE m.session_id = s.id
           AND m.type = 'assistant'
-          AND COALESCE(json_extract(m.data, '$.model.id'), json_extract(m.data, '$.modelID'), json_extract(m.data, '$.model')) IS NOT NULL
+          AND COALESCE(json_extract(${messageData}, '$.model.id'), json_extract(${messageData}, '$.modelID'), json_extract(${messageData}, '$.model')) IS NOT NULL
         ORDER BY m.seq
         LIMIT 1
       ) AS first_model
@@ -586,6 +587,7 @@ function currentSummarySql(where = ""): string {
 }
 
 function summarySql(where = ""): string {
+  const messageData = "CASE WHEN json_valid(m.data) THEN m.data ELSE '{}' END";
   return `
     SELECT
       s.id,
@@ -604,7 +606,7 @@ function summarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS turn_count,
       (
         SELECT COUNT(*)
@@ -612,36 +614,36 @@ function summarySql(where = ""): string {
         WHERE p.session_id = s.id AND CASE WHEN json_valid(p.data) THEN json_extract(p.data, '$.type') = 'tool' ELSE 0 END
       ) AS tool_count,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.input'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.input'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_input,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.output'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.output'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_output,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.reasoning'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.reasoning'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_reasoning,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.read'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.read'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_cache_read,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.write'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.write'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_cache_write,
       (
-        SELECT json_extract(m.data, '$.modelID')
+        SELECT json_extract(${messageData}, '$.modelID')
         FROM message m
         WHERE m.session_id = s.id
-          AND json_extract(m.data, '$.role') = 'assistant'
-          AND json_extract(m.data, '$.modelID') IS NOT NULL
+          AND json_extract(${messageData}, '$.role') = 'assistant'
+          AND json_extract(${messageData}, '$.modelID') IS NOT NULL
         ORDER BY m.time_created, m.id
         LIMIT 1
       ) AS first_model

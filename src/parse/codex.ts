@@ -457,7 +457,9 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       if (role !== "user" && role !== "assistant") malformedNestedRecords++;
       if (item.content !== undefined && typeof item.content !== "string" && !Array.isArray(item.content)) malformedNestedRecords++;
       if (Array.isArray(item.content) && item.content.some((part) => part === null
-        || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part))))) malformedNestedRecords++;
+        || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part)))
+        || (typeof part === "object" && !Array.isArray(part)
+          && (part.type === "input_text" || part.type === "output_text") && typeof part.text !== "string"))) malformedNestedRecords++;
       if (role === "user") {
         firstUserText ??= extractText(item.content);
         current = null;

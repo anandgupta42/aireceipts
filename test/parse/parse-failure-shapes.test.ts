@@ -134,6 +134,37 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
+  it.each(["input_text", "output_text"] as const)("marks Codex %s with non-string text without changing receipt bytes", async (type) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-codex-content-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const message = (extra?: unknown) => JSON.stringify({
+        timestamp: "2026-09-23T12:00:00.000Z",
+        type: "response_item",
+        payload: { type: "message", role: "user", content: [
+          { type: "input_text", text: "keep this text" },
+          ...(extra === undefined ? [] : [extra]),
+        ] },
+      });
+      await writeFile(file, `${message()}\n`);
+      const clean = await loadById("codex", file);
+      const cleanReceipt = renderReceipt(await buildReceiptModel(clean!), { color: false });
+
+      await writeFile(file, `${message({ type, text: 42 })}\n`);
+      const malformed = await loadById("codex", file);
+      expect(malformed?.parseFailureShapes).toEqual(["codex:malformed_jsonl"]);
+      expect(malformed?.droppedRecords).toBe(clean?.droppedRecords);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+
+      await writeFile(file, `${message({ type: "input_image", image_url: "data:image/png;base64,AA==" })}\n`);
+      const image = await loadById("codex", file);
+      expect(image?.parseFailureShapes).toBeUndefined();
+      expect(image?.droppedRecords).toBe(clean?.droppedRecords);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it("attaches Gemini's shape for a malformed checkpoint entry without changing receipt bytes", async () => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-checkpoint-"));
     try {

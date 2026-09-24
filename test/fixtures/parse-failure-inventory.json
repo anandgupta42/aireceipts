@@ -213,6 +213,11 @@
   },
   {
     "adapter": "codex",
+    "path": "known input_text or output_text content part has non-string text",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
     "path": "malformed tool argument JSON is retained as raw text",
     "shape": "not measurable by this spec",
     "reason": "The raw argument remains available, so no evidence is dropped."
@@ -270,6 +275,11 @@
   {
     "adapter": "opencode",
     "path": "message row has unsupported role or type",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "current or legacy message row has torn JSON but the session remains discoverable",
     "shape": "opencode:malformed_record"
   },
   {
