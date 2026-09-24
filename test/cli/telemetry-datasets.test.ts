@@ -39,6 +39,9 @@ describe("SPEC-0094 R5 dataset definitions", () => {
   it("groups reliability errors by their bounded event dimensions", () => {
     const reliability = blocks.find(([, title]) => title === "Reliability: errors and failed polls")?.[2];
     expect(reliability).toBeDefined();
+    expect("commandClass" in PROPERTIES_SCHEMA_BY_EVENT_NAME.cli_run.shape).toBe(true);
+    expect("command" in PROPERTIES_SCHEMA_BY_EVENT_NAME.cli_error.shape).toBe(true);
+    expect(reliability).toContain('command = iff(name == "cli_run", commandClass, errorCommand)');
     for (const field of ["command", "errorClass", "agentType", "inPackage", "adapterVersion", "signatureHash"]) {
       expect(reliability).toContain(`customDimensions.${field}`);
       expect(reliability).toMatch(new RegExp(`\\b${field}\\b[\\s,]*`));

@@ -213,6 +213,10 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
     const top = record as Record<string, unknown>;
     if (typeof top.type === "string" && top.type !== "user" && top.type !== "gemini") return;
+    if (typeof top.type !== "string" && ["id", "model", "tokens", "content", "toolCalls"].some((key) => key in top)) {
+      malformedNestedFields++;
+      return;
+    }
     const table = top.type === "user" || top.type === "gemini" ? messageFields
       : "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
     if ((top.type !== undefined && typeof top.type !== "string")

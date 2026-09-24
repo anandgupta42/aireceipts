@@ -802,8 +802,7 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
-      if ((msg.role !== undefined && typeof msg.role !== "string")
-        || (msg.tokens !== undefined && (!msg.tokens || typeof msg.tokens !== "object" || Array.isArray(msg.tokens)))) {
+      if (msg.role !== undefined && typeof msg.role !== "string") {
         malformedNestedRecord = true;
         continue;
       }
@@ -931,8 +930,7 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
-      if ((msg.role !== undefined && typeof msg.role !== "string")
-        || (msg.tokens !== undefined && (!msg.tokens || typeof msg.tokens !== "object" || Array.isArray(msg.tokens)))) {
+      if (msg.role !== undefined && typeof msg.role !== "string") {
         malformedNestedRecord = true;
         continue;
       }

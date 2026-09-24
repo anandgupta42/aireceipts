@@ -5,7 +5,7 @@
 // the no-price-row degrade, corrupt-file safety, and chats/ discovery.
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { cpSync, mkdirSync, mkdtempSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { attributeByTool, GeminiAdapter, loadById, vendorForSource } from "../../src/index.js";
@@ -73,6 +73,24 @@ describe("gemini adapter (R3 parse)", () => {
     // Either null or a partial session with a non-negative turn count — never a throw.
     if (session !== null) {
       expect(session.turns.length).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("marks a type-less message record malformed without using its tokens", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "aireceipts-gemini-shape-"));
+    try {
+      const file = path.join(dir, "session.jsonl");
+      writeFileSync(file, [
+        { sessionId: "shape-session", startTime: "2026-06-20T11:00:00Z" },
+        { id: "missing-type", model: "gemini-2.5-flash", tokens: { input: 999, total: 999 } },
+        { id: "valid", type: "gemini", model: "gemini-2.5-flash", tokens: { input: 10, output: 2, total: 12 } },
+      ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+      const session = await new GeminiAdapter().loadSession(file);
+      expect(session?.parseFailureShapes).toEqual(["gemini:malformed_jsonl"]);
+      expect(session?.turns).toHaveLength(1);
+      expect(session?.totals.tokens.total).toBe(12);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

@@ -4,9 +4,17 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { noSessionsMessage } from "../common/session.js";
 import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 import { loadSession } from "../../parse/load.js";
+import type { Session } from "../../parse/types.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 async function run(ctx: CommandContext): Promise<number> {
-  const report = await buildSetupReport(ctx.now(), (summary) => loadObservedSession(ctx, () => loadSession(summary)), observedChildRollupDeps(ctx));
+  const loadedSessions: Session[] = [];
+  const report = await buildSetupReport(ctx.now(), async (summary) => {
+    const session = await loadObservedSession(ctx, () => loadSession(summary));
+    if (session) loadedSessions.push(session);
+    return session;
+  }, observedChildRollupDeps(ctx));
+  setAgentType(ctx, sharedAgentType(loadedSessions));
   if (ctx.options.json) {
     ctx.stdout.write(`${JSON.stringify(setupReportToJson(report), null, 2)}\n`);
     return 0;

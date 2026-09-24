@@ -331,6 +331,15 @@ function setCurrentMessageTokens(dbPath: string, tokens: unknown): void {
   db.close();
 }
 
+function setLegacyMessageTokens(dbPath: string, tokens: unknown): void {
+  const db = new DatabaseSync(dbPath);
+  const row = db.prepare("SELECT data FROM message WHERE id = 'msg_legacy_asst_1'").get() as { data: string };
+  const data = JSON.parse(row.data) as Record<string, unknown>;
+  data.tokens = tokens;
+  db.prepare("UPDATE message SET data = ? WHERE id = 'msg_legacy_asst_1'").run(JSON.stringify(data));
+  db.close();
+}
+
 function addProviderRoutingMessages(dbPath: string): void {
   const db = new DatabaseSync(dbPath);
   const insert = db.prepare(
@@ -608,6 +617,32 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     const receipt = await buildReceiptModel(session!, dataDir);
     expect(receipt.totalUsd).toBeNull();
+  });
+
+  it.each(["current", "legacy"] as const)("keeps %s assistant turns with non-object tokens and unchanged receipt bytes", async (schema) => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, `opencode-${schema}-scalar-tokens.db`);
+    makeSessionMessageDb(dbPath);
+    if (schema === "legacy") addLegacySession(dbPath);
+    const setTokens = schema === "current" ? setCurrentMessageTokens : setLegacyMessageTokens;
+    const sessionId = schema === "current" ? dbPath : `${dbPath}#ses_legacy_shape`;
+    const adapter = new OpenCodeAdapter({ dbPath });
+    for (const tokens of [null, 7, "bad", []]) {
+      setTokens(dbPath, tokens);
+      const session = await adapter.loadSession(sessionId);
+      expect(session?.turns).toHaveLength(1);
+      expect(session?.totals.toolCallCount).toBe(1);
+      expect(session?.turns[0].usage?.total).toBe(0);
+      expect(session?.turns[0].pricingUnits).toEqual([]);
+      expect(session?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+      const receipt = await buildReceiptModel(session!, dataDir);
+      expect(receipt.totalUsd).toBeNull();
+      const mainEquivalent = { ...session! };
+      delete mainEquivalent.parseFailureShapes;
+      expect(renderReceipt(receipt, { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel(mainEquivalent, dataDir), { color: false }));
+    }
   });
 
   it("fails closed when individually safe OpenCode message counters overflow a sum", async () => {

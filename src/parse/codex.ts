@@ -24,21 +24,13 @@ interface CodexUsage {
   total_tokens?: number;
 }
 
-const usageFields: FieldTable = {
-  input_tokens: { type: "integer" }, output_tokens: { type: "integer" },
-  cached_input_tokens: { type: "integer" }, reasoning_output_tokens: { type: "integer" },
-  total_tokens: { type: "integer" },
-};
 const contentPartFields: FieldTable = {
   type: { type: "string" }, text: { type: "string" },
 };
 const itemFields: FieldTable = {
   type: { type: "string" }, model: { type: "string" }, model_provider: { type: "string" },
-  cwd: { type: "string" }, info: { type: "object", fields: {
-    total_token_usage: { type: "object", fields: usageFields },
-    last_token_usage: { type: "object", fields: usageFields },
-  } },
-  usage: { type: "object", fields: usageFields }, message: { type: "string" },
+  cwd: { type: "string" }, info: { type: "object" },
+  message: { type: "string" },
   role: { type: "string" },
   name: { type: "string" }, call_id: { type: "string" }, id: { type: "string" },
   arguments: { type: "any" }, input: { type: "any" }, output: { type: "any" },
@@ -55,7 +47,7 @@ const recordFields: FieldTable = {
   type: { type: "string" }, timestamp: { type: "stringOrNumber" },
   created_at: { type: "stringOrNumber" }, time: { type: "stringOrNumber" },
   payload: { type: "object" }, item: { type: "object" }, response: { type: "object" },
-  model_provider: { type: "string" }, usage: { type: "object", fields: usageFields },
+  model_provider: { type: "string" },
 };
 const knownTypes = new Set([
   "session_meta", "turn_context", "event_msg", "response_item", "compacted", "context_compacted",
@@ -305,15 +297,14 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
     const top = record as Record<string, unknown>;
     const item = unwrap(top);
-    if (typeof top.type === "string" && !knownTypes.has(top.type)) return;
+    if (typeof top.type === "string" && !knownTypes.has(top.type)
+      && (typeof item.type !== "string" || !knownTypes.has(item.type))) return;
     if (typeof item.type === "string" && !knownTypes.has(item.type)) return;
     if ((top.type !== undefined && typeof top.type !== "string")
       || (item.type !== undefined && typeof item.type !== "string")
       || (item.model !== undefined && typeof item.model !== "string")
       || ["payload", "item", "response"].some((key) => top[key] !== undefined
-        && (!top[key] || typeof top[key] !== "object" || Array.isArray(top[key])))
-      || (item.usage !== undefined && (!item.usage || typeof item.usage !== "object" || Array.isArray(item.usage)))
-      || (top.usage !== undefined && (!top.usage || typeof top.usage !== "object" || Array.isArray(top.usage)))) {
+        && (!top[key] || typeof top[key] !== "object" || Array.isArray(top[key])))) {
       malformedNestedRecords++;
       return;
     }
