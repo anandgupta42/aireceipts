@@ -53,6 +53,12 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "invalid-arguments");
     return 1;
   }
+  const csvExporter = options.csvMode === undefined ? undefined : getExporter(`csv-${options.csvMode}`);
+  if (options.csvMode !== undefined && !csvExporter) {
+    ctx.stderr.write(`unknown --csv mode "${options.csvMode}" (${CSV_MODE_HINT})\n`);
+    setExitClass(ctx, "invalid-arguments");
+    return 1;
+  }
   const resolved = await resolveSelector(options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     if ((resolved.kind === "no-session-data" || resolved.kind === "no-sessions") && isDefaultHumanTextReceipt(ctx)) {
@@ -111,14 +117,8 @@ async function run(ctx: CommandContext): Promise<number> {
     return 0;
   }
   if (options.csvMode !== undefined) {
-    const exporter = getExporter(`csv-${options.csvMode}`);
-    if (!exporter) {
-      ctx.stderr.write(`unknown --csv mode "${options.csvMode}" (${CSV_MODE_HINT})\n`);
-      setExitClass(ctx, "invalid-arguments");
-      return 1;
-    }
     // CSV is a data contract — budget advisory lines never ride along (SPEC-0009 x SPEC-0011).
-    ctx.stdout.write(`${exporter.export(model)}\n`);
+    ctx.stdout.write(`${csvExporter!.export(model)}\n`);
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({
         surface: "receipt",

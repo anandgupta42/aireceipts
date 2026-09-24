@@ -93,25 +93,22 @@ const usageFields: FieldTable = {
 };
 const messageFields: FieldTable = {
   id: { type: "string" }, model: { type: "string" },
-  content: { type: "stringOrArray", elements: { type: "object" } },
+  content: { type: "stringOrArray" },
   usage: { type: "object", fields: usageFields },
 };
-const userMessageFields: FieldTable = { content: { type: "stringOrArray", elements: { type: "object" } } };
+const userMessageFields: FieldTable = { content: { type: "stringOrArray" } };
 const recordFields: FieldTable = {
   type: { type: "string" }, timestamp: { type: "stringOrNumber" },
   aiTitle: { type: "string" }, isMeta: { type: "boolean" },
   isCompactSummary: { type: "boolean" }, message: { type: "object" },
   cwd: { type: "string" }, gitBranch: { type: "string" }, isSidechain: { type: "boolean" },
 };
-function validBlocks(content: unknown): boolean {
-  if (!Array.isArray(content)) return true;
-  return content.every((block) => {
-    if (!validFields(block, blockTypeFields)) return false;
-    const type = (block as RawContentBlock).type;
-    const table = type === "text" ? textBlockFields : type === "tool_use" ? toolUseFields
-      : type === "tool_result" ? toolResultFields : blockTypeFields;
-    return validFields(block, table);
-  });
+function validBlock(block: unknown): block is RawContentBlock {
+  if (!validFields(block, blockTypeFields)) return false;
+  const type = (block as RawContentBlock).type;
+  const table = type === "text" ? textBlockFields : type === "tool_use" ? toolUseFields
+    : type === "tool_result" ? toolResultFields : blockTypeFields;
+  return validFields(block, table);
 }
 
 // command-echo wrapper tags injected into the transcript by the CLI itself — not
@@ -363,8 +360,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       && r.type !== "fork-context-ref" && r.type !== "summary" && r.type !== "system"
       && !COMPACT_BOUNDARY_TYPES.has(r.type)) return;
     if (!validFields(r, recordFields)
-      || (r.type === "assistant" && (!validFields(r.message, messageFields) || !validBlocks(r.message?.content)))
-      || (r.type === "user" && (!validFields(r.message, userMessageFields) || !validBlocks(r.message?.content)))) {
+      || (r.type === "assistant" && !validFields(r.message, messageFields))
+      || (r.type === "user" && !validFields(r.message, userMessageFields))) {
       malformedMessageRecords++;
       return;
     }
@@ -373,8 +370,6 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       malformedMessageRecords++;
       return;
     }
-    if (Array.isArray(r.message?.content) && r.message.content.some((block) =>
-      !block || typeof block !== "object" || Array.isArray(block))) malformedContentParts++;
 
     // SPEC-0017 R1 — extract compactions BEFORE the isMeta/command-echo filters
     // below drop these records. `turns.length` is the index the next assistant
@@ -501,14 +496,11 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
-          if (!block || typeof block !== "object" || Array.isArray(block)) {
+          if (!validBlock(block)) {
             malformedContentParts++;
             continue;
           }
-          if (block.type !== undefined && typeof block.type !== "string") malformedContentParts++;
           if (block.type === "tool_use") {
-            if ((block.id !== undefined && typeof block.id !== "string")
-              || (block.name !== undefined && typeof block.name !== "string")) malformedContentParts++;
             // Cumulative/parallel snapshots may repeat a previously emitted
             // tool block. A provider tool-use id identifies the logical call;
             // id-less blocks cannot be matched safely and remain distinct.
@@ -545,15 +537,13 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       }
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
-          if (!block || typeof block !== "object" || Array.isArray(block)) {
+          if (!validBlock(block)) {
             malformedContentParts++;
             continue;
           }
-          if (block.type !== undefined && typeof block.type !== "string") malformedContentParts++;
           if (block.type === "text" && typeof block.text === "string") {
             firstUserText ??= block.text;
           } else if (block.type === "tool_result") {
-            if (block.tool_use_id !== undefined && typeof block.tool_use_id !== "string") malformedContentParts++;
             const id = block.tool_use_id;
             const output = stringifyToolResult(block.content);
             const status = block.is_error ? "error" : "ok";

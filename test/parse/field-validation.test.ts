@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { loadById } from "../../src/parse/load.js";
 import { CursorAdapter } from "../../src/parse/cursor.js";
 import { OpenCodeAdapter } from "../../src/parse/opencode.js";
+import { buildReceiptModel } from "../../src/receipt/model.js";
+import { renderReceipt } from "../../src/receipt/render.js";
 
 const wrongTypes: unknown[] = [42, [], {}, null, false];
 type Json = Record<string, unknown>;
@@ -28,7 +30,7 @@ async function jsonlProperty(
       async (field, wrong) => {
         const record = structuredClone(clean);
         if (typeof wrongTypes[wrong] === "number" &&
-          ((agent === "claude-code" && field === 3) || (agent === "codex" && field === 2)
+          ((agent === "claude-code" && field === 2) || (agent === "codex" && field === 2)
             || (agent === "gemini" && field === 4))) return;
         if (agent === "codex" && field === 1 && wrong === 2) return;
         mutations[field]!(record, wrongTypes[wrong]);
@@ -53,13 +55,63 @@ describe("known transcript field types", () => {
     }, "claude-code:malformed_jsonl", [
       (r, bad) => { r.type = bad; },
       (r, bad) => { (r.message as Json).model = bad; },
-      (r, bad) => { ((r.message as Json).content as Json[])[0]!.text = bad; },
       (r, bad) => { ((r.message as Json).usage as Json).input_tokens = bad; },
     ]);
     await jsonlProperty("claude-code", { type: "user", message: { content: [{ type: "text", text: "prompt" }] } },
       "claude-code:malformed_jsonl", [
         (r, bad) => { ((r.message as Json).content as Json[])[0]!.text = bad; },
       ]);
+  });
+
+  it("keeps independent Claude usage when a content sub-field changes", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-content-fields-"));
+    const file = resolve(temp, "session.jsonl");
+    const clean = { type: "assistant", timestamp: "2026-09-24T12:00:00.000Z",
+      message: { id: "msg_1", model: "claude-opus-4-8",
+        content: [{ type: "text", text: "answer" }], usage: { input_tokens: 10, output_tokens: 2 } } };
+    try {
+      await writeFile(file, `${JSON.stringify(clean)}\n`);
+      const baseline = (await loadById("claude-code", file))!;
+      const baselineModel = await buildReceiptModel(baseline);
+      expect(baselineModel.totalUsd).not.toBeNull();
+      const baselineReceipt = renderReceipt(baselineModel);
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes), async (bad) => {
+        const record = structuredClone(clean);
+        (record.message.content[0] as Json).text = bad;
+        await writeFile(file, `${JSON.stringify(record)}\n`);
+        const result = (await loadById("claude-code", file))!;
+        expect(result.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+        expect(result.totals.tokens).toEqual(baseline.totals.tokens);
+        expect((await buildReceiptModel(result)).totalUsd).toBe(baselineModel.totalUsd);
+        expect(renderReceipt(await buildReceiptModel(result))).toBe(baselineReceipt);
+      }), { numRuns: 20 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("rebuilds Gemini checkpoints around malformed entries", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-checkpoint-fields-"));
+    const file = resolve(temp, "session.jsonl");
+    const message = (id: string, input: number) => ({ id, type: "gemini", model: "gemini-2.5-flash",
+      content: "answer", tokens: { input, output: 2 } });
+    const earlier = message("old", 100);
+    const valid = [message("new-1", 10), message("new-2", 20)];
+    try {
+      await writeFile(file, [earlier, { $set: { messages: valid } }].map(JSON.stringify).join("\n"));
+      const baseline = (await loadById("gemini", file))!;
+      const baselineReceipt = renderReceipt(await buildReceiptModel(baseline));
+      for (const bad of [42, { id: "bad", type: "gemini", tokens: "x" }]) {
+        await writeFile(file, [earlier, { $set: { messages: [valid[0], bad, valid[1]] } }].map(JSON.stringify).join("\n"));
+        const result = (await loadById("gemini", file))!;
+        expect(result.parseFailureShapes).toContain("gemini:malformed_jsonl");
+        expect(result.totals.tokens).toEqual(baseline.totals.tokens);
+        expect(result.turns).toHaveLength(2);
+        expect(renderReceipt(await buildReceiptModel(result))).toBe(baselineReceipt);
+      }
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
   });
 
   it("Codex rejects wrong typed model before attributing usage", async () => {
@@ -161,6 +213,18 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       const clean = await adapter.loadSession(id);
       const db = new sqlite!.DatabaseSync(file);
       const composerKey = `composerData:${id}`;
+      const composer = JSON.parse((db.prepare("SELECT value FROM cursorDiskKV WHERE key = ?").get(composerKey) as { value: string }).value) as Json;
+      composer.tokenCount = "x";
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
+      expect((await adapter.listSessions()).map((summary) => summary.id)).toContain(id);
+      const malformedComposer = await adapter.loadSession(id);
+      expect(malformedComposer?.parseFailureShapes).toContain("cursor:malformed_record");
+      expect(malformedComposer?.turns).toEqual(clean?.turns);
+      composer.tokenCount = undefined;
+      (composer.fullConversationHeadersOnly as Json[])[0]!.type = "x";
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
+      expect((await adapter.listSessions()).map((summary) => summary.id)).toContain(id);
+      expect((await adapter.loadSession(id))?.parseFailureShapes).toContain("cursor:malformed_record");
       for (const value of ["42", "[]", "false", '"text"']) {
         db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(value, composerKey);
         expect(await adapter.loadSession(id)).toBeNull();

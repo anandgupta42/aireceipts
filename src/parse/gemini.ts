@@ -74,7 +74,7 @@ const metadataFields: FieldTable = {
 };
 const updateFields: FieldTable = {
   $rewindTo: { type: "string" }, $set: { type: "object", fields: {
-    messages: { type: "array", elements: { type: "object", fields: messageFields } },
+    messages: { type: "array" },
   } },
 };
 
@@ -223,7 +223,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
           if (m && typeof m === "object" && !Array.isArray(m) && typeof (m as GeminiMessage).id === "string") {
             if (typeof (m as GeminiMessage).type === "string"
               && (m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") continue;
-            if (malformedMessageField(m as GeminiMessage)) {
+            if (!validFields(m, messageFields) || malformedMessageField(m as GeminiMessage)) {
               malformedNestedFields++;
               continue;
             }

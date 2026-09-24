@@ -134,6 +134,15 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect((runs[0].properties as Record<string, unknown>).agentType).toBe(props.agentType);
   });
 
+  it("keeps an invalid CSV invocation unattributed", async () => {
+    expect(await main(["--csv=unsupported"])).toBe(1);
+    const events = peekQueuedEvents();
+    expect(events.filter((event) => event.name === "receipt_generated")).toHaveLength(0);
+    expect(events.find((event) => event.name === "cli_run")?.properties).toMatchObject({
+      agentType: "unknown", exitClass: "invalid-arguments",
+    });
+  });
+
   it("keeps a list of same-agent summaries at unknown", async () => {
     const summaries = await listFullSessions();
     expect(summaries.length).toBeGreaterThan(0);

@@ -204,8 +204,8 @@ export class CursorAdapter implements SessionAdapter {
         const key = String(r.key ?? "");
         const id = key.slice("composerData:".length);
         const c = parseJson<ComposerData>(r.value);
-        // Skip empty draft composers — no turns means no evidence to report.
-        if (plainObject(c) && validFields(c, composerFields) && id && ((c as ComposerData).fullConversationHeadersOnly?.length ?? 0) > 0) {
+        // Field validation belongs to full load so malformed composers remain discoverable.
+        if (plainObject(c) && id && Object.keys(c).length > 0) {
           out.push(summaryOf(c as ComposerData, id));
         }
       }
