@@ -311,7 +311,6 @@ describe("known transcript field types", () => {
         content: [{ type: "text", text: "answer" }], usage: { input_tokens: 10, output_tokens: 2 } },
     }, "claude-code:malformed_jsonl", [
       (r, bad) => { r.type = bad; },
-      (r, bad) => { (r.message as Json).model = bad; },
     ]);
     await jsonlProperty("claude-code", { type: "user", message: { content: [{ type: "text", text: "prompt" }] } },
       "claude-code:malformed_jsonl", [
@@ -374,15 +373,6 @@ describe("known transcript field types", () => {
     }
   });
 
-  it("Codex rejects wrong typed model before attributing usage", async () => {
-    await jsonlProperty("codex", { type: "event_msg", payload: { type: "token_count", model: "gpt-5.6-sol",
-      info: { total_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
-        last_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } } } },
-    "codex:malformed_jsonl", [
-      (r, bad) => { (r.payload as Json).model = bad; },
-    ]);
-  });
-
   it("Claude Code rejects numeric record type and numeric user text", async () => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-direct-fields-"));
     const file = resolve(temp, "session.jsonl");
@@ -416,8 +406,9 @@ describe("known transcript field types", () => {
       const result = await loadById("codex", file);
       expect(result?.parseFailureShapes).toContain("codex:malformed_jsonl");
       expect(result?.droppedRecords).toBeUndefined();
-      expect(result?.turns).toHaveLength(0);
-      expect(result?.totals.tokens.total).toBe(0);
+      expect(result?.turns).toHaveLength(1);
+      expect(result?.totals.tokens.total).toBe(120);
+      expect((await buildReceiptModel(result!)).totalUsd).toBeNull();
     } finally {
       await rm(temp, { recursive: true, force: true });
     }
@@ -429,8 +420,136 @@ describe("known transcript field types", () => {
       toolCalls: [{ id: "tool_1", name: "read_file", status: "success" }] },
     "gemini:malformed_jsonl", [
       (r, bad) => { r.type = bad; },
-      (r, bad) => { r.model = bad; },
     ]);
+  });
+
+  it("ignores a Gemini vendor usageMalformed field when pricing valid usage", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-sentinel-"));
+    const file = resolve(temp, "session.jsonl");
+    const clean = { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+      model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } };
+    try {
+      await writeFile(file, `${JSON.stringify(clean)}\n`);
+      const baseline = (await loadById("gemini", file))!;
+      const expected = renderReceipt(await buildReceiptModel(baseline));
+      expect((await buildReceiptModel(baseline)).totalUsd).not.toBeNull();
+      await writeFile(file, `${JSON.stringify({ ...clean, usageMalformed: true })}\n`);
+      const result = (await loadById("gemini", file))!;
+      expect(result.parseFailureShapes).toBeUndefined();
+      expect(renderReceipt(await buildReceiptModel(result))).toBe(expected);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains common Claude metadata from unknown record types", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-unknown-metadata-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await writeFile(file, [
+        { type: "future_record", timestamp: "2026-09-24T11:59:00Z", cwd: "/work/project",
+          gitBranch: "feature", isSidechain: true, message: 42 },
+        { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+          message: { id: "msg_1", model: "claude-opus-4-8", usage: { input_tokens: 10, output_tokens: 2 } } },
+      ].map(JSON.stringify).join("\n"));
+      const result = (await loadById("claude-code", file))!;
+      expect(result.cwd).toBe("/work/project");
+      expect(result.gitBranch).toBe("feature");
+      expect(result.isSidechain).toBe(true);
+      expect(result.startedAt).toBe(Date.parse("2026-09-24T11:59:00Z"));
+      expect(result.totals.durationMs).toBe(60_000);
+      expect(result.parseFailureShapes).toBeUndefined();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains Gemini title, time and usage around malformed identity fields", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-identity-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      const user = { type: "user", timestamp: "2026-09-24T11:59:00Z", content: "prompt" };
+      const answer = { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+        model: 42, tokens: { input: 10, output: 2 } };
+      await writeFile(file, `${JSON.stringify(user)}\n`);
+      const idless = (await loadById("gemini", file))!;
+      expect(idless.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(idless.title).toBe("prompt");
+      expect(idless.startedAt).toBe(Date.parse(user.timestamp));
+      await writeFile(file, `${JSON.stringify(user)}\n${JSON.stringify(answer)}\n`);
+      const result = (await loadById("gemini", file))!;
+      expect(result.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(result.title).toBe("prompt");
+      expect(result.startedAt).toBe(Date.parse(user.timestamp));
+      expect(result.totals.durationMs).toBe(60_000);
+      expect(result.totals.tokens.total).toBe(12);
+      expect(result.totals.turnCount).toBe(1);
+      expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+      message: { id: "msg_1", model: "claude-opus-4-8", usage: { input_tokens: 10, output_tokens: 2 } } },
+    (record: Json, bad: unknown) => { (record.message as Json).id = bad; }, 12],
+    ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+      message: { id: "msg_1", model: "claude-opus-4-8", usage: { input_tokens: 10, output_tokens: 2 } } },
+    (record: Json, bad: unknown) => { (record.message as Json).model = bad; }, 12],
+    ["codex", { type: "event_msg", timestamp: "2026-09-24T12:00:00Z",
+      payload: { type: "token_count", model: "gpt-5.6-sol", info: {
+        total_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+        last_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } } } },
+    (record: Json, bad: unknown) => { (record.payload as Json).model = bad; }, 12],
+    ["gemini", { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+      model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } },
+    (record: Json, bad: unknown) => { record.model = bad; }, 12],
+  ] as const)("retains %s token evidence for a wrong typed identity", async (agent, clean, mutate, expectedTokens) => {
+    const temp = await mkdtemp(resolve(tmpdir(), `aireceipts-${agent}-identity-fields-`));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes), async (bad) => {
+        const record = structuredClone(clean) as Json;
+        mutate(record, bad);
+        await writeFile(file, `${JSON.stringify(record)}\n`);
+        const result = (await loadById(agent, file))!;
+        expect(result.parseFailureShapes).toContain(`${agent}:malformed_jsonl`);
+        expect(result.totals.tokens.total).toBe(expectedTokens);
+        expect(result.totals.turnCount).toBe(1);
+        expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+      }), { numRuns: 20 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+      message: { id: "msg_1", model: "claude-opus-4-8", usage: { input_tokens: 10, output_tokens: 2 } } }],
+    ["codex", { type: "event_msg", timestamp: "2026-09-24T12:00:00Z",
+      payload: { type: "token_count", model: "gpt-5.6-sol", info: {
+        total_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+        last_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } } } }],
+    ["gemini", { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+      model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } }],
+  ] as const)("ignores unknown %s JSONL fields in receipt bytes", async (agent, clean) => {
+    const temp = await mkdtemp(resolve(tmpdir(), `aireceipts-${agent}-extra-fields-`));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await writeFile(file, `${JSON.stringify(clean)}\n`);
+      const baseline = renderReceipt(await buildReceiptModel((await loadById(agent, file))!));
+      await fc.assert(fc.asyncProperty(fc.jsonValue(), async (value) => {
+        for (const name of ["usageMalformed", "malformedRecord", "parseFailureShapes", "futureField"]) {
+          const record = { ...clean, [name]: value };
+          await writeFile(file, `${JSON.stringify(record)}\n`);
+          const result = (await loadById(agent, file))!;
+          expect(renderReceipt(await buildReceiptModel(result))).toBe(baseline);
+        }
+      }), { numRuns: 10 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
   });
 
   it("ignores unknown string discriminators without a failure shape", async () => {
@@ -456,6 +575,89 @@ describe("known transcript field types", () => {
 const sqlite = await import("node:sqlite").catch(() => null);
 
 describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
+  it("retains Cursor and opencode evidence for malformed optional identity", async () => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-sqlite-identity-"));
+    const cursorFile = resolve(temp, "state.vscdb");
+    const openFile = resolve(temp, "session.db");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const id = makeCursorDb({ dbPath: cursorFile });
+      process.env.CURSOR_DB_PATH = cursorFile;
+      const cursor = new CursorAdapter();
+      const cursorBaseline = (await cursor.loadSession(id))!;
+      const cursorDb = new sqlite!.DatabaseSync(cursorFile);
+      const composerKey = `composerData:${id}`;
+      const composer = JSON.parse((cursorDb.prepare("SELECT value FROM cursorDiskKV WHERE key = ?")
+        .get(composerKey) as { value: string }).value) as Json;
+      ((composer.fullConversationHeadersOnly as Json[])[1] as Json).type = "wrong";
+      cursorDb.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?")
+        .run(JSON.stringify(composer), composerKey);
+      const cursorResult = (await cursor.loadSession(id))!;
+      expect(cursorResult.parseFailureShapes).toContain("cursor:malformed_record");
+      expect(cursorResult.totals.tokens).toEqual(cursorBaseline.totals.tokens);
+      expect(cursorResult.totals.turnCount).toBe(cursorBaseline.totals.turnCount);
+      cursorDb.close();
+
+      await copyFile(resolve("test/fixtures/opencode/clean-multi-vendor.db"), openFile);
+      const open = new OpenCodeAdapter({ dbPath: openFile });
+      const openBaseline = (await open.loadSession(openFile))!;
+      const openDb = new sqlite!.DatabaseSync(openFile);
+      const key = "msg_assistant_1";
+      const message = JSON.parse((openDb.prepare("SELECT data FROM session_message WHERE id = ?")
+        .get(key) as { data: string }).data) as Json;
+      message.model = 42;
+      openDb.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(message), key);
+      const openResult = (await open.loadSession(openFile))!;
+      expect(openResult.parseFailureShapes).toContain("opencode:malformed_record");
+      expect(openResult.totals.tokens).toEqual(openBaseline.totals.tokens);
+      expect(openResult.totals.turnCount).toBe(openBaseline.totals.turnCount);
+      openDb.close();
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores unknown Cursor and opencode fields in receipt bytes", async () => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-sqlite-extra-fields-"));
+    const cursorFile = resolve(temp, "state.vscdb");
+    const openFile = resolve(temp, "session.db");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const id = makeCursorDb({ dbPath: cursorFile });
+      process.env.CURSOR_DB_PATH = cursorFile;
+      const cursor = new CursorAdapter();
+      await copyFile(resolve("test/fixtures/opencode/clean-multi-vendor.db"), openFile);
+      const open = new OpenCodeAdapter({ dbPath: openFile });
+      for (const scenario of [
+        { dbPath: cursorFile, table: "cursorDiskKV", column: "value", keyColumn: "key",
+          key: `composerData:${id}`, load: () => cursor.loadSession(id) },
+        { dbPath: openFile, table: "session_message", column: "data", keyColumn: "id",
+          key: "msg_assistant_1", load: () => open.loadSession(openFile) },
+      ]) {
+        const db = new sqlite!.DatabaseSync(scenario.dbPath);
+        const original = JSON.parse((db.prepare(`SELECT ${scenario.column} FROM ${scenario.table} WHERE ${scenario.keyColumn} = ?`)
+          .get(scenario.key) as Record<string, string>)[scenario.column]!) as Json;
+        const baseline = renderReceipt(await buildReceiptModel((await scenario.load())!));
+        await fc.assert(fc.asyncProperty(fc.jsonValue(), async (value) => {
+          for (const name of ["usageMalformed", "malformedRecord", "parseFailureShapes", "futureField"]) {
+            db.prepare(`UPDATE ${scenario.table} SET ${scenario.column} = ? WHERE ${scenario.keyColumn} = ?`)
+              .run(JSON.stringify({ ...original, [name]: value }), scenario.key);
+            expect(renderReceipt(await buildReceiptModel((await scenario.load())!))).toBe(baseline);
+          }
+        }), { numRuns: 10 });
+        db.close();
+      }
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it("retains Cursor turns and tools for malformed tokenCount containers", async () => {
     const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-container-"));

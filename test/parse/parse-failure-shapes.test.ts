@@ -273,7 +273,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
-  it.each(["direct", "checkpoint"] as const)("drops a non-string Gemini model in a %s entry", async (source) => {
+  it.each(["direct", "checkpoint"] as const)("retains usage with a non-string Gemini model in a %s entry", async (source) => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-model-"));
     try {
       const file = resolve(temp, "session.jsonl");
@@ -285,8 +285,9 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       await writeFile(file, `${line(42)}\n`);
       const malformed = await loadById("gemini", file);
       expect(malformed?.parseFailureShapes).toContain("gemini:malformed_jsonl");
-      expect(malformed?.turns).toHaveLength(0);
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
+      expect(malformed?.turns).toHaveLength(1);
+      expect(malformed?.totals.tokens.total).toBe(12);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }
@@ -334,7 +335,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
-  it("drops Claude's non-string model without changing receipt bytes", async () => {
+  it("retains Claude usage with a non-string model without changing receipt bytes", async () => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-model-"));
     try {
       const file = resolve(temp, "session.jsonl");
@@ -348,8 +349,9 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       await writeFile(file, `${line(42)}\n`);
       const malformed = await loadById("claude-code", file);
       expect(malformed?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
-      expect(malformed?.turns).toHaveLength(0);
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
+      expect(malformed?.turns).toHaveLength(1);
+      expect(malformed?.totals.tokens.total).toBe(12);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }

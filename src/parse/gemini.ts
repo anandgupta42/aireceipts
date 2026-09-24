@@ -53,8 +53,9 @@ interface GeminiMessage {
   model?: string;
   tokens?: GeminiTokens;
   toolCalls?: GeminiToolCall[];
-  usageMalformed?: boolean;
 }
+
+const malformedUsageMessages = new WeakSet<GeminiMessage>();
 
 const tokensFields: FieldTable = Object.fromEntries(
   ["input", "output", "cached", "thoughts", "tool", "total"].map((name) => [name, { type: "integer" }]),
@@ -172,13 +173,13 @@ function retainValidMessageParts(msg: GeminiMessage): GeminiMessage {
     for (const key of Object.keys(tokensFields)) {
       if (tokens[key] !== undefined && !validFields({ [key]: tokens[key] }, { [key]: tokensFields[key]! })) {
         delete tokens[key];
-        clean.usageMalformed = true;
+        malformedUsageMessages.add(clean);
       }
     }
     clean.tokens = tokens as GeminiTokens;
   } else if (Object.prototype.hasOwnProperty.call(msg, "tokens")) {
     clean.tokens = undefined;
-    clean.usageMalformed = true;
+    malformedUsageMessages.add(clean);
   }
   return clean;
 }
@@ -193,13 +194,12 @@ function classifyMessageEntry(value: unknown): MessageEntryClassification {
   if (typeof value.type === "string" && value.type !== "user" && value.type !== "gemini") {
     return { kind: "ignored" };
   }
-  if (typeof value.type !== "string" || typeof value.id !== "string"
-    || !validFields(value, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model! })) {
+  if (typeof value.type !== "string") {
     return { kind: "malformed" };
   }
   const message = value as GeminiMessage;
   return { kind: "message", message,
-    malformedFields: !validFields(value, messageFields) || malformedMessageField(message) };
+    malformedFields: typeof value.id !== "string" || !validFields(value, messageFields) || malformedMessageField(message) };
 }
 
 /** A parsed message plus enough metadata to materialize a Turn later. */
@@ -252,7 +252,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
       if (msg.type === "gemini" && typeof msg.model === "string") {
         out.model ??= msg.model;
       }
-      out.messages.set(msg.id!, retainValidMessageParts(msg));
+      if (typeof msg.id === "string") out.messages.set(msg.id, retainValidMessageParts(msg));
       return;
     }
     const table = "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
@@ -294,7 +294,9 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
             continue;
           }
           if (classified.malformedFields) malformedNestedFields++;
-          out.messages.set(classified.message.id!, retainValidMessageParts(classified.message));
+          if (typeof classified.message.id === "string") {
+            out.messages.set(classified.message.id, retainValidMessageParts(classified.message));
+          }
         }
       } else if (Object.prototype.hasOwnProperty.call(set, "messages")) {
         malformedNestedFields++;
@@ -348,7 +350,7 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
       model: typeof msg.model === "string" ? msg.model : records.model,
       usage,
       outputTokens: usage?.output,
-      ...(msg.usageMalformed ? { pricingUnits: [] } : {}),
+      ...(malformedUsageMessages.has(msg) ? { pricingUnits: [] } : {}),
       toolCalls,
     });
   }

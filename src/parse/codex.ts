@@ -302,7 +302,6 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (typeof item.type === "string" && !knownTypes.has(item.type)) return;
     if ((top.type !== undefined && typeof top.type !== "string")
       || (item.type !== undefined && typeof item.type !== "string")
-      || (item.model !== undefined && typeof item.model !== "string")
       || ["payload", "item", "response"].some((key) => top[key] !== undefined
         && (!top[key] || typeof top[key] !== "object" || Array.isArray(top[key])))) {
       malformedNestedRecords++;
@@ -353,6 +352,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (typeof item.model === "string") {
       currentModel = item.model;
       model ??= currentModel;
+    } else if (item.model !== undefined) {
+      currentModel = undefined;
     }
     // R1a: first-seen cwd (attribution-only), reported on session_meta/turn_context.
     if (cwd === undefined && typeof item.cwd === "string" && item.cwd) {

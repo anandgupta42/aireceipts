@@ -345,20 +345,32 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       return;
     }
     const r = raw as RawRecord;
+    // Common session metadata may appear on control and future record types.
+    if (cwd === undefined && typeof r.cwd === "string" && r.cwd) cwd = r.cwd;
+    if (gitBranch === undefined && typeof r.gitBranch === "string" && r.gitBranch) gitBranch = r.gitBranch;
+    if (r.isSidechain === true) rawSidechain = true;
+
+    const unknownType = typeof r.type === "string" && r.type !== "assistant" && r.type !== "user"
+      && r.type !== "ai-title" && r.type !== "fork-context-ref" && r.type !== "summary"
+      && r.type !== "system" && !COMPACT_BOUNDARY_TYPES.has(r.type);
+    if (unknownType) {
+      if (!r.isMeta) {
+        const ts = parseTimestamp(r.timestamp);
+        if (ts !== undefined) {
+          startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
+          endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
+        }
+      }
+      return;
+    }
     if ((r.message !== undefined && typeof r.type !== "string")
       || (r.type !== undefined && typeof r.type !== "string")) {
       malformedMessageRecords++;
       return;
     }
-    if (r.type !== undefined && r.type !== "assistant" && r.type !== "user" && r.type !== "ai-title"
-      && r.type !== "fork-context-ref" && r.type !== "summary" && r.type !== "system"
-      && !COMPACT_BOUNDARY_TYPES.has(r.type)) return;
     if (!validFields(r, { type: recordFields.type!, message: recordFields.message! })
       || ((r.type === "assistant" || r.type === "user")
-        && (!r.message || typeof r.message !== "object" || Array.isArray(r.message)))
-      || (r.type === "assistant" && r.message &&
-        ((r.message.id !== undefined && typeof r.message.id !== "string")
-          || (r.message.model !== undefined && typeof r.message.model !== "string")))) {
+        && (!r.message || typeof r.message !== "object" || Array.isArray(r.message)))) {
       malformedMessageRecords++;
       return;
     }
@@ -372,17 +384,6 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     // summary), and after-final compactions land at `turnIndex = turns.length`.
     if (compactSignal(r) === "summary" && !compactionByTurn.has(turns.length)) {
       compactionByTurn.set(turns.length, parseTimestamp(r.timestamp));
-    }
-
-    // R1a: first-seen cwd/gitBranch (attribution-only). Absent in raw → absent in model.
-    if (cwd === undefined && typeof r.cwd === "string" && r.cwd) {
-      cwd = r.cwd;
-    }
-    if (gitBranch === undefined && typeof r.gitBranch === "string" && r.gitBranch) {
-      gitBranch = r.gitBranch;
-    }
-    if (r.isSidechain === true) {
-      rawSidechain = true;
     }
 
     if (r.type === "ai-title" && typeof r.aiTitle === "string") {
@@ -440,12 +441,13 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       // Reuse the open turn for this message id (see `turnByMessageId`); a
       // record without an id can't be matched to a response, so it stays its
       // own turn.
-      const existing = msg.id !== undefined ? turnByMessageId.get(msg.id) : undefined;
+      const messageId = typeof msg.id === "string" ? msg.id : undefined;
+      const existing = messageId !== undefined ? turnByMessageId.get(messageId) : undefined;
       const turn: Turn = existing ?? { index: turns.length, timestamp: ts, model: messageModel, toolCalls: [] };
       if (!existing) {
         turns.push(turn);
-        if (msg.id !== undefined) {
-          turnByMessageId.set(msg.id, turn);
+        if (messageId !== undefined) {
+          turnByMessageId.set(messageId, turn);
         }
       }
       turn.model ??= messageModel;
@@ -453,7 +455,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       if (mappedUsage.malformed) {
         malformedUsageRecords++;
       }
-      if (msg.id === undefined) {
+      if (messageId === undefined) {
         // Without the provider response id, repeated content snapshots cannot
         // be distinguished from separate requests. Retain one coherent
         // highest-output usage vector as unattributed tokens and never attach

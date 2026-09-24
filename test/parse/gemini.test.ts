@@ -98,7 +98,7 @@ describe("gemini adapter (R3 parse)", () => {
     ["valid", { id: "entry", type: "gemini", model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } }, undefined, 1, 12],
     ["type-less", { id: "entry", model: "gemini-2.5-flash", tokens: { input: 999 } }, "gemini:malformed_jsonl", 0, 0],
     ["unknown type", { id: "entry", type: "future", model: "gemini-2.5-flash", tokens: { input: 999 } }, undefined, 0, 0],
-    ["bad model", { id: "entry", type: "gemini", model: 42, tokens: { input: 999 } }, "gemini:malformed_jsonl", 0, 0],
+    ["bad model", { id: "entry", type: "gemini", model: 42, tokens: { input: 999 } }, "gemini:malformed_jsonl", 1, 999],
     ["bad tokens", { id: "entry", type: "gemini", model: "gemini-2.5-flash", tokens: "bad" }, "gemini:malformed_jsonl", 1, 0],
   ] as const)("classifies %s entries alike in direct and checkpoint paths", async (_name, entry, shape, turns, total) => {
     const dir = mkdtempSync(path.join(tmpdir(), "aireceipts-gemini-parity-"));
