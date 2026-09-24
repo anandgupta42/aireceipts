@@ -205,6 +205,49 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
+  it.each(["direct", "checkpoint"] as const)("drops a non-string Gemini model in a %s entry", async (source) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-model-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const entry = (model?: unknown) => ({ id: "answer", type: "gemini", tokens: { input: 10, output: 2 }, ...(model === undefined ? {} : { model }) });
+      const line = (model?: unknown) => JSON.stringify(source === "direct" ? entry(model) : { $set: { messages: [entry(model)] } });
+      await writeFile(file, `${line()}\n`);
+      const clean = await loadById("gemini", file);
+      const cleanReceipt = renderReceipt(await buildReceiptModel(clean!), { color: false });
+      await writeFile(file, `${line(42)}\n`);
+      const malformed = await loadById("gemini", file);
+      expect(malformed?.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(malformed?.turns[0].model).toBeUndefined();
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each(["wrapper", "nested"] as const)("skips a non-string Codex %s type before usage", async (level) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-codex-type-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const clean = readFileSync(resolve(root, "test/fixtures/codex/clean-session.jsonl"), "utf8");
+      await writeFile(file, clean);
+      const baseline = await loadById("codex", file);
+      const cleanReceipt = renderReceipt(await buildReceiptModel(baseline!), { color: false });
+      const bad = level === "wrapper"
+        ? { type: 42, payload: { type: "token_count", info: { total_token_usage: { input_tokens: 999 } } } }
+        : { type: "event_msg", payload: { type: 42, info: { total_token_usage: { input_tokens: 999 } } } };
+      await writeFile(file, `${clean}\n${JSON.stringify(bad)}\n`);
+      const malformed = await loadById("codex", file);
+      expect(malformed?.parseFailureShapes).toContain("codex:malformed_jsonl");
+      expect(malformed?.totals.tokens).toEqual(baseline?.totals.tokens);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+      await writeFile(file, `${clean}\n${JSON.stringify({ type: "future_event", payload: { type: "future_item" } })}\n`);
+      const unknown = await loadById("codex", file);
+      expect(unknown?.parseFailureShapes).toBeUndefined();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
   it.each([[], 42])("attaches Claude's shape for non-object message %j without changing receipt bytes", async (message) => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-message-"));
     try {
@@ -218,6 +261,27 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       expect(session?.droppedRecords).toBeUndefined();
       expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
         .toBe(renderReceipt(await buildReceiptModel(baseline!), { color: false }));
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("drops Claude's non-string model without changing receipt bytes", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-model-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const line = (model?: unknown) => JSON.stringify({ type: "assistant", message: {
+        id: "msg-model", content: [{ type: "text", text: "answer" }], usage: { input_tokens: 10, output_tokens: 2 },
+        ...(model === undefined ? {} : { model }),
+      } });
+      await writeFile(file, `${line()}\n`);
+      const clean = await loadById("claude-code", file);
+      const cleanReceipt = renderReceipt(await buildReceiptModel(clean!), { color: false });
+      await writeFile(file, `${line(42)}\n`);
+      const malformed = await loadById("claude-code", file);
+      expect(malformed?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+      expect(malformed?.turns[0].model).toBeUndefined();
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }

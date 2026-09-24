@@ -544,7 +544,8 @@ function currentSummarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM session_message m, json_each(${messageData}, '$.content') c
-        WHERE m.session_id = s.id AND m.type = 'assistant' AND json_extract(c.value, '$.type') = 'tool'
+        WHERE m.session_id = s.id AND m.type = 'assistant'
+          AND CASE WHEN c.type = 'object' THEN json_extract(c.value, '$.type') = 'tool' ELSE 0 END
       ) AS tool_count,
       (
         SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.input'), 0))`)}

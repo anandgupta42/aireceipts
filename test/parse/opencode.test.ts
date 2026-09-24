@@ -565,6 +565,27 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
       .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }, dataDir), { color: false }));
   });
 
+  it("discovers a current session with a scalar content part and marks the full load", async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, "opencode-scalar-part.db");
+    makeSessionMessageDb(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const clean = await adapter.loadSession(dbPath);
+    const db = new DatabaseSync(dbPath);
+    const row = db.prepare("SELECT data FROM session_message WHERE id = 'msg_asst_1'").get() as { data: string };
+    const message = JSON.parse(row.data) as { content: unknown[] };
+    message.content.push("text");
+    db.prepare("UPDATE session_message SET data = ? WHERE id = 'msg_asst_1'").run(JSON.stringify(message));
+    db.close();
+    const summaries = await adapter.listSessions();
+    expect(summaries.map((summary) => summary.id)).toContain(`${dbPath}#ses_current_shape`);
+    const malformed = await adapter.loadSession(dbPath);
+    expect(malformed?.parseFailureShapes).toContain("opencode:malformed_record");
+    expect(renderReceipt(await buildReceiptModel(malformed!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
+  });
+
   it.each([
     ["null", { input: null, output: 100, reasoning: 25, cache: { read: 50, write: 10 } }, 185],
     ["string", { input: 500, output: "100", reasoning: 25, cache: { read: 50, write: 10 } }, 585],

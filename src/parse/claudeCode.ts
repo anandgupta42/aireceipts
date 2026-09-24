@@ -392,20 +392,21 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       if (typeof msg.content === "string" && COMMAND_ECHO_RE.test(msg.content)) {
         return;
       }
-      model ??= msg.model;
+      const messageModel = typeof msg.model === "string" ? msg.model : undefined;
+      model ??= messageModel;
 
       // Reuse the open turn for this message id (see `turnByMessageId`); a
       // record without an id can't be matched to a response, so it stays its
       // own turn.
       const existing = msg.id !== undefined ? turnByMessageId.get(msg.id) : undefined;
-      const turn: Turn = existing ?? { index: turns.length, timestamp: ts, model: msg.model, toolCalls: [] };
+      const turn: Turn = existing ?? { index: turns.length, timestamp: ts, model: messageModel, toolCalls: [] };
       if (!existing) {
         turns.push(turn);
         if (msg.id !== undefined) {
           turnByMessageId.set(msg.id, turn);
         }
       }
-      turn.model ??= msg.model;
+      turn.model ??= messageModel;
       const mappedUsage = mapUsage(msg.usage, Object.prototype.hasOwnProperty.call(msg, "usage"));
       if (mappedUsage.malformed) {
         malformedUsageRecords++;

@@ -264,6 +264,12 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       return;
     }
     const top = record as Record<string, unknown>;
+    const item = unwrap(top);
+    if ((top.type !== undefined && typeof top.type !== "string")
+      || (item.type !== undefined && typeof item.type !== "string")) {
+      malformedNestedRecords++;
+      return;
+    }
     if (["payload", "item", "response"].some((key) => Object.prototype.hasOwnProperty.call(top, key)
       && top[key] !== null && (typeof top[key] !== "object" || Array.isArray(top[key])))) malformedNestedRecords++;
     const ts = parseTimestamp(top.timestamp ?? top.created_at ?? top.time);
@@ -272,8 +278,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
     }
 
-    const item = unwrap(top);
-    const type = String(item.type ?? top.type ?? "");
+    const type = item.type ?? top.type ?? "";
 
     // SPEC-0040 R1/R2 — `turnIndex` is the index the NEXT assistant turn will
     // receive (`turns.length` — an open turn is already in `turns`, so this is

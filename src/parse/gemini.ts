@@ -113,6 +113,7 @@ function toToolCall(raw: GeminiToolCall): ToolCall {
 }
 
 function malformedMessageField(msg: GeminiMessage): boolean {
+  if (msg.model !== undefined && typeof msg.model !== "string") return true;
   const tokens = msg.tokens as unknown;
   if (tokens !== undefined && (tokens === null || typeof tokens !== "object" || Array.isArray(tokens)
     || ["input", "output", "cached", "thoughts", "tool", "total"].some((key) => {
@@ -270,7 +271,7 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
     turns.push({
       index: turns.length,
       timestamp: parseTimestamp(msg.timestamp),
-      model: msg.model ?? records.model,
+      model: typeof msg.model === "string" ? msg.model : records.model,
       usage,
       outputTokens: usage?.output,
       toolCalls,
