@@ -90,7 +90,7 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 | `cliVersion` | string | semver | Version of this CLI. |
 | `installHash` | string | 64-hex sha256 or `unavailable` | Salted random install identifier; never the raw id. |
 | `isCI` | boolean | | True when a CI environment marker is present. |
-| `adapterVersion` | string | short opaque token | Internal adapter version, not read from a transcript. |
+| `adapterVersion` | string | short opaque token | Internal adapter version, not read from a transcript. Built-in adapters report their registered version; an adapter without one reports `0`. |
 | `signatureHash` | string | 64-hex sha256 | Hash of a content-free structural failure descriptor. |
 
 ```json

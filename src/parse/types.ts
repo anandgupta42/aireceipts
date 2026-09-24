@@ -259,8 +259,8 @@ export interface AdapterFidelity {
 
 export interface SessionAdapter {
   readonly id: AgentSource;
-  /** Bounded implementation token for parse-failure telemetry. */
-  readonly adapterVersion: string;
+  /** Optional bounded implementation token for parse-failure telemetry. */
+  readonly adapterVersion?: string;
   /** human label, e.g. "Claude Code" */
   readonly label: string;
   /**

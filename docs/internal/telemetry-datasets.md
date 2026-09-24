@@ -271,7 +271,7 @@ customEvents
          gateNumber = toint(gateParts[0]) * 1000000 + toint(gateParts[1]) * 1000 + toint(gateParts[2])
 // cli_run and heartbeat have always carried isCI; the version gate only affects R2c error rows.
 | where (name in ("cli_run", "statusline_heartbeat") and isCI != "true")
-    or (name in ("cli_error", "parse_failure") and (versionNumber < gateNumber or isCI != "true"))
+    or (name in ("cli_error", "parse_failure") and (isnull(versionNumber) or versionNumber < gateNumber or isCI != "true"))
 | extend command = iff(name == "cli_run", commandClass, errorCommand)
 | summarize rows = count() by name, exitClass, failedPollCountBucket, cliVersion,
     command, errorClass, agentType, inPackage, adapterVersion, signatureHash
@@ -279,7 +279,8 @@ customEvents
 ```
 
 The maintainer is included in reliability. CI filtering on `cli_error` and
-`parse_failure` begins at the R2c version. Earlier rows lack `isCI`; no claim
+`parse_failure` begins at the R2c version. Rows with an absent or unparseable
+`cliVersion` remain unfiltered. Earlier rows lack `isCI`; no claim
 about their CI status is possible.
 
 ## Statusline row reduction

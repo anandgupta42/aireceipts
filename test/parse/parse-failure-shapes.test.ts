@@ -15,6 +15,7 @@ import { ALLOWED, observeSession, recordObservedParseFailures } from "../../src/
 import type { CommandContext } from "../../src/cli/types.js";
 import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
 import type { Session } from "../../src/parse/types.js";
+import type { SessionAdapter } from "../../src/index.js";
 
 interface InventoryRow { adapter: string; path: string; shape: string; reason?: string }
 const root = process.cwd();
@@ -29,6 +30,55 @@ function parseFiles(dir: string): string[] {
 }
 
 describe("SPEC-0094 R2b inventory and isolation", () => {
+  it("accepts a public adapter without a telemetry version", () => {
+    const adapter: SessionAdapter = {
+      id: "claude-code", label: "External Claude adapter",
+      roots: () => [], detect: async () => false,
+      listSessions: async () => [], loadSession: async () => null,
+    };
+    expect(adapter.adapterVersion).toBeUndefined();
+  });
+
+  it("records a bounded version when a registered adapter has none", () => {
+    __resetQueueForTests();
+    const adapter = adapters()[0]!;
+    const version = adapter.adapterVersion;
+    Object.defineProperty(adapter, "adapterVersion", { value: undefined, configurable: true });
+    try {
+      const ctx = {} as CommandContext;
+      observeSession(ctx, { source: adapter.id, parseFailureShapes: ["claude-code:malformed_jsonl"] } as Session);
+      recordObservedParseFailures(ctx);
+      const event = peekQueuedEvents().find((entry) => entry.name === "parse_failure");
+      expect(event?.properties.adapterVersion).toBe("0");
+    } finally {
+      Object.defineProperty(adapter, "adapterVersion", { value: version, configurable: true });
+      __resetQueueForTests();
+    }
+  });
+
+  it("marks message-bearing Claude records without a type and ignores unknown string types", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-type-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      const clean = JSON.stringify({ type: "assistant", message: {
+        id: "clean", model: "claude-sonnet-4-5", content: "answer",
+        usage: { input_tokens: 10, output_tokens: 2 },
+      } });
+      await writeFile(file, `${clean}\n`);
+      const baseline = await loadById("claude-code", file);
+      const message = { id: "missing-type", model: "claude-sonnet-4-5", usage: { input_tokens: 999, output_tokens: 999 } };
+      await writeFile(file, `${clean}\n${JSON.stringify({ message })}\n`);
+      const malformed = await loadById("claude-code", file);
+      expect(malformed?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
+      expect(malformed?.totals.tokens).toEqual(baseline?.totals.tokens);
+      expect(malformed?.turns).toHaveLength(baseline?.turns.length ?? 0);
+      await writeFile(file, `${clean}\n${JSON.stringify({ type: "future-record", message })}\n`);
+      const unknown = await loadById("claude-code", file);
+      expect(unknown?.parseFailureShapes).toBeUndefined();
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
   it("covers all adapters, bounded shapes, and null-returning paths", () => {
     for (const adapter of adapters()) {
       const rows = inventory.filter((row) => row.adapter === adapter.id);

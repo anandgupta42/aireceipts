@@ -345,7 +345,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       return;
     }
     const r = raw as RawRecord;
-    if (r.type !== undefined && typeof r.type !== "string") {
+    if ((r.message !== undefined && typeof r.type !== "string")
+      || (r.type !== undefined && typeof r.type !== "string")) {
       malformedMessageRecords++;
       return;
     }

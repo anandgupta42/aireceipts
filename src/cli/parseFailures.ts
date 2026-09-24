@@ -25,6 +25,6 @@ export function recordObservedParseFailures(ctx: CommandContext): void {
   for (const shape of observed.get(ctx) ?? []) {
     const source = shape.slice(0, shape.indexOf(":")) as Session["source"];
     const adapter = adapterFor(source);
-    if (adapter) recordParseFailure({ agentType: source, adapterVersion: adapter.adapterVersion, shape });
+    if (adapter) recordParseFailure({ agentType: source, adapterVersion: adapter.adapterVersion ?? "0", shape });
   }
 }

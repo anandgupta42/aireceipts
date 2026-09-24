@@ -47,6 +47,7 @@ describe("SPEC-0094 R5 dataset definitions", () => {
       expect(reliability).toMatch(new RegExp(`\\b${field}\\b[\\s,]*`));
     }
     expect(reliability).toMatch(/summarize rows = count\(\) by[\s\S]*command, errorClass, agentType, inPackage, adapterVersion, signatureHash/);
+    expect(reliability).toMatch(/isnull\(versionNumber\) or versionNumber < gateNumber or isCI != "true"/);
   });
 
   it("uses the same attributed heartbeat pairs in every adoption dataset", () => {

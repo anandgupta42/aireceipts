@@ -424,7 +424,7 @@ footer{
     <tr><td><code>cliVersion</code></td><td>string</td><td>semver</td><td>Version of this CLI.</td></tr>
     <tr><td><code>installHash</code></td><td>string</td><td>64-hex sha256 or <code>unavailable</code></td><td>Salted random install identifier; never the raw id.</td></tr>
     <tr><td><code>isCI</code></td><td>boolean</td><td></td><td>True when a CI environment marker is present.</td></tr>
-    <tr><td><code>adapterVersion</code></td><td>string</td><td>short opaque token</td><td>Internal adapter version, not read from a transcript.</td></tr>
+    <tr><td><code>adapterVersion</code></td><td>string</td><td>short opaque token</td><td>Internal adapter version, not read from a transcript. Built-in adapters report their registered version; an adapter without one reports <code>0</code>.</td></tr>
     <tr><td><code>signatureHash</code></td><td>string</td><td>64-hex sha256</td><td>Hash of a content-free structural failure descriptor.</td></tr>
   </tbody>
 </table></div>
