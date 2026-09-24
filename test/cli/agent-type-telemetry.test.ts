@@ -1,5 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AGENT_SOURCES } from "../../src/parse/types.js";
@@ -23,19 +23,17 @@ function input(models: ReceiptModel[]) {
 
 describe("SPEC-0094 R2a resolved agent seam", () => {
   const keys = ["AIRECEIPTS_HOME", "HOME", "USERPROFILE", "LOCALAPPDATA"] as const;
-  const realState = join(homedir(), ".aireceipts", "state.json");
   let tempHome: string;
   let savedEnv: Record<string, string | undefined>;
-  let originalReceiptState: unknown;
 
-  function receiptState(): unknown {
-    if (!existsSync(realState)) return undefined;
-    const state = JSON.parse(readFileSync(realState, "utf8")) as Record<string, unknown>;
-    return { receiptCount: state.receiptCount, milestones: state.milestones };
+  function expectTempReceiptCount(count: number): void {
+    const path = join(tempHome, ".aireceipts", "state.json");
+    expect(existsSync(path)).toBe(true);
+    const state = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    expect(state.receiptCount).toBe(count);
   }
 
   beforeEach(() => {
-    originalReceiptState = receiptState();
     savedEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
     tempHome = mkdtempSync(join(tmpdir(), "aireceipts-agent-type-"));
     process.env.AIRECEIPTS_HOME = tempHome;
@@ -51,7 +49,6 @@ describe("SPEC-0094 R2a resolved agent seam", () => {
       else process.env[key] = savedEnv[key];
     }
     rmSync(tempHome, { recursive: true, force: true });
-    expect(receiptState()).toEqual(originalReceiptState);
     __resetQueueForTests();
   });
 
@@ -59,6 +56,7 @@ describe("SPEC-0094 R2a resolved agent seam", () => {
     __resetQueueForTests();
     const ctx = createContext(parseOptions([]), []);
     await ctx.telemetry.noteReceiptGenerated(input([model(source)]));
+    expectTempReceiptCount(1);
     recordCliRun({ command: "receipt", agentType: agentTypeOf(ctx), durationMs: 0,
       ok: true, installHash: "unavailable", installIdSource: "unavailable",
       runOrdinalBucket: "unavailable", isCI: false });
@@ -73,6 +71,7 @@ describe("SPEC-0094 R2a resolved agent seam", () => {
     expect(agentTypeOf(help)).toBeUndefined();
     const compare = createContext(parseOptions(["compare", "a", "b"]), []);
     await compare.telemetry.noteReceiptGenerated(input([model("codex"), model("gemini")]));
+    expectTempReceiptCount(1);
     expect(agentTypeOf(compare)).toBeUndefined();
     expect(peekQueuedEvents().find((event) => event.name === "receipt_generated")?.properties.agentType).toBe("unknown");
   });

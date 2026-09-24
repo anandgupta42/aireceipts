@@ -14,6 +14,7 @@ import { completeSummariesWithCache } from "../../src/parse/summaryCache.js";
 import { ALLOWED, observeSession, recordObservedParseFailures } from "../../src/cli/parseFailures.js";
 import type { CommandContext } from "../../src/cli/types.js";
 import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
+import type { Session } from "../../src/parse/types.js";
 
 interface InventoryRow { adapter: string; path: string; shape: string }
 const root = process.cwd();
@@ -107,7 +108,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       expect(missing).toBeNull();
       const ctx = {} as CommandContext;
       for (const summary of [first[0], second[0], missing]) {
-        if (summary) observeSession(ctx, { ...session!, ...summary, parseFailureShapes: undefined });
+        if (summary) observeSession(ctx, summary as Session);
       }
       recordObservedParseFailures(ctx);
       expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
@@ -139,9 +140,20 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-nonobject-"));
     try {
       const file = resolve(temp, "session.jsonl");
-      await writeFile(file, `${readFileSync(resolve(root, "test/fixtures", fixture), "utf8")}\n42\n`);
-      const session = await loadById(source, file);
-      expect(session?.parseFailureShapes).toContain(shape);
+      const transcript = readFileSync(resolve(root, "test/fixtures", fixture), "utf8");
+      await writeFile(file, transcript);
+      const clean = await loadById(source, file);
+      expect(clean).not.toBeNull();
+      const cleanReceipt = renderReceipt(await buildReceiptModel(clean!), { color: false });
+      for (const value of ["42", "null"]) {
+        await writeFile(file, `${transcript}\n${value}\n`);
+        const session = await loadById(source, file);
+        expect(session?.parseFailureShapes).toContain(shape);
+        expect(session?.droppedRecords).toBeUndefined();
+        const model = await buildReceiptModel(session!);
+        expect(model.caveats.some((c) => c.kind === "dropped-transcript-records")).toBe(false);
+        expect(renderReceipt(model, { color: false })).toBe(cleanReceipt);
+      }
     } finally {
       await rm(temp, { recursive: true, force: true });
     }

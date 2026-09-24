@@ -125,6 +125,7 @@ interface ParsedRecords {
   messages: Map<string, GeminiMessage>;
   /** SPEC-0044 B3 — malformed JSONL records skipped while reading. */
   droppedRecords?: number;
+  nonObjectRecords?: number;
 }
 
 async function readRecords(filePath: string): Promise<ParsedRecords> {
@@ -203,7 +204,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
   });
 
-  out.droppedRecords += nonObjectRecords;
+  out.nonObjectRecords = nonObjectRecords;
   return out;
 }
 
@@ -306,9 +307,11 @@ export class GeminiAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, droppedRecords } = buildSession(id, await readRecords(id));
+      const records = await readRecords(id);
+      const { summary, turns, droppedRecords } = buildSession(id, records);
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
+      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}),
+        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 ? { parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
     } catch {
       return null;
     }

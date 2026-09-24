@@ -188,7 +188,9 @@ customEvents
 | extend versionParts = split(cliVersion, "."), gateParts = split(r2c_min_version, ".")
 | extend versionNumber = toint(versionParts[0]) * 1000000 + toint(versionParts[1]) * 1000 + toint(extract(@"^(\d+)", 1, tostring(versionParts[2]))),
          gateNumber = toint(gateParts[0]) * 1000000 + toint(gateParts[1]) * 1000 + toint(gateParts[2])
-| where versionNumber < gateNumber or isCI != "true"
+// cli_run and heartbeat have always carried isCI; the version gate only affects R2c error rows.
+| where (name in ("cli_run", "statusline_heartbeat") and isCI != "true")
+    or (name in ("cli_error", "parse_failure") and (versionNumber < gateNumber or isCI != "true"))
 | summarize rows = count() by name, exitClass, failedPollCountBucket, cliVersion
 | order by name asc, cliVersion asc
 ```

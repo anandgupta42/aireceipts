@@ -556,7 +556,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         summary,
         turns,
         compactions,
-        droppedRecords: droppedRecords + nonObjectRecords,
+        droppedRecords,
         parseFailureShapes: [...(droppedRecords + nonObjectRecords > 0 ? ["codex:malformed_jsonl"] : []), ...(malformedUsage ? ["codex:malformed_usage"] : [])],
         ...(usageReconciliationFailed ? { usageReconciliationFailed: true as const } : {}),
         ...(usageReconciliationFailed && totalUsage.total > 0 ? { unattributedUsage: totalUsage } : {}),
