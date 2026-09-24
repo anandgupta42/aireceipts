@@ -472,7 +472,7 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       delete without.tokenCount;
       db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(without), key);
       const baseline = (await adapter.loadSession(id))!;
-      for (const bad of [42, [], null]) {
+      for (const bad of ["42", [], false, null]) {
         const changed = structuredClone(original);
         changed.tokenCount = bad;
         db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(changed), key);
@@ -486,6 +486,14 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
         expect(result.totals.tokens.total).toBe(0);
         expect((await buildReceiptModel(result)).totalUsd).toBeNull();
       }
+      const scalar = structuredClone(original);
+      scalar.tokenCount = 42;
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(scalar), key);
+      const scalarResult = (await adapter.loadSession(id))!;
+      expect(scalarResult.parseFailureShapes).toBeUndefined();
+      expect(scalarResult.totals.tokens.total).toBe(0);
+      expect(renderReceipt(await buildReceiptModel(scalarResult)))
+        .toBe(renderReceipt(await buildReceiptModel(baseline)));
       db.close();
     } finally {
       if (previous === undefined) delete process.env.CURSOR_DB_PATH;

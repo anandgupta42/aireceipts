@@ -94,6 +94,31 @@ describe("gemini adapter (R3 parse)", () => {
     }
   });
 
+  it.each([
+    ["valid", { id: "entry", type: "gemini", model: "gemini-2.5-flash", tokens: { input: 10, output: 2 } }, undefined, 1, 12],
+    ["type-less", { id: "entry", model: "gemini-2.5-flash", tokens: { input: 999 } }, "gemini:malformed_jsonl", 0, 0],
+    ["unknown type", { id: "entry", type: "future", model: "gemini-2.5-flash", tokens: { input: 999 } }, undefined, 0, 0],
+    ["bad model", { id: "entry", type: "gemini", model: 42, tokens: { input: 999 } }, "gemini:malformed_jsonl", 0, 0],
+    ["bad tokens", { id: "entry", type: "gemini", model: "gemini-2.5-flash", tokens: "bad" }, "gemini:malformed_jsonl", 1, 0],
+  ] as const)("classifies %s entries alike in direct and checkpoint paths", async (_name, entry, shape, turns, total) => {
+    const dir = mkdtempSync(path.join(tmpdir(), "aireceipts-gemini-parity-"));
+    try {
+      for (const checkpoint of [false, true]) {
+        const file = path.join(dir, checkpoint ? "checkpoint.jsonl" : "direct.jsonl");
+        writeFileSync(file, [
+          { sessionId: "parity-session", startTime: "2026-06-20T11:00:00Z" },
+          checkpoint ? { $set: { messages: [entry] } } : entry,
+        ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+        const session = await new GeminiAdapter().loadSession(file);
+        expect(session?.parseFailureShapes).toEqual(shape ? [shape] : undefined);
+        expect(session?.turns).toHaveLength(turns);
+        expect(session?.totals.tokens.total).toBe(total);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("discovers only chats/ transcripts under the configured root (R2 detection)", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "aireceipts-gemini-"));
     const chats = path.join(dir, "projhash", "chats");
