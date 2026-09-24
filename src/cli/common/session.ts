@@ -37,6 +37,7 @@ type SelectorResolution =
 
 export async function resolveSelector(
   selector: string | undefined,
+  load: typeof loadSession = loadSession,
 ): Promise<SelectorResolution> {
   if (selector === undefined || selector.trim() === "") {
     // SPEC-0045 R3 — the default receipt shows the NEWEST readable session. A
@@ -46,7 +47,7 @@ export async function resolveSelector(
     // case, where the newest reads fine on the first try).
     const lazy = await listSessions();
     for (const summary of lazy) {
-      const session = await loadSession(summary);
+      const session = await load(summary);
       if (session) {
         return { summary, session };
       }

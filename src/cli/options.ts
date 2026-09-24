@@ -20,7 +20,7 @@ export interface CliOptions {
   /** SPEC-0003: output file for `--svg`/`--png`. */
   readonly output?: string;
   /** SPEC-0011 R2: CSV export mode. */
-  readonly csvMode?: "session" | "tool";
+  readonly csvMode?: string;
   /** SPEC-0008: re-anchor the trailing window at this YYYY-MM-DD date. */
   readonly since?: string;
   /** SPEC-0008 R4: split the weekly digest by project. */
@@ -99,7 +99,7 @@ export function parseOptions(argv: string[]): CliOptions {
   let version = false;
   let demo = false;
   let details = false;
-  let csvMode: "session" | "tool" | undefined;
+  let csvMode: string | undefined;
   let dryRun = false;
   let checkBudget = false;
   let byProject = false;
@@ -154,8 +154,8 @@ export function parseOptions(argv: string[]): CliOptions {
       mini = true;
     } else if (arg === "--csv" || arg === "--csv=session") {
       csvMode = "session";
-    } else if (arg === "--csv=tool") {
-      csvMode = "tool";
+    } else if (arg.startsWith("--csv=")) {
+      csvMode = arg.slice("--csv=".length);
     } else if (arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "--check-budget") {

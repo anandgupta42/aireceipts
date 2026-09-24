@@ -7,6 +7,8 @@ import { createInterface } from "node:readline";
 import type { CommandContext, CommandDef } from "./types.js";
 import type { CliOptions } from "./options.js";
 import { assembleHelp } from "./help.js";
+import { setAgentType } from "./agentType.js";
+import { observeSession } from "./parseFailures.js";
 import {
   noteMilestone,
   noteReceiptGenerated,
@@ -43,7 +45,7 @@ function stdinConfirm(question: string, stdin: NodeJS.ReadStream, stdout: NodeJS
 /** Assemble the real context for one invocation. `commands` feeds the help renderer. */
 export function createContext(options: CliOptions, commands: readonly CommandDef[]): CommandContext {
   const { stdin, stdout, stderr } = process;
-  return {
+  const ctx: CommandContext = {
     options,
     stdin,
     stdout,
@@ -54,8 +56,12 @@ export function createContext(options: CliOptions, commands: readonly CommandDef
     fs: { writeFile: (path, data) => writeFile(path, data) },
     prompt: (question) => stdinConfirm(question, stdin, stdout),
     telemetry: {
+      observeSession: (session) => observeSession(ctx, session),
       showPayload: (env) => showTelemetryPayload(env),
-      noteReceiptGenerated,
+      noteReceiptGenerated: async (input, command) => {
+        setAgentType(ctx, input.agentType);
+        await noteReceiptGenerated(input, command);
+      },
       recordExportGenerated,
       recordPrFlowCompleted,
       recordHookConfigured,
@@ -65,4 +71,5 @@ export function createContext(options: CliOptions, commands: readonly CommandDef
     },
     renderHelp: () => assembleHelp(commands),
   };
+  return ctx;
 }

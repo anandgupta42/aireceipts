@@ -26,6 +26,7 @@ import {
   sanitizeText,
   withTotal,
 } from "./util.js";
+import { validFields, type FieldTable } from "./validate.js";
 
 /** Raw shapes from a Claude Code `.jsonl` transcript line. Only the fields we use. */
 interface RawUsage {
@@ -73,6 +74,34 @@ interface RawRecord {
   gitBranch?: string;
   /** SPEC-0019 R1c — the raw child marker. */
   isSidechain?: boolean;
+}
+
+const blockTypeFields: FieldTable = { type: { type: "string" } };
+const textBlockFields: FieldTable = { ...blockTypeFields, text: { type: "string" } };
+const toolUseFields: FieldTable = {
+  ...blockTypeFields, id: { type: "string" }, name: { type: "string" }, input: { type: "any" },
+};
+const toolResultCoreFields: FieldTable = {
+  ...blockTypeFields, tool_use_id: { type: "string" }, content: { type: "any" },
+};
+const toolResultFields: FieldTable = { ...toolResultCoreFields, is_error: { type: "boolean" } };
+const messageFields: FieldTable = {
+  id: { type: "string" }, model: { type: "string" },
+  content: { type: "stringOrArray" },
+};
+const userMessageFields: FieldTable = { content: { type: "stringOrArray" } };
+const recordFields: FieldTable = {
+  type: { type: "string" }, timestamp: { type: "stringOrNumber" },
+  aiTitle: { type: "string" }, isMeta: { type: "boolean" },
+  isCompactSummary: { type: "boolean" }, message: { type: "object" },
+  cwd: { type: "string" }, gitBranch: { type: "string" }, isSidechain: { type: "boolean" },
+};
+function validBlock(block: unknown): boolean {
+  if (!validFields(block, blockTypeFields)) return false;
+  const type = (block as RawContentBlock).type;
+  const table = type === "text" ? textBlockFields : type === "tool_use" ? toolUseFields
+    : type === "tool_result" ? toolResultFields : blockTypeFields;
+  return validFields(block, table);
 }
 
 // command-echo wrapper tags injected into the transcript by the CLI itself — not
@@ -307,8 +336,49 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   // summary (or two summary shapes) at the same position collapse to one event.
   const compactionByTurn = new Map<number, number | undefined>();
 
+  let nonObjectRecords = 0;
+  let malformedMessageRecords = 0;
+  let malformedContentParts = 0;
   const jsonDroppedRecords = await readJsonl(filePath, (raw) => {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      nonObjectRecords += 1;
+      return;
+    }
     const r = raw as RawRecord;
+    // Common session metadata may appear on control and future record types.
+    if (cwd === undefined && typeof r.cwd === "string" && r.cwd) cwd = r.cwd;
+    if (gitBranch === undefined && typeof r.gitBranch === "string" && r.gitBranch) gitBranch = r.gitBranch;
+    if (r.isSidechain === true) rawSidechain = true;
+
+    // Common timing evidence survives a malformed message payload.
+    if (!r.isMeta) {
+      const ts = parseTimestamp(r.timestamp);
+      if (ts !== undefined) {
+        startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
+        endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
+      }
+    }
+
+    const unknownType = typeof r.type === "string" && r.type !== "assistant" && r.type !== "user"
+      && r.type !== "ai-title" && r.type !== "fork-context-ref" && r.type !== "summary"
+      && r.type !== "system" && !COMPACT_BOUNDARY_TYPES.has(r.type);
+    if (unknownType) {
+      return;
+    }
+    if ((r.message !== undefined && typeof r.type !== "string")
+      || (r.type !== undefined && typeof r.type !== "string")) {
+      malformedMessageRecords++;
+      return;
+    }
+    if (!validFields(r, { type: recordFields.type!, message: recordFields.message! })
+      || ((r.type === "assistant" || r.type === "user")
+        && (!r.message || typeof r.message !== "object" || Array.isArray(r.message)))) {
+      malformedMessageRecords++;
+      return;
+    }
+    if (!validFields(r, recordFields)
+      || (r.type === "assistant" && !validFields(r.message, messageFields))
+      || (r.type === "user" && !validFields(r.message, userMessageFields))) malformedMessageRecords++;
 
     // SPEC-0017 R1 — extract compactions BEFORE the isMeta/command-echo filters
     // below drop these records. `turns.length` is the index the next assistant
@@ -316,17 +386,6 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     // summary), and after-final compactions land at `turnIndex = turns.length`.
     if (compactSignal(r) === "summary" && !compactionByTurn.has(turns.length)) {
       compactionByTurn.set(turns.length, parseTimestamp(r.timestamp));
-    }
-
-    // R1a: first-seen cwd/gitBranch (attribution-only). Absent in raw → absent in model.
-    if (cwd === undefined && typeof r.cwd === "string" && r.cwd) {
-      cwd = r.cwd;
-    }
-    if (gitBranch === undefined && typeof r.gitBranch === "string" && r.gitBranch) {
-      gitBranch = r.gitBranch;
-    }
-    if (r.isSidechain === true) {
-      rawSidechain = true;
     }
 
     if (r.type === "ai-title" && typeof r.aiTitle === "string") {
@@ -363,36 +422,40 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
 
     const ts = parseTimestamp(r.timestamp);
-    if (ts !== undefined) {
-      startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
-      endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
-    }
 
     if (r.type === "assistant" && r.message) {
       const msg = r.message;
+      if ((msg.id !== undefined && typeof msg.id !== "string")
+        || (msg.model !== undefined && typeof msg.model !== "string")) malformedMessageRecords++;
+      if (Object.prototype.hasOwnProperty.call(msg, "content")
+        && typeof msg.content !== "string" && !Array.isArray(msg.content)) malformedContentParts++;
       // CLI-injected command echo, not a billed model response.
       if (typeof msg.content === "string" && COMMAND_ECHO_RE.test(msg.content)) {
         return;
       }
-      model ??= msg.model;
+      const malformedModel = msg.model !== undefined && typeof msg.model !== "string";
+      const messageModel = typeof msg.model === "string" ? msg.model : malformedModel ? "" : undefined;
+      if (!malformedModel) model ??= messageModel;
 
       // Reuse the open turn for this message id (see `turnByMessageId`); a
       // record without an id can't be matched to a response, so it stays its
       // own turn.
-      const existing = msg.id !== undefined ? turnByMessageId.get(msg.id) : undefined;
-      const turn: Turn = existing ?? { index: turns.length, timestamp: ts, model: msg.model, toolCalls: [] };
+      const messageId = typeof msg.id === "string" ? msg.id : undefined;
+      const existing = messageId !== undefined ? turnByMessageId.get(messageId) : undefined;
+      const turn: Turn = existing ?? { index: turns.length, timestamp: ts, model: messageModel, toolCalls: [] };
       if (!existing) {
         turns.push(turn);
-        if (msg.id !== undefined) {
-          turnByMessageId.set(msg.id, turn);
+        if (messageId !== undefined) {
+          turnByMessageId.set(messageId, turn);
         }
       }
-      turn.model ??= msg.model;
+      if (malformedModel) turn.model = "";
+      else turn.model ??= messageModel;
       const mappedUsage = mapUsage(msg.usage, Object.prototype.hasOwnProperty.call(msg, "usage"));
       if (mappedUsage.malformed) {
         malformedUsageRecords++;
       }
-      if (msg.id === undefined) {
+      if (messageId === undefined) {
         // Without the provider response id, repeated content snapshots cannot
         // be distinguished from separate requests. Retain one coherent
         // highest-output usage vector as unattributed tokens and never attach
@@ -430,6 +493,10 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
+          if (!validBlock(block)) {
+            malformedContentParts++;
+            continue;
+          }
           if (block.type === "tool_use") {
             // Cumulative/parallel snapshots may repeat a previously emitted
             // tool block. A provider tool-use id identifies the logical call;
@@ -438,7 +505,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
               continue;
             }
             const call: ToolCall = {
-              name: sanitizeText(block.name ?? "tool"),
+              name: sanitizeText(typeof block.name === "string" ? block.name : "tool"),
               input: block.input,
               status: "running",
               startedAt: ts,
@@ -456,6 +523,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
     if (r.type === "user" && r.message) {
       const msg = r.message;
+      if (Object.prototype.hasOwnProperty.call(msg, "content")
+        && typeof msg.content !== "string" && !Array.isArray(msg.content)) malformedContentParts++;
       if (typeof msg.content === "string") {
         if (COMMAND_ECHO_RE.test(msg.content)) {
           return;
@@ -465,6 +534,11 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       }
       if (Array.isArray(msg.content)) {
         for (const block of msg.content as RawContentBlock[]) {
+          if (!validBlock(block)) {
+            malformedContentParts++;
+            // Main still used a wrong-typed is_error's truthiness to settle the tool call.
+            if (block?.type !== "tool_result" || !validFields(block, toolResultCoreFields)) continue;
+          }
           if (block.type === "text" && typeof block.text === "string") {
             firstUserText ??= block.text;
           } else if (block.type === "tool_result") {
@@ -536,14 +610,16 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
+        parseFailureShapes: [...(jsonDroppedRecords + nonObjectRecords + malformedMessageRecords + malformedContentParts > 0 ? ["claude-code:malformed_jsonl"] : []), ...(malformedUsageRecords > 0 ? ["claude-code:malformed_usage"] : [])],
         ...(anonymousUsage.total > 0 ? { unattributedUsage: anonymousUsage } : {}),
       }
-    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0 };
+    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined };
 }
 
 const ROOT = "~/.claude/projects";
 
 export class ClaudeCodeAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "claude-code";
   readonly label = "Claude Code";
   readonly vendor = "anthropic";
@@ -609,7 +685,7 @@ export class ClaudeCodeAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, compactions, droppedRecords, unattributedUsage } = await parseTranscript(id, true);
+      const { summary, turns, compactions, droppedRecords, parseFailureShapes, unattributedUsage } = await parseTranscript(id, true);
       // SPEC-0044 B3: only present when > 0 (absent → clean), so a clean
       // session's shape is unchanged.
       return {
@@ -618,6 +694,7 @@ export class ClaudeCodeAdapter implements SessionAdapter {
         compactions,
         ...(unattributedUsage ? { unattributedUsage } : {}),
         ...(droppedRecords > 0 ? { droppedRecords } : {}),
+        ...(parseFailureShapes.length > 0 ? { parseFailureShapes } : {}),
       };
     } catch {
       return null;

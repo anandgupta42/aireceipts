@@ -3,9 +3,12 @@
 import { evaluateBudget } from "../../budget/index.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
+import { loadObservedSession } from "../loadedSession.js";
+import { loadSession } from "../../parse/load.js";
 
 async function run(ctx: CommandContext): Promise<number> {
-  const budget = await evaluateBudget(ctx.now());
+  const budget = await evaluateBudget(ctx.now(), undefined, undefined,
+    (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if (budget.status === "invalid") {
     ctx.stderr.write(`budget.json ignored: ${budget.invalidReason}\n`);
     return 0;

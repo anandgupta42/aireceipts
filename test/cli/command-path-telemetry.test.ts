@@ -9,7 +9,7 @@
 // at module load — so the temp home must exist, and be the mocked homedir,
 // before the src/ module graph evaluates. Without this, discovery scans the
 // REAL home: silently green against a dev machine's transcripts, exit 1 on CI.
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -36,9 +36,12 @@ vi.mock("node:os", async (importOriginal) => {
 import * as telemetry from "../../src/telemetry/index.js";
 import * as budget from "../../src/budget/index.js";
 import * as preview from "../../src/receipt/preview.js";
+import { hashSignature } from "../../src/telemetry/signature.js";
 import { peekQueuedEvents, __resetQueueForTests } from "../../src/telemetry/sender.js";
 import { validateEvent, RECEIPT_SURFACE_VALUES, COUNT_BUCKET_VALUES, ORDINAL_BUCKET_VALUES, type TelemetryEvent } from "../../src/telemetry/schemas.js";
 import { main } from "../../src/cli/index.js";
+import { listFullSessions } from "../../src/parse/load.js";
+import { makeCursorDb } from "../fixtures/cursor/makeCursorDb.js";
 
 const fixturesDir = resolve(__dirname, "..", "fixtures");
 
@@ -128,6 +131,176 @@ describe("SPEC-0043 command-path telemetry", () => {
     const runs = events.filter((e) => e.name === "cli_run");
     expect(runs).toHaveLength(1);
     expect((runs[0].properties as Record<string, unknown>).commandClass).toBe("receipt");
+    expect((runs[0].properties as Record<string, unknown>).agentType).toBe(props.agentType);
+  });
+
+  it("keeps an invalid CSV invocation unattributed", async () => {
+    expect(await main(["--csv=unsupported"])).toBe(1);
+    const events = peekQueuedEvents();
+    expect(events.filter((event) => event.name === "receipt_generated")).toHaveLength(0);
+    expect(events.find((event) => event.name === "cli_run")?.properties).toMatchObject({
+      agentType: "unknown", exitClass: "invalid-arguments",
+    });
+  });
+
+  it("keeps a list of same-agent summaries at unknown", async () => {
+    const summaries = await listFullSessions();
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(new Set(summaries.map((summary) => summary.source))).toEqual(new Set(["opencode"]));
+
+    expect(await main(["--list"])).toBe(0);
+    const runs = peekQueuedEvents().filter((event) => event.name === "cli_run");
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.properties).toMatchObject({ commandClass: "list", agentType: "unknown" });
+  });
+
+  it.each(["claude-code", "codex", "cursor", "gemini", "opencode"] as const)("matches cli_run and receipt_generated for %s through main", async (source) => {
+    const roots = [
+      ["claude-code", join(home, ".claude", "projects", "test", "session.jsonl"), "claude-code/clean-multi-tool-2-models.jsonl"],
+      ["codex", join(home, ".codex", "sessions", "rollout-test.jsonl"), "codex/clean-session.jsonl"],
+      ["gemini", join(home, ".gemini", "tmp", "test", "chats", "session.jsonl"), "gemini/clean-session.jsonl"],
+    ] as const;
+    for (const [agent, target, fixture] of roots) {
+      if (agent !== source) continue;
+      mkdirSync(resolve(target, ".."), { recursive: true });
+      copyFileSync(join(fixturesDir, fixture), target);
+    }
+    const oldCursorPath = process.env.CURSOR_DB_PATH;
+    if (source === "cursor") {
+      const path = join(home, "cursor-state.vscdb");
+      makeCursorDb({ dbPath: path });
+      process.env.CURSOR_DB_PATH = path;
+    }
+    try {
+      const summary = (await listFullSessions()).find((item) => item.source === source);
+      expect(summary, source).toBeDefined();
+      expect(await main([summary!.id])).toBe(0);
+      const events = peekQueuedEvents();
+      const runs = events.filter((event) => event.name === "cli_run");
+      const receipts = events.filter((event) => event.name === "receipt_generated");
+      expect(runs).toHaveLength(1);
+      expect(receipts).toHaveLength(1);
+      expect(runs[0]?.properties.agentType).toBe(source);
+      expect(runs[0]?.properties.agentType).toBe(receipts[0]?.properties.agentType);
+    } finally {
+      if (oldCursorPath === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = oldCursorPath;
+    }
+  });
+
+  it("queues one Gemini parse_failure on a torn full render without changing receipt bytes", async () => {
+    const chatDir = join(home, ".gemini", "tmp", "project", "chats");
+    mkdirSync(chatDir, { recursive: true });
+    const chat = join(chatDir, "torn.jsonl");
+    writeFileSync(chat, `${readFileSync(join(fixturesDir, "gemini", "clean-session.jsonl"), "utf8")}\n{torn\n`);
+    const oldTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const oldConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    const output: string[] = [];
+    process.stdout.write = ((chunk: string | Uint8Array) => { output.push(String(chunk)); return true; }) as typeof process.stdout.write;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      expect(await main([chat])).toBe(0);
+      const enabledBytes = output.join("");
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties).toMatchObject({ agentType: "gemini", cliVersion: expect.any(String),
+        installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: expect.any(Boolean) });
+      __resetQueueForTests();
+      output.length = 0;
+      process.env.AIRECEIPTS_TELEMETRY = "off";
+      expect(await main([chat])).toBe(0);
+      expect(output.join("")).toBe(enabledBytes);
+      __resetQueueForTests();
+      expect(await main(["--list"])).toBe(0);
+      expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
+    } finally {
+      if (oldTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = oldTelemetry;
+      if (oldConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = oldConnection;
+    }
+  });
+
+  it("observes a malformed Claude subagent once on receipt and never on statusline polls", async () => {
+    const parent = join(home, ".claude", "projects", "child-telemetry", "parent.jsonl");
+    const child = join(home, ".claude", "projects", "child-telemetry", "parent", "subagents", "agent-torn.jsonl");
+    mkdirSync(resolve(parent, ".."), { recursive: true });
+    mkdirSync(resolve(child, ".."), { recursive: true });
+    const clean = readFileSync(join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl"), "utf8");
+    writeFileSync(parent, clean);
+    writeFileSync(child, `${clean}\n{torn\n{also-torn\n`);
+    expect(await main([parent])).toBe(0);
+    const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.properties.agentType).toBe("claude-code");
+    expect(failures[0]?.properties.signatureHash).toBe(hashSignature("claude-code:malformed_jsonl"));
+    __resetQueueForTests();
+    expect(await withStdinPayload(JSON.stringify({ transcript_path: parent }), () => main(["statusline"]))).toBe(0);
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
+    __resetQueueForTests();
+    expect(await main(["--list"])).toBe(0);
+    expect(await main(["--list"])).toBe(0); // summary-cache hit, no full child load
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
+  });
+
+  it("observes a malformed Claude child selected by setup exactly once", async () => {
+    const parent = join(home, ".claude", "projects", "setup-child-telemetry", "parent.jsonl");
+    const child = join(home, ".claude", "projects", "setup-child-telemetry", "parent", "subagents", "agent-torn.jsonl");
+    mkdirSync(resolve(parent, ".."), { recursive: true });
+    mkdirSync(resolve(child, ".."), { recursive: true });
+    const clean = readFileSync(join(fixturesDir, "claude-code", "clean-multi-tool-2-models.jsonl"), "utf8");
+    const latest = clean.replaceAll("2026-06-18", "2099-06-18");
+    writeFileSync(parent, latest);
+    writeFileSync(child, `${latest}\n{torn\n`);
+    const previousTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const previousConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      expect(await main(["setup", "--json"])).toBe(0);
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties.agentType).toBe("claude-code");
+      expect(failures[0]?.properties.signatureHash).toBe(hashSignature("claude-code:malformed_jsonl"));
+    } finally {
+      rmSync(resolve(parent, ".."), { recursive: true, force: true });
+      if (previousTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = previousTelemetry;
+      if (previousConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = previousConnection;
+    }
+  });
+
+  it.each(["week", "setup", "check-budget"])("observes one malformed full load through %s", async (command) => {
+    const chatDir = join(home, ".gemini", "tmp", "project", "chats");
+    mkdirSync(chatDir, { recursive: true });
+    const date = new Date().toISOString().slice(0, 10);
+    const chat = join(chatDir, `torn-${command}.jsonl`);
+    const clean = readFileSync(join(fixturesDir, "gemini", "clean-session.jsonl"), "utf8");
+    writeFileSync(chat, `${clean.replaceAll("2026-06-20", date)}\n{torn\n`);
+    if (command === "check-budget") {
+      writeFileSync(join(home, ".aireceipts", "budget.json"), JSON.stringify({ daily: { usd: 1000 } }));
+    }
+    const previousTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const previousConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      const args = command === "check-budget" ? ["--check-budget"] : command === "week" ? ["week", "--since", date] : ["setup", "--json"];
+      expect(await main(args)).toBe(0);
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties.agentType).toBe("gemini");
+      expect(failures[0]?.properties.signatureHash).toBe(hashSignature("gemini:malformed_jsonl"));
+    } finally {
+      rmSync(chat, { force: true });
+      if (command === "check-budget") rmSync(join(home, ".aireceipts", "budget.json"), { force: true });
+      if (previousTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = previousTelemetry;
+      if (previousConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = previousConnection;
+    }
   });
 
   it("a setup run emits cli_run with its own commandClass", async () => {
@@ -215,6 +388,12 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect((await telemetry.readState(home)).statusline).toBeUndefined();
     expect(telemetry.flushTelemetry).not.toHaveBeenCalled();
     expect(peekQueuedEvents().filter((event) => event.name === "cli_run")).toHaveLength(0);
+  });
+
+  it("a statusline poll of a torn transcript queues no parse_failure", async () => {
+    const transcriptPath = join(fixturesDir, "claude-code", "dropped-record-midstream.jsonl");
+    expect(await withStdinPayload(JSON.stringify({ transcript_path: transcriptPath }), () => main(["statusline"]))).toBe(0);
+    expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
   });
 
   it("enabled scoped and unscoped statuslines flush only when the queue has an event", async () => {

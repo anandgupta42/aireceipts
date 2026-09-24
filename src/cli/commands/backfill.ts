@@ -8,6 +8,7 @@
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { listFullSessions, loadSession } from "../../parse/load.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 import type { Session, SessionSummary } from "../../parse/types.js";
 import { MANIFEST_MARKER, buildManifest, planBackfill } from "../../aggregate/backfill.js";
 import { buildFullSessionReceiptModel } from "../../receipt/subagents.js";
@@ -17,6 +18,7 @@ import type { BackfillReport, BackfillReportEntry } from "../../receipt/backfill
 import { noSessionsMessage } from "../common/session.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 /** Injectable seams so tests exercise the full command without real agent dirs. */
 export interface BackfillDeps {
@@ -151,6 +153,7 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
 
   const entries: BackfillReportEntry[] = [];
   const written: string[] = [];
+  const renderedSessions: Session[] = [];
   for (const planned of plan.entries) {
     const base: Omit<BackfillReportEntry, "fileName" | "loadFailed"> = {
       source: planned.summary.source,
@@ -162,13 +165,15 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
       entries.push({ ...base, fileName: null, loadFailed: true });
       continue;
     }
-    const session = await deps.load(planned.summary);
+    const session = await loadObservedSession(ctx, () => deps.load(planned.summary));
     if (session === null) {
       // R7: an explicit load failure — counted, not dropped.
       entries.push({ ...base, fileName: null, loadFailed: true });
       continue;
     }
-    const model = await buildFullSessionReceiptModel(session);
+    renderedSessions.push(session);
+    setAgentType(ctx, sharedAgentType(renderedSessions));
+    const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
     // I5: renderer bytes + trailing newline — what `aireceipts <selector>` writes
     // with colour off and no budget configured.
     await ctx.fs.writeFile(join(options.outDir, planned.fileName), `${renderReceipt(model, { color: false })}\n`);

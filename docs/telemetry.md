@@ -32,7 +32,7 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 | `os` | enum | `darwin` \| `linux` \| `win32` \| `other` | Collapsed from `process.platform`. |
 | `nodeMajor` | integer | e.g. `22` | Major Node version only. |
 | `commandClass` | enum | `backfill` \| `benchmark` \| `check-budget` \| `compare` \| `demo` \| `handoff` \| `help` \| `install-hook` \| `integrations` \| `list` \| `methodology` \| `mini` \| `pr` \| `quota` \| `receipt` \| `setup` \| `stats` \| `statusline` \| `telemetry-show` \| `templates` \| `uninstall-hook` \| `version` \| `week` | Selected command name only; never raw argv or flag values. |
-| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Which agent format was parsed, if known. |
+| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Resolved for receipt, mini, compare, benchmark, handoff, pr, backfill writes, demo, and setup when all loaded sessions have one source. List scans, dry backfill summaries, mixed-agent results, stats, week, quota, help, and version use `unknown`. |
 | `durationBucket` | enum | `<100ms` \| `100-500ms` \| `500ms-2s` \| `2-10s` \| `>10s` | Coarse bucket; never raw milliseconds. |
 | `ok` | boolean | | Whether the command returned exit code 0. |
 | `exitClass` | enum (optional) | `no-session-match` \| `invalid-arguments` \| `budget-exceeded` \| `not-comparable` \| `other-controlled` | Present only when `ok` is false for a controlled return: respectively, no matching session/query; rejected flags or options; `check-budget` over its cap; `compare` lacking two comparable sessions; or another deliberate non-zero outcome. Thrown errors omit this field and emit `cli_error` instead. Never free text. |
@@ -62,13 +62,19 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 
 | Field | Type | Values | Notes |
 |---|---|---|---|
+| `cliVersion` | string | semver | Version of this CLI. |
+| `installHash` | string | 64-hex sha256 or `unavailable` | Salted random install identifier; never the raw id. |
+| `isCI` | boolean | | True when a CI environment marker is present. |
 | `errorClass` | enum | `parse_error` \| `io_error` \| `network_error` \| `validation_error` \| `unknown_error` | Derived from bounded error metadata; never `error.message`. |
 | `command` | enum | `backfill` \| `benchmark` \| `check-budget` \| `compare` \| `demo` \| `handoff` \| `help` \| `install-hook` \| `integrations` \| `list` \| `methodology` \| `mini` \| `pr` \| `quota` \| `receipt` \| `setup` \| `stats` \| `statusline` \| `telemetry-show` \| `templates` \| `uninstall-hook` \| `version` \| `week` | Never raw argv. |
-| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | |
+| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Resolved after a successful session load for single-source commands, including `pr` and backfill. Errors before a load and mixed-source commands use `unknown`. |
 | `inPackage` | boolean | | Whether the top stack frame is inside aireceipts; the stack text never leaves the process. |
 
 ```json
 {
+  "cliVersion": "0.11.0",
+  "installHash": "unavailable",
+  "isCI": false,
   "errorClass": "io_error",
   "command": "receipt",
   "agentType": "unknown",
@@ -76,17 +82,23 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 }
 ```
 
-### `parse_failure` — one per transcript parsing failure
+### `parse_failure` — one per distinct record-level skip shape on a full load
 
 | Field | Type | Values | Notes |
 |---|---|---|---|
-| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | |
-| `adapterVersion` | string | short opaque token | Internal adapter version, not read from a transcript. |
+| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Adapter that skipped a record during a full load. |
+| `cliVersion` | string | semver | Version of this CLI. |
+| `installHash` | string | 64-hex sha256 or `unavailable` | Salted random install identifier; never the raw id. |
+| `isCI` | boolean | | True when a CI environment marker is present. |
+| `adapterVersion` | string | short opaque token | Internal adapter version, not read from a transcript. Built-in adapters report their registered version; an adapter without one reports `0`. |
 | `signatureHash` | string | 64-hex sha256 | Hash of a content-free structural failure descriptor. |
 
 ```json
 {
   "agentType": "codex",
+  "cliVersion": "0.11.0",
+  "installHash": "unavailable",
+  "isCI": false,
   "adapterVersion": "1",
   "signatureHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }

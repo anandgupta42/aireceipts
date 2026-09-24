@@ -7,22 +7,25 @@ import { buildBenchmarkPayload, confirmPrompt, BENCHMARK_UNAVAILABLE_MESSAGE } f
 import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType } from "../agentType.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const { options } = ctx;
-  const resolved = await resolveSelector(options.positional[1]);
+  const resolved = await resolveSelector(options.positional[1], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     ctx.stderr.write(`${resolved.error}\n`);
     setExitClass(ctx, "no-session-match");
     return 1;
   }
-  const session = await loadSession(resolved.summary);
+  const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
   if (!session) {
     ctx.stderr.write(`failed to load session "${resolved.summary.id}"\n`);
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  const model = await buildFullSessionReceiptModel(session);
+  setAgentType(ctx, session.source);
+  const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
   const payload = buildBenchmarkPayload(model, session.totals.turnCount);
 
   if (options.dryRun) {
@@ -32,6 +35,7 @@ async function run(ctx: CommandContext): Promise<number> {
 
   const consented = await confirmPrompt("Send anonymous benchmark data for this session?", ctx.stdin, ctx.stdout);
   if (!consented) {
+    setAgentType(ctx, undefined);
     return 0;
   }
 

@@ -2,6 +2,7 @@ import type { AgentSource, Compaction, ListSessionsOptions, Session, SessionAdap
 import { codexFidelity } from "./fidelity/codex.js";
 import { lazyCodexSummary, nodeDiscoveryFs, type DiscoveryFs } from "./discovery.js";
 import { normalizePricingProvider } from "./provider.js";
+import { validFields, type FieldTable } from "./validate.js";
 import {
   emptyUsage,
   expandHome,
@@ -23,6 +24,37 @@ interface CodexUsage {
   total_tokens?: number;
 }
 
+const contentPartFields: FieldTable = {
+  type: { type: "string" }, text: { type: "string" },
+};
+const itemFields: FieldTable = {
+  type: { type: "string" }, model: { type: "string" }, model_provider: { type: "string" },
+  cwd: { type: "string" }, info: { type: "object" },
+  message: { type: "string" },
+  role: { type: "string" },
+  name: { type: "string" }, call_id: { type: "string" }, id: { type: "string" },
+  arguments: { type: "any" }, input: { type: "any" }, output: { type: "any" },
+  success: { type: "boolean" },
+};
+function validMessageContent(content: unknown): boolean {
+  if (content === undefined || typeof content === "string") return true;
+  if (!Array.isArray(content)) return false;
+  return content.every((part) => typeof part === "string" || (validFields(part, { type: { type: "string" } })
+    && ((part as Record<string, unknown>).type !== "input_text"
+      && (part as Record<string, unknown>).type !== "output_text" || validFields(part, contentPartFields))));
+}
+const recordFields: FieldTable = {
+  type: { type: "string" }, timestamp: { type: "stringOrNumber" },
+  created_at: { type: "stringOrNumber" }, time: { type: "stringOrNumber" },
+  payload: { type: "object" }, item: { type: "object" }, response: { type: "object" },
+  model_provider: { type: "string" },
+};
+const knownTypes = new Set([
+  "session_meta", "turn_context", "event_msg", "response_item", "compacted", "context_compacted",
+  "task_started", "task_complete", "token_count", "user_message", "message", "reasoning",
+  "function_call", "tool_call", "custom_tool_call", "function_call_output", "tool_result", "patch_apply_end",
+]);
+
 interface MappedCodexUsage {
   usage?: TokenUsage;
   malformed: boolean;
@@ -40,10 +72,10 @@ interface MappedCodexUsage {
  * unobserved component is excluded from the observable floor.
  */
 function mapUsage(raw: unknown): MappedCodexUsage {
-  if (raw === undefined || raw === null) {
+  if (raw === undefined) {
     return { malformed: false };
   }
-  if (typeof raw !== "object" || Array.isArray(raw)) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return { malformed: true };
   }
 
@@ -160,7 +192,7 @@ function unwrap(top: Record<string, unknown>): Record<string, unknown> {
   const candidates = ["payload", "item", "response"];
   for (const key of candidates) {
     const v = top[key];
-    if (v && typeof v === "object") {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
       return v as Record<string, unknown>;
     }
   }
@@ -222,6 +254,9 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   let sawCumulative = false;
   let sawLegacyUsage = false;
   let requestEvidenceValid = true;
+  let malformedUsage = false;
+  let nonObjectRecords = 0;
+  let malformedNestedRecords = 0;
   let toolCallCount = 0;
   const turns: Turn[] = [];
   const toolCallById = new Map<string, ToolCall>();
@@ -256,18 +291,33 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   }
 
   const droppedRecords = await readJsonl(filePath, (record) => {
-    if (!record || typeof record !== "object") {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      nonObjectRecords++;
       return;
     }
     const top = record as Record<string, unknown>;
+    const item = unwrap(top);
+    if (typeof top.type === "string" && !knownTypes.has(top.type)
+      && (typeof item.type !== "string" || !knownTypes.has(item.type))) return;
+    if (typeof item.type === "string" && !knownTypes.has(item.type)) return;
+    if ((top.type !== undefined && typeof top.type !== "string")
+      || (item.type !== undefined && typeof item.type !== "string")
+      || ["payload", "item", "response"].some((key) => top[key] !== undefined
+        && (!top[key] || typeof top[key] !== "object" || Array.isArray(top[key])))) {
+      malformedNestedRecords++;
+      return;
+    }
+    if (!validFields(top, recordFields) || !validFields(item, itemFields)
+      || ((item.type ?? top.type) === "message" && !validMessageContent(item.content))) malformedNestedRecords++;
+    if (["payload", "item", "response"].some((key) => Object.prototype.hasOwnProperty.call(top, key)
+      && top[key] !== null && (typeof top[key] !== "object" || Array.isArray(top[key])))) malformedNestedRecords++;
     const ts = parseTimestamp(top.timestamp ?? top.created_at ?? top.time);
     if (ts !== undefined) {
       startedAt = startedAt === undefined ? ts : Math.min(startedAt, ts);
       endedAt = endedAt === undefined ? ts : Math.max(endedAt, ts);
     }
 
-    const item = unwrap(top);
-    const type = String(item.type ?? top.type ?? "");
+    const type = item.type ?? top.type ?? "";
 
     // SPEC-0040 R1/R2 — `turnIndex` is the index the NEXT assistant turn will
     // receive (`turns.length` — an open turn is already in `turns`, so this is
@@ -302,6 +352,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (typeof item.model === "string") {
       currentModel = item.model;
       model ??= currentModel;
+    } else if (item.model !== undefined) {
+      currentModel = "";
     }
     // R1a: first-seen cwd (attribution-only), reported on session_meta/turn_context.
     if (cwd === undefined && typeof item.cwd === "string" && item.cwd) {
@@ -311,7 +363,9 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     // Cumulative-usage envelopes (Codex ≥0.137): `total_token_usage` is a
     // last-wins snapshot that already sums prior turns; `last_token_usage` is
     // the delta billed to the turn that just completed.
-    const info = item.info as Record<string, unknown> | undefined;
+    const info = item.info && typeof item.info === "object" && !Array.isArray(item.info)
+      ? item.info as Record<string, unknown> : undefined;
+    if (item.info !== undefined && !info) malformedNestedRecords++;
     if (info) {
       const hasTotalUsage = Object.prototype.hasOwnProperty.call(info, "total_token_usage");
       const hasReportedDelta = Object.prototype.hasOwnProperty.call(info, "last_token_usage");
@@ -319,6 +373,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       const mappedReportedDelta = mapUsage(info.last_token_usage);
       if (mappedTotal.malformed || mappedReportedDelta.malformed) {
         requestEvidenceValid = false;
+        malformedUsage = true;
       }
       const total = mappedTotal.usage;
       const reportedDelta = mappedReportedDelta.usage;
@@ -407,6 +462,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       const mappedPerMsg = mapUsage(item.usage ?? top.usage);
       if (mappedPerMsg.malformed) {
         requestEvidenceValid = false;
+        malformedUsage = true;
       }
       const perMsg = mappedPerMsg.usage;
       if (perMsg && perMsg.total > 0) {
@@ -437,9 +493,19 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       current = null; // a real user message ends the prior turn
       return;
     }
+    if (type === "user_message") {
+      malformedNestedRecords++;
+      return;
+    }
 
     if (type === "message") {
       const role = item.role;
+      if (role !== "user" && role !== "assistant") malformedNestedRecords++;
+      if (item.content !== undefined && typeof item.content !== "string" && !Array.isArray(item.content)) malformedNestedRecords++;
+      if (Array.isArray(item.content) && item.content.some((part) => part === null
+        || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part)))
+        || (typeof part === "object" && !Array.isArray(part)
+          && (part.type === "input_text" || part.type === "output_text") && typeof part.text !== "string"))) malformedNestedRecords++;
       if (role === "user") {
         firstUserText ??= extractText(item.content);
         current = null;
@@ -453,6 +519,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
 
     if (type === "function_call" || type === "tool_call" || type === "custom_tool_call") {
+      if ((item.name !== undefined && typeof item.name !== "string")
+        || (item.call_id !== undefined && typeof item.call_id !== "string")) malformedNestedRecords++;
       toolCallCount++;
       const callId = String(item.call_id ?? item.id ?? "");
       const name = sanitizeText(String(item.name ?? "tool"));
@@ -552,15 +620,17 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         turns,
         compactions,
         droppedRecords,
+        parseFailureShapes: [...(droppedRecords + nonObjectRecords + malformedNestedRecords > 0 ? ["codex:malformed_jsonl"] : []), ...(malformedUsage ? ["codex:malformed_usage"] : [])],
         ...(usageReconciliationFailed ? { usageReconciliationFailed: true as const } : {}),
         ...(usageReconciliationFailed && totalUsage.total > 0 ? { unattributedUsage: totalUsage } : {}),
       }
-    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0 };
+    : { summary, turns: [] as Turn[], compactions: [] as Compaction[], droppedRecords: 0, parseFailureShapes: [] as string[], unattributedUsage: undefined, usageReconciliationFailed: undefined };
 }
 
 const ROOT = "~/.codex/sessions";
 
 export class CodexAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "codex";
   readonly label = "Codex";
   readonly vendor = "openai";
@@ -608,16 +678,17 @@ export class CodexAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, compactions, droppedRecords, usageReconciliationFailed, unattributedUsage } = await parseTranscript(id, true);
+      const { summary, turns, compactions, droppedRecords, parseFailureShapes, usageReconciliationFailed, unattributedUsage } = await parseTranscript(id, true);
       // SPEC-0040 R5 — compactions absent (not `[]`) when none; SPEC-0044 B3 —
       // droppedRecords present only when > 0 (absent → clean).
       const dropped = droppedRecords > 0 ? { droppedRecords } : {};
+      const failures = parseFailureShapes.length > 0 ? { parseFailureShapes } : {};
       const reconciliation = usageReconciliationFailed
         ? { usageReconciliationFailed, ...(unattributedUsage ? { unattributedUsage } : {}) }
         : {};
       return compactions.length > 0
-        ? { ...summary, turns, compactions, ...dropped, ...reconciliation }
-        : { ...summary, turns, ...dropped, ...reconciliation };
+        ? { ...summary, turns, compactions, ...dropped, ...failures, ...reconciliation }
+        : { ...summary, turns, ...dropped, ...failures, ...reconciliation };
     } catch {
       return null;
     }

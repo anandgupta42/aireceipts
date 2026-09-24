@@ -1,0 +1,395 @@
+[
+  {
+    "adapter": "claude-code",
+    "path": "full-read JSONL line fails JSON.parse and readJsonl skips it",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "valid JSON non-object line is skipped during full load",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "assistant or user record has a non-object message and is skipped",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "assistant usage has safe typed fields but a contradictory component sum",
+    "shape": "claude-code:malformed_usage"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "assistant usage component has the wrong type; valid components remain unpriced",
+    "shape": "claude-code:malformed_usage"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "file absent before full load",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "full read throws and loadSession returns null",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "codex",
+    "path": "full-read JSONL line fails JSON.parse and readJsonl skips it",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "valid JSON non-object line is skipped during full load",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "total, reported delta, or per-message usage has safe typed fields but contradictory totals",
+    "shape": "codex:malformed_usage"
+  },
+  {
+    "adapter": "codex",
+    "path": "file absent before full load",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "codex",
+    "path": "full read throws and loadSession returns null",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "gemini",
+    "path": "full-read JSONL line fails JSON.parse and readJsonl skips it",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "valid JSON non-object line is skipped during full load",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "checkpoint message entry is non-object or lacks a string id",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "direct user or gemini message lacks a string id",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "file absent before full load",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "gemini",
+    "path": "full read throws and loadSession returns null",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "opencode",
+    "path": "current message row has malformed JSON",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "legacy message row has malformed JSON",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "legacy part row has malformed JSON",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "assistant usage tokens are malformed",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "session aggregate usage is malformed",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "database absent or cannot open",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "opencode",
+    "path": "selected session row absent",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "opencode",
+    "path": "full load throws and returns null",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "cursor",
+    "path": "ordered bubble row is absent",
+    "shape": "cursor:missing_bubble"
+  },
+  {
+    "adapter": "cursor",
+    "path": "ordered bubble row contains malformed JSON",
+    "shape": "cursor:missing_bubble"
+  },
+  {
+    "adapter": "cursor",
+    "path": "ordered bubble row contains valid non-object JSON",
+    "shape": "cursor:missing_bubble"
+  },
+  {
+    "adapter": "cursor",
+    "path": "invalid composer id",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "cursor",
+    "path": "database unavailable",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "cursor",
+    "path": "composer row absent or malformed",
+    "shape": "not measurable by this spec",
+    "reason": "Full load returns no Session to carry a shape."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "assistant or user content has a non-object array part or an unsupported content type",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "claude-code",
+    "path": "isMeta and command echo records are skipped",
+    "shape": "not measurable by this spec",
+    "reason": "Intentional transcript control records carry no user turn or billed usage."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "fork-context-ref discards inherited history",
+    "shape": "not measurable by this spec",
+    "reason": "Intentional fork boundary removes parent history, not a parse failure."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "assistant duplicate id and tool-use id are merged",
+    "shape": "not measurable by this spec",
+    "reason": "Intentional deduplication retains one observable response or tool call."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "user tool result with no matching tool call is ignored",
+    "shape": "not measurable by this spec",
+    "reason": "The referenced call is absent from the selected transcript."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "unsupported record type and absent optional metadata fields are ignored",
+    "shape": "not measurable by this spec",
+    "reason": "Vendor extension or optional metadata does not identify a malformed assistant or user turn."
+  },
+  {
+    "adapter": "codex",
+    "path": "payload, item, response, or info has an unsupported nesting type",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "user_message has non-string message or message has an unknown role",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "known input_text or output_text content part has non-string text",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "malformed tool argument JSON is retained as raw text",
+    "shape": "not measurable by this spec",
+    "reason": "The raw argument remains available, so no evidence is dropped."
+  },
+  {
+    "adapter": "codex",
+    "path": "tool result has no matching call id",
+    "shape": "not measurable by this spec",
+    "reason": "The referenced call is absent from the selected rollout."
+  },
+  {
+    "adapter": "codex",
+    "path": "duplicate cumulative usage and compaction markers are merged",
+    "shape": "not measurable by this spec",
+    "reason": "Intentional deduplication preserves the authoritative cumulative snapshot."
+  },
+  {
+    "adapter": "codex",
+    "path": "unknown event type or absent optional content is ignored",
+    "shape": "not measurable by this spec",
+    "reason": "Vendor extension or optional field provides no known turn semantics."
+  },
+  {
+    "adapter": "gemini",
+    "path": "checkpoint wrapper or messages field has an unsupported type",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "message token components, tool calls, or content parts have unsupported nesting; valid usage remains",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "rewind removes messages and duplicate ids replace prior messages",
+    "shape": "not measurable by this spec",
+    "reason": "Intentional transcript mutation avoids double counting."
+  },
+  {
+    "adapter": "gemini",
+    "path": "unknown record type or absent optional metadata is ignored",
+    "shape": "not measurable by this spec",
+    "reason": "Vendor extension or optional field provides no known message semantics."
+  },
+  {
+    "adapter": "opencode",
+    "path": "current assistant content parts or time object have unsupported nesting; the assistant usage remains",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "legacy message time or part state/time have unsupported nesting",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "message row has unsupported role or type",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "current or legacy message row has torn JSON but the session remains discoverable",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "opencode",
+    "path": "valid non-tool part or non-assistant message is ignored",
+    "shape": "not measurable by this spec",
+    "reason": "Expected non-billed content has no tool or assistant usage to report."
+  },
+  {
+    "adapter": "opencode",
+    "path": "malformed tool input JSON is retained as raw text",
+    "shape": "not measurable by this spec",
+    "reason": "The raw input remains available, so no evidence is dropped."
+  },
+  {
+    "adapter": "opencode",
+    "path": "full list query throws or full summary falls back after a null load",
+    "shape": "not measurable by this spec",
+    "reason": "No full Session is returned to carry a shape."
+  },
+  {
+    "adapter": "cursor",
+    "path": "bubble row has malformed key or JSON but is not referenced by headers",
+    "shape": "cursor:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "header, toolFormerData, or tokenCount has unsupported nesting or type",
+    "shape": "cursor:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "user bubble is used as a turn boundary",
+    "shape": "not measurable by this spec",
+    "reason": "Expected user turn has no assistant usage to report."
+  },
+  {
+    "adapter": "cursor",
+    "path": "tool argument JSON is retained as raw text on parse failure",
+    "shape": "not measurable by this spec",
+    "reason": "The raw argument remains available, so no evidence is dropped."
+  },
+  {
+    "adapter": "cursor",
+    "path": "empty draft composer is omitted from list",
+    "shape": "not measurable by this spec",
+    "reason": "Draft has no turns and is never selected for a full load."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "isMeta or command echo record has a malformed content part before the turn filter",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "rewind marker has a non-string target or a record type has a non-string value",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "opencode",
+    "path": "tableExists or hasCurrentRows schema probe catches a SQL error and selects no schema or the legacy fallback",
+    "shape": "not measurable by this spec",
+    "reason": "The probe returns only a boolean, so table absence and SQL failure cannot be distinguished on a returned Session."
+  },
+  {
+    "adapter": "opencode",
+    "path": "dbPaths directory read catch or sessionIds invalid id filtering omits a database or session",
+    "shape": "not measurable by this spec",
+    "reason": "The omitted database or id yields no full Session to carry a shape."
+  },
+  {
+    "adapter": "cursor",
+    "path": "listSessions skips malformed composer JSON or empty drafts",
+    "shape": "not measurable by this spec",
+    "reason": "These rows never reach a full load and cannot carry a Session shape."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "known record discriminator or message identity has the wrong type and is skipped; a wrong typed content part is skipped alone",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "known wrapper or model identity has the wrong type and is skipped; a wrong typed content part retains independent usage",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "known message identity has the wrong type and is skipped; a wrong typed content, tool, or token component retains independent usage",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "opencode",
+    "path": "known current or legacy message identity has the wrong type and is skipped; a wrong typed tool or usage component retains independent usage",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "known composer, header, bubble, or toolFormerData field has the wrong type; valid session usage remains",
+    "shape": "cursor:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "composer JSON is a scalar or array on full load",
+    "shape": "not measurable by this spec",
+    "reason": "A non-object composer returns null, so no Session exists to carry a shape."
+  }
+]

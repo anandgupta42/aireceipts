@@ -14,6 +14,7 @@ import type {
   Turn,
 } from "./types.js";
 import { addUsage, emptyUsage, parseTimestamp, pathExists, safeTokenSum, truncate, withTotal, sanitizeText } from "./util.js";
+import { validFields, type FieldTable } from "./validate.js";
 
 /**
  * opencode stores sessions in SQLite DBs under `~/.local/share/opencode`.
@@ -80,6 +81,37 @@ interface RawPartData {
   };
 }
 
+const timeFields: FieldTable = {
+  created: { type: "stringOrNumber" }, completed: { type: "stringOrNumber" },
+  ran: { type: "stringOrNumber" }, start: { type: "stringOrNumber" }, end: { type: "stringOrNumber" },
+};
+const tokenFields: FieldTable = {
+  input: { type: "integer" }, output: { type: "integer" }, reasoning: { type: "integer" },
+  cache: { type: "object", fields: { read: { type: "integer" }, write: { type: "integer" } } },
+};
+const partFields: FieldTable = {
+  type: { type: "string" }, tool: { type: "string" }, name: { type: "string" },
+  time: { type: "object", fields: timeFields },
+  state: { type: "object", fields: {
+    status: { type: "string" }, input: { type: "any" }, result: { type: "any" },
+    output: { type: "any" }, error: { type: "any" }, time: { type: "object", fields: timeFields },
+  } },
+};
+const messageFields: FieldTable = {
+  role: { type: "string" }, text: { type: "string" },
+  model: { type: "stringOrObject", fields: {
+    id: { type: "string" }, providerID: { type: "string" }, variant: { type: "string" },
+  } },
+  modelID: { type: "string" }, providerID: { type: "string" },
+  tokens: { type: "object", fields: tokenFields },
+  content: { type: "array", elements: { type: "object" } },
+  time: { type: "object", fields: timeFields },
+};
+function validPart(part: unknown): boolean {
+  return validFields(part, { type: { type: "string" } })
+    && ((part as RawPartData).type !== "tool" || validFields(part, partFields));
+}
+
 interface SessionRow {
   id: string;
   title?: string;
@@ -140,7 +172,7 @@ function parseJsonObject<T>(value: unknown): T | null {
   }
   try {
     const parsed = JSON.parse(value) as unknown;
-    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as T) : null;
   } catch {
     return null;
   }
@@ -520,6 +552,7 @@ async function openOpencodeDb(dbPath: string): Promise<SqliteReader | null> {
 }
 
 function currentSummarySql(where = ""): string {
+  const messageData = "CASE WHEN json_valid(m.data) THEN m.data ELSE '{}' END";
   return `
     SELECT
       s.id,
@@ -538,44 +571,45 @@ function currentSummarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM session_message m
-        WHERE m.session_id = s.id AND m.type = 'assistant'
+        WHERE m.session_id = s.id AND m.type = 'assistant' AND json_valid(m.data)
       ) AS turn_count,
       (
         SELECT COUNT(*)
-        FROM session_message m, json_each(m.data, '$.content') c
-        WHERE m.session_id = s.id AND m.type = 'assistant' AND json_extract(c.value, '$.type') = 'tool'
+        FROM session_message m, json_each(${messageData}, '$.content') c
+        WHERE m.session_id = s.id AND m.type = 'assistant'
+          AND CASE WHEN c.type = 'object' THEN json_extract(c.value, '$.type') = 'tool' ELSE 0 END
       ) AS tool_count,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.input'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.input'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_input,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.output'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.output'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_output,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.reasoning'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.reasoning'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_reasoning,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.read'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.read'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_cache_read,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.write'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.write'), 0))`)}
         FROM session_message m
         WHERE m.session_id = s.id AND m.type = 'assistant'
       ) AS message_cache_write,
       (
-        SELECT COALESCE(json_extract(m.data, '$.model.id'), json_extract(m.data, '$.modelID'), json_extract(m.data, '$.model'))
+        SELECT COALESCE(json_extract(${messageData}, '$.model.id'), json_extract(${messageData}, '$.modelID'), json_extract(${messageData}, '$.model'))
         FROM session_message m
         WHERE m.session_id = s.id
           AND m.type = 'assistant'
-          AND COALESCE(json_extract(m.data, '$.model.id'), json_extract(m.data, '$.modelID'), json_extract(m.data, '$.model')) IS NOT NULL
+          AND COALESCE(json_extract(${messageData}, '$.model.id'), json_extract(${messageData}, '$.modelID'), json_extract(${messageData}, '$.model')) IS NOT NULL
         ORDER BY m.seq
         LIMIT 1
       ) AS first_model
@@ -586,6 +620,7 @@ function currentSummarySql(where = ""): string {
 }
 
 function summarySql(where = ""): string {
+  const messageData = "CASE WHEN json_valid(m.data) THEN m.data ELSE '{}' END";
   return `
     SELECT
       s.id,
@@ -604,44 +639,44 @@ function summarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS turn_count,
       (
         SELECT COUNT(*)
         FROM part p
-        WHERE p.session_id = s.id AND json_extract(p.data, '$.type') = 'tool'
+        WHERE p.session_id = s.id AND CASE WHEN json_valid(p.data) THEN json_extract(p.data, '$.type') = 'tool' ELSE 0 END
       ) AS tool_count,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.input'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.input'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_input,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.output'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.output'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_output,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.reasoning'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.reasoning'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_reasoning,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.read'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.read'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_cache_read,
       (
-        SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.cache.write'), 0))")}
+        SELECT ${safeSqlInteger(`SUM(COALESCE(json_extract(${messageData}, '$.tokens.cache.write'), 0))`)}
         FROM message m
-        WHERE m.session_id = s.id AND json_extract(m.data, '$.role') = 'assistant'
+        WHERE m.session_id = s.id AND json_extract(${messageData}, '$.role') = 'assistant'
       ) AS message_cache_write,
       (
-        SELECT json_extract(m.data, '$.modelID')
+        SELECT json_extract(${messageData}, '$.modelID')
         FROM message m
         WHERE m.session_id = s.id
-          AND json_extract(m.data, '$.role') = 'assistant'
-          AND json_extract(m.data, '$.modelID') IS NOT NULL
+          AND json_extract(${messageData}, '$.role') = 'assistant'
+          AND json_extract(${messageData}, '$.modelID') IS NOT NULL
         ORDER BY m.time_created, m.id
         LIMIT 1
       ) AS first_model
@@ -652,6 +687,7 @@ function summarySql(where = ""): string {
 }
 
 export class OpenCodeAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "opencode";
   readonly label = "opencode";
 
@@ -756,6 +792,7 @@ export class OpenCodeAdapter implements SessionAdapter {
     let endedAt: number | undefined;
     let droppedRecords = 0;
     let malformedMessageUsage = false;
+    let malformedNestedRecord = false;
 
     for (const row of messages) {
       const msg = parseJsonObject<RawMessageData>(row.data);
@@ -765,6 +802,10 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
+      if (msg.role !== undefined && typeof msg.role !== "string") {
+        malformedNestedRecord = true;
+      }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) malformedNestedRecord = true;
       if (row.type === "user") {
         if (firstUserText === undefined && typeof msg.text === "string") {
           firstUserText = msg.text;
@@ -772,8 +813,12 @@ export class OpenCodeAdapter implements SessionAdapter {
         continue;
       }
       if (row.type !== "assistant") {
+        if (row.type !== "user") malformedNestedRecord = true;
         continue;
       }
+      if (msg.content !== undefined && (!Array.isArray(msg.content) || msg.content.some((part) =>
+        !part || typeof part !== "object" || Array.isArray(part)))) malformedNestedRecord = true;
+      if (msg.time !== undefined && (!msg.time || typeof msg.time !== "object" || Array.isArray(msg.time))) malformedNestedRecord = true;
       const ts = timestampOf(msg.time?.created, row.time_created);
       const done = timestampOf(msg.time?.completed, row.time_updated, ts);
       if (ts !== undefined) {
@@ -800,7 +845,7 @@ export class OpenCodeAdapter implements SessionAdapter {
         usage,
         outputTokens: usage?.output,
         ...(mappedUsage.malformed ? { pricingUnits: [] } : {}),
-        toolCalls: toolsFromContent(msg.content),
+        toolCalls: toolsFromContent(Array.isArray(msg.content) ? msg.content.filter(validPart) : undefined),
       });
     }
 
@@ -829,6 +874,7 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
       ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 || malformedNestedRecord ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 
@@ -848,8 +894,16 @@ export class OpenCodeAdapter implements SessionAdapter {
     ) as unknown as PartRow[];
 
     const partsByMessage = new Map<string, ToolCall[]>();
+    let malformedPart = false;
     for (const row of parts) {
       const parsed = parseJsonObject<RawPartData>(row.data);
+      if (!parsed) malformedPart = true;
+      if (parsed && !validPart(parsed)) {
+        malformedPart = true;
+        continue;
+      }
+      if (parsed && ((parsed.state !== undefined && (!parsed.state || typeof parsed.state !== "object" || Array.isArray(parsed.state)))
+        || (parsed.time !== undefined && (!parsed.time || typeof parsed.time !== "object" || Array.isArray(parsed.time))))) malformedPart = true;
       const call = parsed ? toToolCall(parsed) : null;
       if (!call) {
         continue;
@@ -865,6 +919,7 @@ export class OpenCodeAdapter implements SessionAdapter {
     let endedAt: number | undefined;
     let droppedRecords = 0;
     let malformedMessageUsage = false;
+    let malformedNestedRecord = false;
 
     for (const row of messages) {
       const msg = parseJsonObject<RawMessageData>(row.data);
@@ -874,9 +929,16 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
-      if (msg.role !== "assistant") {
+      if (msg.role !== undefined && typeof msg.role !== "string") {
+        malformedNestedRecord = true;
         continue;
       }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) malformedNestedRecord = true;
+      if (msg.role !== "assistant") {
+        if (msg.role !== "user") malformedNestedRecord = true;
+        continue;
+      }
+      if (msg.time !== undefined && (!msg.time || typeof msg.time !== "object" || Array.isArray(msg.time))) malformedNestedRecord = true;
       const ts = timestampOf(msg.time?.created, row.time_created);
       const done = timestampOf(msg.time?.completed, row.time_updated, ts);
       if (ts !== undefined) {
@@ -931,6 +993,7 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
       ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 || malformedPart || malformedNestedRecord ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 

@@ -3,6 +3,7 @@
 // fallthrough when no other command's selector fires (byte-identical to the old
 // parser's final `return { command: "receipt" }`).
 import { loadSession } from "../../index.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 import { evaluateBudget } from "../../budget/index.js";
 import { getExporter } from "../../receipt/exporters.js";
 import { buildFullSessionReceiptModel } from "../../receipt/subagents.js";
@@ -16,6 +17,7 @@ import { svgOutOf, writeSvg, writePng } from "../common/output.js";
 import { receiptTelemetryFromModels, templateTelemetryValue } from "../common/telemetry.js";
 import type { ExportFormatValue } from "../../telemetry/schemas.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType } from "../agentType.js";
 
 const CSV_MODE_HINT = "use --csv=session or --csv=tool";
 
@@ -51,7 +53,13 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "invalid-arguments");
     return 1;
   }
-  const resolved = await resolveSelector(options.positional[0]);
+  const csvExporter = options.csvMode === undefined ? undefined : getExporter(`csv-${options.csvMode}`);
+  if (options.csvMode !== undefined && !csvExporter) {
+    ctx.stderr.write(`unknown --csv mode "${options.csvMode}" (${CSV_MODE_HINT})\n`);
+    setExitClass(ctx, "invalid-arguments");
+    return 1;
+  }
+  const resolved = await resolveSelector(options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     if ((resolved.kind === "no-session-data" || resolved.kind === "no-sessions") && isDefaultHumanTextReceipt(ctx)) {
       ctx.stdout.write(`${resolved.error}\n`);
@@ -63,14 +71,15 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   // SPEC-0045 R3 — the no-selector default already loaded a readable session
   // (skipping any unreadable newest); reuse it, no second parse.
-  const session = resolved.session ?? (await loadSession(resolved.summary));
+  const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
   if (!session) {
     ctx.stderr.write(`failed to load session "${resolved.summary.id}"\n`);
     setExitClass(ctx, "other-controlled");
     return 1;
   }
+  setAgentType(ctx, session.source);
   // SPEC-0061 — fold the session's subagents into the model before any format renders.
-  const model = await buildFullSessionReceiptModel(session);
+  const model = await buildFullSessionReceiptModel(session, observedChildRollupDeps(ctx));
   const svgOut = svgOutOf(options);
   if (svgOut.svg) {
     await writeSvg(ctx, renderReceiptSvg(model, { theme: svgOut.theme, template, details: options.details }), svgOut.output ?? "receipt.svg");
@@ -108,14 +117,8 @@ async function run(ctx: CommandContext): Promise<number> {
     return 0;
   }
   if (options.csvMode !== undefined) {
-    const exporter = getExporter(`csv-${options.csvMode}`);
-    if (!exporter) {
-      ctx.stderr.write(`unknown --csv mode "${options.csvMode}" (${CSV_MODE_HINT})\n`);
-      setExitClass(ctx, "invalid-arguments");
-      return 1;
-    }
     // CSV is a data contract — budget advisory lines never ride along (SPEC-0009 x SPEC-0011).
-    ctx.stdout.write(`${exporter.export(model)}\n`);
+    ctx.stdout.write(`${csvExporter!.export(model)}\n`);
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({
         surface: "receipt",
@@ -135,7 +138,8 @@ async function run(ctx: CommandContext): Promise<number> {
   // R1/R5: absent or malformed budget.json → `lines` is [] → output below is
   // byte-identical to pre-SPEC-0009 (goldens gate this). Malformed only adds
   // a stderr note, never a rendered line.
-  const budget = await evaluateBudget(ctx.now());
+  const budget = await evaluateBudget(ctx.now(), undefined, undefined,
+    (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if (budget.status === "invalid") {
     ctx.stderr.write(`budget.json ignored: ${budget.invalidReason}\n`);
   }

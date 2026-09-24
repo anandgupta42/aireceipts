@@ -10,6 +10,7 @@ import {
   buildFullSessionReceiptWithCoverage,
   type FullSessionScope,
   type SubagentRollupStatus,
+  type SubagentRollupDeps,
 } from "../receipt/subagents.js";
 import { STANDARD_API_LOWER_BOUND_SEMANTICS } from "../receipt/costEstimate.js";
 import { INTEGRATION_RECIPES, type IntegrationRecipe } from "./integrations.js";
@@ -112,7 +113,7 @@ function offers(): SetupOffer[] {
   }));
 }
 
-export async function buildSetupReport(now: number = Date.now()): Promise<SetupReport> {
+export async function buildSetupReport(now: number, load: typeof loadSession, childRollupDeps: Pick<SubagentRollupDeps, "load">): Promise<SetupReport> {
   const summaries = await listFullSessions();
   const agents = agentRows(summaries);
 
@@ -128,8 +129,8 @@ export async function buildSetupReport(now: number = Date.now()): Promise<SetupR
   }
 
   const latestSummary = summaries[0];
-  const [latestSession, weekDigest] = await Promise.all([loadSession(latestSummary), buildWeekDigest({ now })]);
-  const latestReceipt = latestSession ? await buildFullSessionReceiptWithCoverage(latestSession) : null;
+  const [latestSession, weekDigest] = await Promise.all([load(latestSummary), buildWeekDigest({ now, loadSession: load })]);
+  const latestReceipt = latestSession ? await buildFullSessionReceiptWithCoverage(latestSession, childRollupDeps) : null;
   const latest: SetupLatest | null =
     latestSession && latestReceipt
       ? {

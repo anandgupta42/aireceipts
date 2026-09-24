@@ -4,6 +4,8 @@ import { buildWeekDigest } from "../../aggregate/week.js";
 import { renderWeek, weekToJson } from "../../receipt/week.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
+import { loadObservedSession } from "../loadedSession.js";
+import { loadSession } from "../../parse/load.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const { options } = ctx;
@@ -17,7 +19,8 @@ async function run(ctx: CommandContext): Promise<number> {
     }
     sinceMs = parsed;
   }
-  const digest = await buildWeekDigest({ sinceMs, byProject: options.byProject });
+  const digest = await buildWeekDigest({ sinceMs, byProject: options.byProject,
+    loadSession: (summary) => loadObservedSession(ctx, () => loadSession(summary)) });
   if (options.json) {
     ctx.stdout.write(`${JSON.stringify(weekToJson(digest), null, 2)}\n`);
     ctx.telemetry.recordExportGenerated({ surface: "week", format: "json", wroteFile: false, result: "success" });

@@ -247,6 +247,7 @@ describe("Codex cumulative usage envelopes", () => {
     ]);
 
     expect(session.usageReconciliationFailed).toBe(true);
+    expect(session.parseFailureShapes).toContain("codex:malformed_usage");
     expect(session.totals.tokens).toMatchObject({ input: 150, output: 20, cacheRead: 50, total: 220 });
     expect(session.unattributedUsage).toEqual(session.totals.tokens);
     expect(session.turns.every((turn) => turn.usage === undefined && turn.pricingUnits === undefined)).toBe(true);
@@ -309,6 +310,7 @@ describe("Codex cumulative usage envelopes", () => {
     ]);
 
     expect(session.droppedRecords).toBe(1);
+    expect(session.parseFailureShapes).toContain("codex:malformed_jsonl");
     expect(session.usageReconciliationFailed).toBe(true);
     expect(session.unattributedUsage?.total).toBe(402_000);
     expect((await buildReceiptModel(session)).totalUsd).toBeNull();
@@ -350,11 +352,24 @@ describe("Codex cumulative usage envelopes", () => {
         envelope(raw(300, 70, 30), malformedLast, 2),
       ]);
 
-      expect(session.usageReconciliationFailed, field).toBe(true);
-      expect(session.unattributedUsage, field).toEqual(session.totals.tokens);
-      expect(session.turns.every((turn) => turn.usage === undefined && turn.pricingUnits === undefined), field).toBe(true);
-      expect((await buildReceiptModel(session)).totalUsd, field).toBeNull();
+      expect(session.parseFailureShapes, field).toEqual(["codex:malformed_usage"]);
+      expect(session.droppedRecords, field).toBeUndefined();
+      expect(session.turns.length, field).toBe(1);
     }
+  });
+
+  it.each(["bad", null, [], 1.5])("assigns only malformed_usage for a wrong-typed component %s", async (value) => {
+    const session = await load([envelope(raw(200, 50, 20), { ...raw(200, 50, 20), input_tokens: value }, 1)]);
+    expect(session.parseFailureShapes).toEqual(["codex:malformed_usage"]);
+  });
+
+  it("uses a recognized nested token event under a future wrapper", async () => {
+    const standard = envelope(raw(200, 50, 20), raw(200, 50, 20), 1) as Record<string, unknown>;
+    const future = { ...standard, type: "future_wrapper" };
+    const [expected, actual] = await Promise.all([load([standard]), load([future])]);
+    expect(actual.totals.tokens).toEqual(expected.totals.tokens);
+    expect(actual.turns).toEqual(expected.turns);
+    expect(actual.parseFailureShapes).toEqual(expected.parseFailureShapes);
   });
 
   it("attributes each usage delta to the model active for that turn", async () => {
@@ -436,9 +451,13 @@ describe("Codex cumulative usage envelopes", () => {
           output: fc.integer({ min: 0, max: 100_000 }),
         }),
         fc.integer({ min: 1, max: 8 }),
-        async ({ input, cached, output }, copies) => {
+        fc.boolean(),
+        async ({ input, cached, output }, copies, futureWrapper) => {
           const snapshot = raw(input + cached, cached, output);
-          const session = await load(Array.from({ length: copies }, (_, i) => envelope(snapshot, snapshot, i)));
+          const session = await load(Array.from({ length: copies }, (_, i) => ({
+            ...(envelope(snapshot, snapshot, i) as Record<string, unknown>),
+            ...(futureWrapper ? { type: "future_wrapper" } : {}),
+          })));
 
           expect(summedTurns(session)).toMatchObject({ input, cacheRead: cached, output, total: input + cached + output });
           expect(session.totals.tokens).toEqual(summedTurns(session));

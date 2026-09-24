@@ -116,17 +116,17 @@ describe("claude-code adapter: one observable response group = one turn (message
     ["fractional", { ...USAGE, cache_creation_input_tokens: 1.5 }, 1_150],
     ["non-safe", { ...USAGE, input_tokens: Number.MAX_SAFE_INTEGER + 1 }, 1_250],
     ["malformed cache split", { ...USAGE, cache_creation: null }, 1_350],
-  ] as const)("keeps valid components but suppresses dollars for %s Claude usage", async (_label, usage, safeTotal) => {
+  ] as const)("keeps valid components of %s Claude usage", async (_label, usage, total) => {
     const session = await loadFixture([
       assistantRecord("a-1", "10:00:00.000", "msg_malformed", [{ type: "text", text: "x" }], usage),
     ]);
 
-    expect(session.turns[0].usage?.total).toBe(safeTotal);
+    expect(session.turns[0].usage?.total).toBe(total);
     expect(session.turns[0].pricingUnits).toEqual([]);
     expect(session.droppedRecords).toBe(1);
+    expect(session.parseFailureShapes).toContain("claude-code:malformed_usage");
     const receipt = await buildReceiptModel(session);
     expect(receipt.totalUsd).toBeNull();
-    expect(receipt.caveats).toContainEqual(expect.objectContaining({ kind: "dropped-transcript-records" }));
   });
 
   it("fails closed when individually safe Claude counters overflow their total", async () => {

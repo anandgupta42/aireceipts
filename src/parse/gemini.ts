@@ -2,6 +2,7 @@ import { sep } from "node:path";
 import type { AgentSource, ListSessionsOptions, Session, SessionAdapter, SessionSummary, TokenUsage, ToolCall, Turn } from "./types.js";
 import { lazyGeminiSummary, nodeDiscoveryFs, type DiscoveryFs } from "./discovery.js";
 import { addUsage, emptyUsage, expandHome, listFiles, mapWithConcurrency, parseTimestamp, pathExists, readJsonl, truncate, withTotal, sanitizeText } from "./util.js";
+import { plainObject, validFields, type FieldTable } from "./validate.js";
 
 /**
  * Gemini CLI (`ChatRecordingService`) writes an append-only JSONL transcript
@@ -53,6 +54,31 @@ interface GeminiMessage {
   tokens?: GeminiTokens;
   toolCalls?: GeminiToolCall[];
 }
+
+const malformedUsageMessages = new WeakSet<GeminiMessage>();
+
+const tokensFields: FieldTable = Object.fromEntries(
+  ["input", "output", "cached", "thoughts", "tool", "total"].map((name) => [name, { type: "integer" }]),
+);
+const toolCallFields: FieldTable = {
+  name: { type: "string" }, status: { type: "string" },
+};
+const contentPartFields: FieldTable = { text: { type: "string" } };
+const messageFields: FieldTable = {
+  id: { type: "string" }, timestamp: { type: "stringOrNumber" }, type: { type: "string" },
+  content: { type: "stringOrArray", elements: { type: "stringOrObject", fields: contentPartFields } },
+  model: { type: "string" }, tokens: { type: "object", fields: tokensFields },
+  toolCalls: { type: "array", elements: { type: "object", fields: toolCallFields } },
+};
+const metadataFields: FieldTable = {
+  sessionId: { type: "string" }, startTime: { type: "stringOrNumber" },
+  kind: { type: "string" }, directories: { type: "array", elements: { type: "string" } },
+};
+const updateFields: FieldTable = {
+  $rewindTo: { type: "string" }, $set: { type: "object", fields: {
+    messages: { type: "array" },
+  } },
+};
 
 /**
  * Map Gemini's `TokensSummary` onto our 4-component `TokenUsage`.
@@ -112,6 +138,70 @@ function toToolCall(raw: GeminiToolCall): ToolCall {
   };
 }
 
+function malformedMessageField(msg: GeminiMessage): boolean {
+  if (msg.model !== undefined && typeof msg.model !== "string") return true;
+  const tokens = msg.tokens as unknown;
+  if (tokens !== undefined && (tokens === null || typeof tokens !== "object" || Array.isArray(tokens)
+    || ["input", "output", "cached", "thoughts", "tool", "total"].some((key) => {
+      const value = (tokens as Record<string, unknown>)[key];
+      return value !== undefined && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0);
+    }))) return true;
+  if (msg.toolCalls !== undefined && (!Array.isArray(msg.toolCalls)
+    || msg.toolCalls.some((call) => !call || typeof call !== "object" || Array.isArray(call)
+      || (call.name !== undefined && typeof call.name !== "string")
+      || (call.status !== undefined && typeof call.status !== "string")))) return true;
+  if (msg.content !== undefined && typeof msg.content !== "string" && !Array.isArray(msg.content)) return true;
+  return Array.isArray(msg.content) && msg.content.some((part) => part === null
+    || (typeof part !== "string" && (typeof part !== "object" || Array.isArray(part)
+      || ("text" in part && typeof part.text !== "string"))));
+}
+
+function retainValidMessageParts(msg: GeminiMessage): GeminiMessage {
+  const clean = { ...msg };
+  if (Array.isArray(msg.content)) {
+    clean.content = msg.content.filter((part) => typeof part === "string"
+      || (part !== null && typeof part === "object" && !Array.isArray(part)
+        && (!("text" in part) || typeof part.text === "string")));
+  }
+  if (Array.isArray(msg.toolCalls)) {
+    clean.toolCalls = msg.toolCalls.filter((call) => validFields(call, toolCallFields));
+  } else if (msg.toolCalls !== undefined) {
+    clean.toolCalls = [];
+  }
+  if (msg.tokens && typeof msg.tokens === "object" && !Array.isArray(msg.tokens)) {
+    const tokens = { ...msg.tokens } as Record<string, unknown>;
+    for (const key of Object.keys(tokensFields)) {
+      if (tokens[key] !== undefined && !validFields({ [key]: tokens[key] }, { [key]: tokensFields[key]! })) {
+        delete tokens[key];
+        malformedUsageMessages.add(clean);
+      }
+    }
+    clean.tokens = tokens as GeminiTokens;
+  } else if (Object.prototype.hasOwnProperty.call(msg, "tokens")) {
+    clean.tokens = undefined;
+    malformedUsageMessages.add(clean);
+  }
+  return clean;
+}
+
+type MessageEntryClassification =
+  | { kind: "ignored" }
+  | { kind: "malformed" }
+  | { kind: "message"; message: GeminiMessage; malformedFields: boolean };
+
+function classifyMessageEntry(value: unknown): MessageEntryClassification {
+  if (!plainObject(value)) return { kind: "malformed" };
+  if (typeof value.type === "string" && value.type !== "user" && value.type !== "gemini") {
+    return { kind: "ignored" };
+  }
+  if (typeof value.type !== "string") {
+    return { kind: "malformed" };
+  }
+  const message = value as GeminiMessage;
+  return { kind: "message", message,
+    malformedFields: typeof value.id !== "string" || !validFields(value, messageFields) || malformedMessageField(message) };
+}
+
 /** A parsed message plus enough metadata to materialize a Turn later. */
 interface ParsedRecords {
   sessionId?: string;
@@ -125,16 +215,52 @@ interface ParsedRecords {
   messages: Map<string, GeminiMessage>;
   /** SPEC-0044 B3 — malformed JSONL records skipped while reading. */
   droppedRecords?: number;
+  nonObjectRecords?: number;
+  malformedCheckpointEntries?: number;
+  malformedNestedFields?: number;
 }
 
 async function readRecords(filePath: string): Promise<ParsedRecords> {
   const out: ParsedRecords = { messages: new Map() };
+  let nonObjectRecords = 0;
+  let malformedCheckpointEntries = 0;
+  let malformedNestedFields = 0;
 
   out.droppedRecords = await readJsonl(filePath, (record) => {
-    if (!record || typeof record !== "object") {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      nonObjectRecords++;
       return;
     }
     const top = record as Record<string, unknown>;
+    if (top.type !== undefined || ["id", "model", "tokens", "content", "toolCalls"].some((key) => key in top)) {
+      const classified = classifyMessageEntry(top);
+      if (classified.kind === "ignored") return;
+      if (classified.kind === "malformed") {
+        malformedNestedFields++;
+        return;
+      }
+      const msg = classified.message;
+      if (classified.malformedFields) malformedNestedFields++;
+      const ts = parseTimestamp(msg.timestamp);
+      if (ts !== undefined) {
+        out.startedAt = out.startedAt === undefined ? ts : Math.min(out.startedAt, ts);
+        out.endedAt = out.endedAt === undefined ? ts : Math.max(out.endedAt, ts);
+      }
+      if (msg.type === "user" && out.firstUserText === undefined) {
+        out.firstUserText = extractText(msg.content);
+      }
+      if (msg.type === "gemini" && typeof msg.model === "string") {
+        out.model ??= msg.model;
+      }
+      if (typeof msg.id === "string") out.messages.set(msg.id, retainValidMessageParts(msg));
+      return;
+    }
+    const table = "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
+    if (!validFields(top, table)) {
+      malformedNestedFields++;
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(top, "$rewindTo") && typeof top.$rewindTo !== "string") malformedNestedFields++;
 
     // Rewind: drop the named message and everything appended after it.
     if (typeof top.$rewindTo === "string") {
@@ -152,35 +278,28 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
 
     // `$set.messages` is a checkpoint that clears + rebuilds the message list.
+    if (Object.prototype.hasOwnProperty.call(top, "$set") && (!top.$set || typeof top.$set !== "object" || Array.isArray(top.$set))) {
+      malformedNestedFields++;
+      return;
+    }
     if (top.$set && typeof top.$set === "object") {
       const set = top.$set as Record<string, unknown>;
       if (Array.isArray(set.messages)) {
         out.messages.clear();
         for (const m of set.messages) {
-          if (m && typeof m === "object" && typeof (m as GeminiMessage).id === "string") {
-            out.messages.set((m as GeminiMessage).id as string, m as GeminiMessage);
+          const classified = classifyMessageEntry(m);
+          if (classified.kind === "ignored") continue;
+          if (classified.kind === "malformed") {
+            malformedCheckpointEntries++;
+            continue;
+          }
+          if (classified.malformedFields) malformedNestedFields++;
+          if (typeof classified.message.id === "string") {
+            out.messages.set(classified.message.id, retainValidMessageParts(classified.message));
           }
         }
-      }
-      return;
-    }
-
-    const type = top.type;
-    if (type === "user" || type === "gemini") {
-      const msg = top as GeminiMessage;
-      const ts = parseTimestamp(msg.timestamp);
-      if (ts !== undefined) {
-        out.startedAt = out.startedAt === undefined ? ts : Math.min(out.startedAt, ts);
-        out.endedAt = out.endedAt === undefined ? ts : Math.max(out.endedAt, ts);
-      }
-      if (type === "user" && out.firstUserText === undefined) {
-        out.firstUserText = extractText(msg.content);
-      }
-      if (type === "gemini" && typeof msg.model === "string") {
-        out.model ??= msg.model;
-      }
-      if (typeof msg.id === "string") {
-        out.messages.set(msg.id, msg);
+      } else if (Object.prototype.hasOwnProperty.call(set, "messages")) {
+        malformedNestedFields++;
       }
       return;
     }
@@ -201,6 +320,9 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
   });
 
+  out.nonObjectRecords = nonObjectRecords;
+  out.malformedCheckpointEntries = malformedCheckpointEntries;
+  out.malformedNestedFields = malformedNestedFields;
   return out;
 }
 
@@ -215,7 +337,9 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
       continue;
     }
     const usage = mapUsage(msg.tokens);
-    const toolCalls = Array.isArray(msg.toolCalls) ? msg.toolCalls.map(toToolCall) : [];
+    const toolCalls = Array.isArray(msg.toolCalls)
+      ? msg.toolCalls.filter((call): call is GeminiToolCall => !!call && typeof call === "object" && !Array.isArray(call)).map(toToolCall)
+      : [];
     toolCallCount += toolCalls.length;
     if (usage) {
       totalUsage = addUsage(totalUsage, usage);
@@ -223,9 +347,11 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
     turns.push({
       index: turns.length,
       timestamp: parseTimestamp(msg.timestamp),
-      model: msg.model ?? records.model,
+      model: typeof msg.model === "string" ? msg.model : msg.model === undefined ? records.model : undefined,
       usage,
       outputTokens: usage?.output,
+      ...(malformedUsageMessages.has(msg) || (msg.model !== undefined && typeof msg.model !== "string")
+        ? { pricingUnits: [] } : {}),
       toolCalls,
     });
   }
@@ -255,6 +381,7 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
 const ROOT = "~/.gemini/tmp";
 
 export class GeminiAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "gemini";
   readonly label = "Gemini CLI";
   readonly vendor = "google";
@@ -302,9 +429,12 @@ export class GeminiAdapter implements SessionAdapter {
       if (!(await pathExists(id))) {
         return null;
       }
-      const { summary, turns, droppedRecords } = buildSession(id, await readRecords(id));
+      const records = await readRecords(id);
+      const { summary, turns, droppedRecords } = buildSession(id, records);
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}) };
+      return { ...summary, turns, ...(droppedRecords > 0 ? { droppedRecords } : {}),
+        ...(droppedRecords > 0 || (records.nonObjectRecords ?? 0) > 0 || (records.malformedCheckpointEntries ?? 0) > 0 || (records.malformedNestedFields ?? 0) > 0
+          ? { parseFailureShapes: ["gemini:malformed_jsonl"] } : {}) };
     } catch {
       return null;
     }

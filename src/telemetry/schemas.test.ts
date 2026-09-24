@@ -137,6 +137,7 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
     const event: CliErrorEvent = {
       name: "cli_error",
       properties: {
+        cliVersion: "0.11.0", installHash: INSTALL_HASH, isCI: false,
         errorClass: "io_error",
         command: "receipt",
         agentType: "codex",
@@ -150,6 +151,7 @@ describe("SPEC-0043 R1-R5: valid events pass their schema", () => {
     const event: ParseFailureEvent = {
       name: "parse_failure",
       properties: {
+        cliVersion: "0.11.0", installHash: INSTALL_HASH, isCI: false,
         agentType: "cursor",
         adapterVersion: "1",
         signatureHash: "b".repeat(64),
@@ -300,11 +302,11 @@ describe("SPEC-0043 R9: leakage fixtures — banned content is structurally reje
     ],
     [
       cliErrorPropertiesSchema,
-      { errorClass: "unknown_error", command: "compare", agentType: "unknown", inPackage: false },
+      { cliVersion: "0.11.0", installHash: INSTALL_HASH, isCI: false, errorClass: "unknown_error", command: "compare", agentType: "unknown", inPackage: false },
     ],
     [
       parseFailurePropertiesSchema,
-      { agentType: "claude-code", adapterVersion: "1", signatureHash: "c".repeat(64) },
+      { cliVersion: "0.11.0", installHash: INSTALL_HASH, isCI: false, agentType: "claude-code", adapterVersion: "1", signatureHash: "c".repeat(64) },
     ],
     [
       receiptGeneratedPropertiesSchema,

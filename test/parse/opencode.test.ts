@@ -12,6 +12,7 @@ const hasNodeSqlite = sqliteMod !== null;
 import { afterEach, describe, expect, it } from "vitest";
 import { OpenCodeAdapter } from "../../src/parse/opencode.js";
 import { buildReceiptModel, sliceSessionForReceipt } from "../../src/receipt/model.js";
+import { renderReceipt } from "../../src/receipt/render.js";
 
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/prices");
 const fixturesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures/opencode");
@@ -330,6 +331,15 @@ function setCurrentMessageTokens(dbPath: string, tokens: unknown): void {
   db.close();
 }
 
+function setLegacyMessageTokens(dbPath: string, tokens: unknown): void {
+  const db = new DatabaseSync(dbPath);
+  const row = db.prepare("SELECT data FROM message WHERE id = 'msg_legacy_asst_1'").get() as { data: string };
+  const data = JSON.parse(row.data) as Record<string, unknown>;
+  data.tokens = tokens;
+  db.prepare("UPDATE message SET data = ? WHERE id = 'msg_legacy_asst_1'").run(JSON.stringify(data));
+  db.close();
+}
+
 function addProviderRoutingMessages(dbPath: string): void {
   const db = new DatabaseSync(dbPath);
   const insert = db.prepare(
@@ -530,13 +540,69 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     });
   });
 
+  it.each(["current", "legacy"] as const)("discovers %s sessions with a torn message row and marks the full load", async (schema) => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, `opencode-torn-${schema}.db`);
+    makeSessionMessageDb(dbPath);
+    if (schema === "legacy") addLegacySession(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const sessionId = schema === "current" ? "ses_current_shape" : "ses_legacy_shape";
+    const clean = await adapter.loadSession(`${dbPath}#${sessionId}`);
+    expect(clean).not.toBeNull();
+
+    const db = new DatabaseSync(dbPath);
+    const t0 = Date.parse("2026-06-30T12:02:00.000Z");
+    if (schema === "current") {
+      db.prepare("INSERT INTO session_message (id, session_id, type, seq, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run("msg_torn", sessionId, "assistant", 3, t0, t0, "{torn");
+    } else {
+      db.prepare("INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)")
+        .run("msg_torn", sessionId, t0, t0, "{torn");
+    }
+    db.close();
+
+    const summaries = await adapter.listSessions();
+    expect(summaries.map((summary) => summary.id)).toContain(`${dbPath}#${sessionId}`);
+    expect(summaries.find((summary) => summary.id === `${dbPath}#${sessionId}`)?.totals.turnCount).toBe(clean!.totals.turnCount);
+    const full = await adapter.listSessions({ full: true });
+    const session = full.find((candidate) => candidate.id === `${dbPath}#${sessionId}`);
+    expect(session?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+    expect(session?.droppedRecords).toBe(1);
+    expect(session?.turns).toEqual(clean!.turns);
+    expect(renderReceipt(await buildReceiptModel(session!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }, dataDir), { color: false }));
+  });
+
+  it("discovers a current session with a scalar content part and marks the full load", async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, "opencode-scalar-part.db");
+    makeSessionMessageDb(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const clean = await adapter.loadSession(dbPath);
+    const db = new DatabaseSync(dbPath);
+    const row = db.prepare("SELECT data FROM session_message WHERE id = 'msg_asst_1'").get() as { data: string };
+    const message = JSON.parse(row.data) as { content: unknown[] };
+    message.content.push("text");
+    db.prepare("UPDATE session_message SET data = ? WHERE id = 'msg_asst_1'").run(JSON.stringify(message));
+    db.close();
+    const summaries = await adapter.listSessions();
+    expect(summaries.map((summary) => summary.id)).toContain(`${dbPath}#ses_current_shape`);
+    const malformed = await adapter.loadSession(dbPath);
+    expect(malformed?.parseFailureShapes).toContain("opencode:malformed_record");
+    expect(malformed?.totals.tokens).toEqual(clean?.totals.tokens);
+    expect(renderReceipt(await buildReceiptModel(malformed!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
+  });
+
   it.each([
     ["null", { input: null, output: 100, reasoning: 25, cache: { read: 50, write: 10 } }, 185],
     ["string", { input: 500, output: "100", reasoning: 25, cache: { read: 50, write: 10 } }, 585],
     ["negative", { input: 500, output: 100, reasoning: -1, cache: { read: 50, write: 10 } }, 660],
     ["fractional", { input: 500, output: 100, reasoning: 25, cache: { read: 1.5, write: 10 } }, 635],
     ["non-safe", { input: 500, output: 100, reasoning: 25, cache: { read: 50, write: Number.MAX_SAFE_INTEGER + 1 } }, 675],
-  ] as const)("keeps valid components but suppresses dollars for %s OpenCode message usage", async (_label, tokens, safeTotal) => {
+  ] as const)("keeps valid components of %s OpenCode message usage", async (_label, tokens, total) => {
     const dir = tempDir();
     dirs.push(dir);
     const dbPath = path.join(dir, "opencode-malformed-message.db");
@@ -545,12 +611,38 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
 
     const session = await new OpenCodeAdapter({ dbPath }).loadSession(dbPath);
     expect(session).not.toBeNull();
-    expect(session!.turns[0].usage?.total).toBe(safeTotal);
+    expect(session!.turns[0].usage?.total).toBe(total);
     expect(session!.turns[0].pricingUnits).toEqual([]);
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     const receipt = await buildReceiptModel(session!, dataDir);
     expect(receipt.totalUsd).toBeNull();
-    expect(receipt.caveats).toContainEqual(expect.objectContaining({ kind: "dropped-transcript-records" }));
+  });
+
+  it.each(["current", "legacy"] as const)("keeps %s assistant turns with non-object tokens and unchanged receipt bytes", async (schema) => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, `opencode-${schema}-scalar-tokens.db`);
+    makeSessionMessageDb(dbPath);
+    if (schema === "legacy") addLegacySession(dbPath);
+    const setTokens = schema === "current" ? setCurrentMessageTokens : setLegacyMessageTokens;
+    const sessionId = schema === "current" ? dbPath : `${dbPath}#ses_legacy_shape`;
+    const adapter = new OpenCodeAdapter({ dbPath });
+    for (const tokens of [null, 7, "bad", []]) {
+      setTokens(dbPath, tokens);
+      const session = await adapter.loadSession(sessionId);
+      expect(session?.turns).toHaveLength(1);
+      expect(session?.totals.toolCallCount).toBe(1);
+      expect(session?.turns[0].usage?.total).toBe(0);
+      expect(session?.turns[0].pricingUnits).toEqual([]);
+      expect(session?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+      const receipt = await buildReceiptModel(session!, dataDir);
+      expect(receipt.totalUsd).toBeNull();
+      const mainEquivalent = { ...session! };
+      delete mainEquivalent.parseFailureShapes;
+      expect(renderReceipt(receipt, { color: false }))
+        .toBe(renderReceipt(await buildReceiptModel(mainEquivalent, dataDir), { color: false }));
+    }
   });
 
   it("fails closed when individually safe OpenCode message counters overflow a sum", async () => {
@@ -570,6 +662,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.turns[0].usage).toEqual(expect.objectContaining({ total: 0 }));
     expect(session!.turns[0].pricingUnits).toEqual([]);
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     expect((await buildReceiptModel(session!, dataDir)).totalUsd).toBeNull();
   });
 
@@ -595,6 +688,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
       expect(session!.totals.tokens).toMatchObject({ input: 500, output: 125, cacheRead: 50, cacheCreation: 10, total: 685 });
       expect(session!.unattributedUsage).toBeUndefined();
       expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
       expect((await buildReceiptModel(session!, dataDir)).totalUsd).not.toBeNull();
     },
   );
@@ -617,6 +711,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(session!.totals.tokens.total).toBe(685);
     expect(session!.unattributedUsage).toBeUndefined();
     expect(session!.droppedRecords).toBe(1);
+    expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
   });
 
   it("accepts legitimate numeric SQLite strings in a coherent OpenCode aggregate", async () => {
@@ -891,6 +986,33 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
       input: { cmd: "pwd" },
       output: "/tmp/aireceipts-opencode-legacy",
     });
+  });
+
+  it.each(["{torn", "[]", "[1,2]"])("marks malformed legacy part %s without changing session data or receipt bytes", async (partData) => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, "legacy-malformed-part.db");
+    makeSessionMessageDb(dbPath);
+    addLegacySession(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const clean = await adapter.loadSession(`${dbPath}#ses_legacy_shape`);
+    expect(clean).not.toBeNull();
+    const malformedPath = path.join(dir, "legacy-malformed-part-copy.db");
+    makeSessionMessageDb(malformedPath);
+    addLegacySession(malformedPath);
+    const db = new DatabaseSync(malformedPath);
+    db.prepare("INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("part_torn", "msg_legacy_asst_1", "ses_legacy_shape", Date.parse("2026-06-30T12:01:04Z"),
+        Date.parse("2026-06-30T12:01:05Z"), partData);
+    db.close();
+    const malformed = await new OpenCodeAdapter({ dbPath: malformedPath }).loadSession(`${malformedPath}#ses_legacy_shape`);
+    expect(malformed?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+    expect(malformed?.droppedRecords).toBe(clean?.droppedRecords);
+    const { parseFailureShapes: _shapes, ...unchanged } = malformed!;
+    void _shapes;
+    expect(unchanged).toEqual({ ...clean, id: unchanged.id, filePath: unchanged.filePath });
+    expect(renderReceipt(await buildReceiptModel(malformed!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
   });
 
   // 24 sessions cover the full structural combination cycle (LCM of the

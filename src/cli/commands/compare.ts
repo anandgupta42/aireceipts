@@ -13,6 +13,8 @@ import { svgOutOf, writeSvg } from "../common/output.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import type { ExportFormatValue, OutputModeValue } from "../../telemetry/schemas.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
+import { loadObservedSession, observedChildRollupDeps } from "../loadedSession.js";
 
 async function recordCompareTelemetry(
   ctx: CommandContext,
@@ -81,15 +83,19 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "no-session-match");
     return 1;
   }
-  const [sessionA, sessionB] = await Promise.all([loadSession(summaryA), loadSession(summaryB)]);
+  const [sessionA, sessionB] = await Promise.all([
+    loadObservedSession(ctx, () => loadSession(summaryA)),
+    loadObservedSession(ctx, () => loadSession(summaryB)),
+  ]);
   if (!sessionA || !sessionB) {
     ctx.stderr.write("failed to load one or both sessions\n");
     setExitClass(ctx, "not-comparable");
     return 1;
   }
+  setAgentType(ctx, sharedAgentType([sessionA, sessionB]));
   const [modelA, modelB] = await Promise.all([
-    buildFullSessionReceiptModel(sessionA),
-    buildFullSessionReceiptModel(sessionB),
+    buildFullSessionReceiptModel(sessionA, observedChildRollupDeps(ctx)),
+    buildFullSessionReceiptModel(sessionB, observedChildRollupDeps(ctx)),
   ]);
   const totals = {
     turnCount: sessionA.totals.turnCount + sessionB.totals.turnCount,

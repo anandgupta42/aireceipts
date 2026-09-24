@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { openReadOnly } from "./sqlite.js";
 import type { AgentSource, Session, SessionAdapter, SessionSummary, ToolCall, Turn } from "./types.js";
 import { emptyUsage, pathExists, truncate, sanitizeText } from "./util.js";
+import { plainObject, validFields, type FieldTable } from "./validate.js";
 
 /**
  * Cursor stores chat history in SQLite (`globalStorage/state.vscdb`, table
@@ -86,6 +87,22 @@ interface Bubble {
   toolFormerData?: ToolFormerData;
 }
 
+const toolFormerFields: FieldTable = {
+  tool: { type: "stringOrNumber" }, name: { type: "string" }, rawArgs: { type: "any" },
+  result: { type: "any" }, status: { type: "string" },
+};
+const headerFields: FieldTable = { bubbleId: { type: "string", required: true }, type: { type: "number" } };
+const bubbleFields: FieldTable = {
+  type: { type: "number" }, toolFormerData: { type: "object", fields: toolFormerFields },
+};
+const composerFields: FieldTable = {
+  name: { type: "string" }, createdAt: { type: "number" }, lastUpdatedAt: { type: "number" },
+  fullConversationHeadersOnly: { type: "array", elements: { type: "object", fields: headerFields } },
+  tokenCount: { type: "numberOrObject", fields: {
+    inputTokens: { type: "integer" }, outputTokens: { type: "integer" },
+  } },
+};
+
 function parseJson<T>(value: unknown): T | null {
   if (typeof value !== "string") {
     return null;
@@ -123,30 +140,30 @@ function toToolCall(t: ToolFormerData): ToolCall {
 
 /** Session-level totals only — Cursor has no per-turn usage breakdown and no cache stats. */
 function mapTokens(tc: ComposerData["tokenCount"]) {
-  if (tc && typeof tc === "object") {
-    const input = tc.inputTokens ?? 0;
-    const output = tc.outputTokens ?? 0;
+  if (tc && typeof tc === "object" && !Array.isArray(tc)) {
+    const input = Number.isSafeInteger(tc.inputTokens) && (tc.inputTokens ?? 0) >= 0 ? tc.inputTokens! : 0;
+    const output = Number.isSafeInteger(tc.outputTokens) && (tc.outputTokens ?? 0) >= 0 ? tc.outputTokens! : 0;
     return { input, output, cacheRead: 0, cacheCreation: 0, total: input + output };
   }
   return emptyUsage();
 }
 
 function summaryOf(c: ComposerData, id: string): SessionSummary {
-  const headers = c.fullConversationHeadersOnly ?? [];
+  const headers = Array.isArray(c.fullConversationHeadersOnly) ? c.fullConversationHeadersOnly : [];
+  const startedAt = typeof c.createdAt === "number" && Number.isFinite(c.createdAt) ? c.createdAt : undefined;
+  const endedAt = typeof c.lastUpdatedAt === "number" && Number.isFinite(c.lastUpdatedAt) ? c.lastUpdatedAt : startedAt;
   return {
     id,
     source: "cursor",
-    title: c.name ? truncate(c.name) : undefined,
-    startedAt: c.createdAt,
-    endedAt: c.lastUpdatedAt ?? c.createdAt,
+    title: typeof c.name === "string" && c.name ? truncate(c.name) : undefined,
+    startedAt,
+    endedAt,
     totals: {
       tokens: mapTokens(c.tokenCount),
-      durationMs:
-        c.createdAt !== undefined && c.lastUpdatedAt !== undefined
-          ? Math.max(0, c.lastUpdatedAt - c.createdAt)
-          : undefined,
+      durationMs: startedAt !== undefined && endedAt !== undefined
+        ? Math.max(0, endedAt - startedAt) : undefined,
       // headers carry role via `type`; 1 = user, anything else = assistant-ish.
-      turnCount: headers.filter((h) => h.type !== 1).length,
+      turnCount: headers.filter((h) => h && typeof h === "object" && h.type !== 1).length,
       toolCallCount: 0, // requires loading bubble bodies — not known at list time
     },
     filePath: dbPath(),
@@ -155,6 +172,7 @@ function summaryOf(c: ComposerData, id: string): SessionSummary {
 }
 
 export class CursorAdapter implements SessionAdapter {
+  readonly adapterVersion = "1";
   readonly id: AgentSource = "cursor";
   readonly label = "Cursor";
 
@@ -186,9 +204,11 @@ export class CursorAdapter implements SessionAdapter {
         const key = String(r.key ?? "");
         const id = key.slice("composerData:".length);
         const c = parseJson<ComposerData>(r.value);
-        // Skip empty draft composers — no turns means no evidence to report.
-        if (c && id && (c.fullConversationHeadersOnly?.length ?? 0) > 0) {
-          out.push(summaryOf(c, id));
+        // A draft has no conversation. Validate header contents only on full load.
+        const hasHeaders = plainObject(c) && Array.isArray(c.fullConversationHeadersOnly)
+          && c.fullConversationHeadersOnly.length > 0;
+        if (plainObject(c) && id && hasHeaders) {
+          out.push(summaryOf(c as ComposerData, id));
         }
       }
       return out;
@@ -208,30 +228,49 @@ export class CursorAdapter implements SessionAdapter {
     try {
       const head = db.all(`SELECT value FROM cursorDiskKV WHERE key = 'composerData:${id}'`);
       const composer = parseJson<ComposerData>(head[0]?.value);
-      if (!composer) {
+      if (!plainObject(composer)) {
         return null;
       }
+      const order = Array.isArray(composer.fullConversationHeadersOnly) ? composer.fullConversationHeadersOnly : [];
+      const referencedBubbleIds = new Set(order
+        .filter((h) => h && typeof h === "object" && !Array.isArray(h) && typeof h.bubbleId === "string")
+        .map((h) => h.bubbleId));
       const bubbleRows = db.all(`SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${id}:%'`);
+      if (order.length === 0) return null;
       const byId = new Map<string, Bubble>();
+      let malformedRecord = !Array.isArray(composer.fullConversationHeadersOnly);
       for (const r of bubbleRows) {
         const key = String(r.key ?? "");
         const bid = key.split(":")[2];
         const b = parseJson<Bubble>(r.value);
-        if (b && bid) {
+        if (plainObject(b) && bid) {
           byId.set(bid, b);
+        } else if (!bid || !referencedBubbleIds.has(bid)) {
+          malformedRecord = true;
         }
       }
 
-      const order = composer.fullConversationHeadersOnly ?? [];
+      if (!validFields(composer, composerFields)) malformedRecord = true;
+      if (composer.tokenCount && typeof composer.tokenCount === "object" &&
+        [(composer.tokenCount as { inputTokens?: unknown }).inputTokens, (composer.tokenCount as { outputTokens?: unknown }).outputTokens].some((value) => value !== undefined
+          && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0))) malformedRecord = true;
       const turns: Turn[] = [];
       let toolCallCount = 0;
+      let missingBubble = false;
       let current: Turn | null = null;
 
       for (const h of order) {
-        const b = byId.get(h.bubbleId);
-        if (!b) {
+        if (!validFields(h, { bubbleId: headerFields.bubbleId! })) {
+          malformedRecord = true;
           continue;
         }
+        if (!validFields(h, headerFields)) malformedRecord = true;
+        const b = byId.get(h.bubbleId);
+        if (!b) {
+          missingBubble = true;
+          continue;
+        }
+        if (!validFields(b, bubbleFields)) malformedRecord = true;
         const isUser = h.type === 1 || b.type === 1;
         if (isUser) {
           current = null; // a user bubble ends the prior assistant turn
@@ -244,14 +283,19 @@ export class CursorAdapter implements SessionAdapter {
           current = { index: turns.length, toolCalls: [] };
           turns.push(current);
         }
-        if (b.toolFormerData && (b.toolFormerData.tool || b.toolFormerData.name)) {
+        if (b.toolFormerData && validFields(b.toolFormerData, toolFormerFields)
+          && (b.toolFormerData.tool || b.toolFormerData.name)) {
           current.toolCalls.push(toToolCall(b.toolFormerData));
           toolCallCount++;
         }
       }
 
       const base = summaryOf(composer, id);
-      return { ...base, totals: { ...base.totals, turnCount: turns.length, toolCallCount }, turns };
+      return { ...base, totals: { ...base.totals, turnCount: turns.length, toolCallCount }, turns,
+        ...(missingBubble || malformedRecord ? { parseFailureShapes: [
+          ...(missingBubble ? ["cursor:missing_bubble"] : []),
+          ...(malformedRecord ? ["cursor:malformed_record"] : []),
+        ] } : {}) };
     } finally {
       db.close();
     }

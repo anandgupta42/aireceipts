@@ -12,6 +12,8 @@ import { renderReceipt } from "../../receipt/render.js";
 import type { AgentSource } from "../../parse/types.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
+import { loadObservedSession } from "../loadedSession.js";
 
 const DEMO_FIXTURE = "clean-multi-tool-2-models.jsonl";
 
@@ -49,12 +51,13 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  const session = await loadById("claude-code" as AgentSource, path);
+  const session = await loadObservedSession(ctx, () => loadById("claude-code" as AgentSource, path));
   if (!session) {
     ctx.stderr.write("aireceipts: demo transcript could not be parsed (packaging error)\n");
     setExitClass(ctx, "other-controlled");
     return 1;
   }
+  setAgentType(ctx, sharedAgentType([session]));
   const model = await buildReceiptModel(session);
   ctx.stderr.write(`${BANNER}\n`);
   // No `color` option → same auto-detection (NO_COLOR / TTY) as the default
