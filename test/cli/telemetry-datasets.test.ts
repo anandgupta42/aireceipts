@@ -36,6 +36,16 @@ describe("SPEC-0094 R5 dataset definitions", () => {
     }
   });
 
+  it("groups reliability errors by their bounded event dimensions", () => {
+    const reliability = blocks.find(([, title]) => title === "Reliability: errors and failed polls")?.[2];
+    expect(reliability).toBeDefined();
+    for (const field of ["command", "errorClass", "agentType", "inPackage", "adapterVersion", "signatureHash"]) {
+      expect(reliability).toContain(`customDimensions.${field}`);
+      expect(reliability).toMatch(new RegExp(`\\b${field}\\b[\\s,]*`));
+    }
+    expect(reliability).toMatch(/summarize rows = count\(\) by[\s\S]*command, errorClass, agentType, inPackage, adapterVersion, signatureHash/);
+  });
+
   it("uses the same attributed heartbeat pairs in every adoption dataset", () => {
     const adoption = blocks.filter(([, title]) => title?.startsWith("Adoption:"));
     expect(adoption).toHaveLength(4);

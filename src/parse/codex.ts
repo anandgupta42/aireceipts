@@ -2,6 +2,7 @@ import type { AgentSource, Compaction, ListSessionsOptions, Session, SessionAdap
 import { codexFidelity } from "./fidelity/codex.js";
 import { lazyCodexSummary, nodeDiscoveryFs, type DiscoveryFs } from "./discovery.js";
 import { normalizePricingProvider } from "./provider.js";
+import { validFields, type FieldTable } from "./validate.js";
 import {
   emptyUsage,
   expandHome,
@@ -22,6 +23,45 @@ interface CodexUsage {
   reasoning_output_tokens?: number;
   total_tokens?: number;
 }
+
+const usageFields: FieldTable = {
+  input_tokens: { type: "integer" }, output_tokens: { type: "integer" },
+  cached_input_tokens: { type: "integer" }, reasoning_output_tokens: { type: "integer" },
+  total_tokens: { type: "integer" },
+};
+const contentPartFields: FieldTable = {
+  type: { type: "string" }, text: { type: "string" },
+};
+const itemFields: FieldTable = {
+  type: { type: "string" }, model: { type: "string" }, model_provider: { type: "string" },
+  cwd: { type: "string" }, info: { type: "object", fields: {
+    total_token_usage: { type: "object", fields: usageFields },
+    last_token_usage: { type: "object", fields: usageFields },
+  } },
+  usage: { type: "object", fields: usageFields }, message: { type: "string" },
+  role: { type: "string" },
+  name: { type: "string" }, call_id: { type: "string" }, id: { type: "string" },
+  arguments: { type: "any" }, input: { type: "any" }, output: { type: "any" },
+  success: { type: "boolean" },
+};
+function validMessageContent(content: unknown): boolean {
+  if (content === undefined || typeof content === "string") return true;
+  if (!Array.isArray(content)) return false;
+  return content.every((part) => typeof part === "string" || (validFields(part, { type: { type: "string" } })
+    && ((part as Record<string, unknown>).type !== "input_text"
+      && (part as Record<string, unknown>).type !== "output_text" || validFields(part, contentPartFields))));
+}
+const recordFields: FieldTable = {
+  type: { type: "string" }, timestamp: { type: "stringOrNumber" },
+  created_at: { type: "stringOrNumber" }, time: { type: "stringOrNumber" },
+  payload: { type: "object" }, item: { type: "object" }, response: { type: "object" },
+  model_provider: { type: "string" }, usage: { type: "object", fields: usageFields },
+};
+const knownTypes = new Set([
+  "session_meta", "turn_context", "event_msg", "response_item", "compacted", "context_compacted",
+  "task_started", "task_complete", "token_count", "user_message", "message", "reasoning",
+  "function_call", "tool_call", "custom_tool_call", "function_call_output", "tool_result", "patch_apply_end",
+]);
 
 interface MappedCodexUsage {
   usage?: TokenUsage;
@@ -265,8 +305,10 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     }
     const top = record as Record<string, unknown>;
     const item = unwrap(top);
-    if ((top.type !== undefined && typeof top.type !== "string")
-      || (item.type !== undefined && typeof item.type !== "string")) {
+    if (typeof top.type === "string" && !knownTypes.has(top.type)) return;
+    if (typeof item.type === "string" && !knownTypes.has(item.type)) return;
+    if (!validFields(top, recordFields) || !validFields(item, itemFields)
+      || ((item.type ?? top.type) === "message" && !validMessageContent(item.content))) {
       malformedNestedRecords++;
       return;
     }

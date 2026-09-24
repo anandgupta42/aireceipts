@@ -352,10 +352,9 @@ describe("Codex cumulative usage envelopes", () => {
         envelope(raw(300, 70, 30), malformedLast, 2),
       ]);
 
-      expect(session.usageReconciliationFailed, field).toBe(true);
-      expect(session.unattributedUsage, field).toEqual(session.totals.tokens);
-      expect(session.turns.every((turn) => turn.usage === undefined && turn.pricingUnits === undefined), field).toBe(true);
-      expect((await buildReceiptModel(session)).totalUsd, field).toBeNull();
+      expect(session.parseFailureShapes, field).toContain("codex:malformed_jsonl");
+      expect(session.droppedRecords, field).toBeUndefined();
+      expect(session.turns.length, field).toBe(1);
     }
   });
 

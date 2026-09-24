@@ -16,7 +16,7 @@
   },
   {
     "adapter": "claude-code",
-    "path": "assistant usage token field, cache tier split, or component sum is malformed",
+    "path": "assistant usage has safe typed fields but a contradictory component sum",
     "shape": "claude-code:malformed_usage"
   },
   {
@@ -43,7 +43,7 @@
   },
   {
     "adapter": "codex",
-    "path": "total, reported delta, or per-message usage is malformed but the session returns",
+    "path": "total, reported delta, or per-message usage has safe typed fields but contradictory totals",
     "shape": "codex:malformed_usage"
   },
   {
@@ -355,5 +355,36 @@
     "path": "listSessions skips malformed composer JSON or empty drafts",
     "shape": "not measurable by this spec",
     "reason": "These rows never reach a full load and cannot carry a Session shape."
+  },
+  {
+    "adapter": "claude-code",
+    "path": "known record discriminator, message, content block, or usage field has the wrong type; the whole record is skipped",
+    "shape": "claude-code:malformed_jsonl"
+  },
+  {
+    "adapter": "codex",
+    "path": "known wrapper, item, model, content part, or usage field has the wrong type; the whole record is skipped",
+    "shape": "codex:malformed_jsonl"
+  },
+  {
+    "adapter": "gemini",
+    "path": "known message, content part, tool call, or token field has the wrong type; the whole record is skipped",
+    "shape": "gemini:malformed_jsonl"
+  },
+  {
+    "adapter": "opencode",
+    "path": "known current or legacy message, tool part, or usage field has the wrong type; the row is skipped",
+    "shape": "opencode:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "known composer, header, bubble, or toolFormerData field has the wrong type; the row is skipped",
+    "shape": "cursor:malformed_record"
+  },
+  {
+    "adapter": "cursor",
+    "path": "composer JSON is a scalar or array on full load",
+    "shape": "not measurable by this spec",
+    "reason": "A non-object composer returns null, so no Session exists to carry a shape."
   }
 ]

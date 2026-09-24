@@ -14,6 +14,7 @@ import type {
   Turn,
 } from "./types.js";
 import { addUsage, emptyUsage, parseTimestamp, pathExists, safeTokenSum, truncate, withTotal, sanitizeText } from "./util.js";
+import { validFields, type FieldTable } from "./validate.js";
 
 /**
  * opencode stores sessions in SQLite DBs under `~/.local/share/opencode`.
@@ -78,6 +79,37 @@ interface RawPartData {
       end?: number | string;
     };
   };
+}
+
+const timeFields: FieldTable = {
+  created: { type: "stringOrNumber" }, completed: { type: "stringOrNumber" },
+  ran: { type: "stringOrNumber" }, start: { type: "stringOrNumber" }, end: { type: "stringOrNumber" },
+};
+const tokenFields: FieldTable = {
+  input: { type: "integer" }, output: { type: "integer" }, reasoning: { type: "integer" },
+  cache: { type: "object", fields: { read: { type: "integer" }, write: { type: "integer" } } },
+};
+const partFields: FieldTable = {
+  type: { type: "string" }, tool: { type: "string" }, name: { type: "string" },
+  time: { type: "object", fields: timeFields },
+  state: { type: "object", fields: {
+    status: { type: "string" }, input: { type: "any" }, result: { type: "any" },
+    output: { type: "any" }, error: { type: "any" }, time: { type: "object", fields: timeFields },
+  } },
+};
+const messageFields: FieldTable = {
+  role: { type: "string" }, text: { type: "string" },
+  model: { type: "stringOrObject", fields: {
+    id: { type: "string" }, providerID: { type: "string" }, variant: { type: "string" },
+  } },
+  modelID: { type: "string" }, providerID: { type: "string" },
+  tokens: { type: "object", fields: tokenFields },
+  content: { type: "array", elements: { type: "object" } },
+  time: { type: "object", fields: timeFields },
+};
+function validPart(part: unknown): boolean {
+  return validFields(part, { type: { type: "string" } })
+    && ((part as RawPartData).type !== "tool" || validFields(part, partFields));
 }
 
 interface SessionRow {
@@ -770,6 +802,10 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) {
+        malformedNestedRecord = true;
+        continue;
+      }
       if (row.type === "user") {
         if (firstUserText === undefined && typeof msg.text === "string") {
           firstUserText = msg.text;
@@ -862,6 +898,10 @@ export class OpenCodeAdapter implements SessionAdapter {
     for (const row of parts) {
       const parsed = parseJsonObject<RawPartData>(row.data);
       if (!parsed) malformedPart = true;
+      if (parsed && !validPart(parsed)) {
+        malformedPart = true;
+        continue;
+      }
       if (parsed && ((parsed.state !== undefined && (!parsed.state || typeof parsed.state !== "object" || Array.isArray(parsed.state)))
         || (parsed.time !== undefined && (!parsed.time || typeof parsed.time !== "object" || Array.isArray(parsed.time))))) malformedPart = true;
       const call = parsed ? toToolCall(parsed) : null;
@@ -887,6 +927,10 @@ export class OpenCodeAdapter implements SessionAdapter {
         // SPEC-0044 B3 — torn/corrupt row (distinct from a valid non-assistant
         // row below): its usage is lost, so count it rather than skip silently.
         droppedRecords++;
+        continue;
+      }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) {
+        malformedNestedRecord = true;
         continue;
       }
       if (msg.role !== "assistant") {

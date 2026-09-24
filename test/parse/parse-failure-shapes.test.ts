@@ -43,6 +43,23 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
+  it("ties typed payload paths to the five adapter shapes and the Cursor null load", () => {
+    for (const [adapter, shape] of [
+      ["claude-code", "claude-code:malformed_jsonl"],
+      ["codex", "codex:malformed_jsonl"],
+      ["gemini", "gemini:malformed_jsonl"],
+      ["opencode", "opencode:malformed_record"],
+      ["cursor", "cursor:malformed_record"],
+    ]) {
+      expect(inventory.some((row) => row.adapter === adapter && row.shape === shape
+        && row.path.includes("wrong type")), adapter).toBe(true);
+    }
+    expect(inventory).toContainEqual(expect.objectContaining({
+      adapter: "cursor", path: "composer JSON is a scalar or array on full load",
+      shape: "not measurable by this spec",
+    }));
+  });
+
   it("parse code never imports telemetry", () => {
     for (const file of parseFiles(resolve(root, "src/parse"))) {
       expect(readFileSync(file, "utf8"), file).not.toMatch(/(?:from\s*|import\s*\(?\s*|export\s+[^;]*?from\s*)["'][^"']*telemetry\//);
@@ -154,7 +171,8 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       const malformed = await loadById("codex", file);
       expect(malformed?.parseFailureShapes).toEqual(["codex:malformed_jsonl"]);
       expect(malformed?.droppedRecords).toBe(clean?.droppedRecords);
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+      expect(malformed?.turns).toHaveLength(0);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
 
       await writeFile(file, `${message({ type: "input_image", image_url: "data:image/png;base64,AA==" })}\n`);
       const image = await loadById("codex", file);
@@ -217,8 +235,8 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       await writeFile(file, `${line(42)}\n`);
       const malformed = await loadById("gemini", file);
       expect(malformed?.parseFailureShapes).toContain("gemini:malformed_jsonl");
-      expect(malformed?.turns[0].model).toBeUndefined();
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+      expect(malformed?.turns).toHaveLength(0);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }
@@ -280,8 +298,8 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       await writeFile(file, `${line(42)}\n`);
       const malformed = await loadById("claude-code", file);
       expect(malformed?.parseFailureShapes).toContain("claude-code:malformed_jsonl");
-      expect(malformed?.turns[0].model).toBeUndefined();
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
+      expect(malformed?.turns).toHaveLength(0);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
     } finally {
       await rm(temp, { recursive: true, force: true });
     }

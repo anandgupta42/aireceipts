@@ -2,6 +2,7 @@ import { sep } from "node:path";
 import type { AgentSource, ListSessionsOptions, Session, SessionAdapter, SessionSummary, TokenUsage, ToolCall, Turn } from "./types.js";
 import { lazyGeminiSummary, nodeDiscoveryFs, type DiscoveryFs } from "./discovery.js";
 import { addUsage, emptyUsage, expandHome, listFiles, mapWithConcurrency, parseTimestamp, pathExists, readJsonl, truncate, withTotal, sanitizeText } from "./util.js";
+import { validFields, type FieldTable } from "./validate.js";
 
 /**
  * Gemini CLI (`ChatRecordingService`) writes an append-only JSONL transcript
@@ -53,6 +54,29 @@ interface GeminiMessage {
   tokens?: GeminiTokens;
   toolCalls?: GeminiToolCall[];
 }
+
+const tokensFields: FieldTable = Object.fromEntries(
+  ["input", "output", "cached", "thoughts", "tool", "total"].map((name) => [name, { type: "integer" }]),
+);
+const toolCallFields: FieldTable = {
+  name: { type: "string" }, status: { type: "string" },
+};
+const contentPartFields: FieldTable = { text: { type: "string" } };
+const messageFields: FieldTable = {
+  id: { type: "string" }, timestamp: { type: "stringOrNumber" }, type: { type: "string" },
+  content: { type: "stringOrArray", elements: { type: "stringOrObject", fields: contentPartFields } },
+  model: { type: "string" }, tokens: { type: "object", fields: tokensFields },
+  toolCalls: { type: "array", elements: { type: "object", fields: toolCallFields } },
+};
+const metadataFields: FieldTable = {
+  sessionId: { type: "string" }, startTime: { type: "stringOrNumber" },
+  kind: { type: "string" }, directories: { type: "array", elements: { type: "string" } },
+};
+const updateFields: FieldTable = {
+  $rewindTo: { type: "string" }, $set: { type: "object", fields: {
+    messages: { type: "array", elements: { type: "object", fields: messageFields } },
+  } },
+};
 
 /**
  * Map Gemini's `TokensSummary` onto our 4-component `TokenUsage`.
@@ -162,6 +186,13 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
       return;
     }
     const top = record as Record<string, unknown>;
+    if (typeof top.type === "string" && top.type !== "user" && top.type !== "gemini") return;
+    const table = top.type === "user" || top.type === "gemini" ? messageFields
+      : "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
+    if ((top.type !== undefined && typeof top.type !== "string") || !validFields(top, table)) {
+      malformedNestedFields++;
+      return;
+    }
     if (Object.prototype.hasOwnProperty.call(top, "$rewindTo") && typeof top.$rewindTo !== "string") malformedNestedFields++;
 
     // Rewind: drop the named message and everything appended after it.
@@ -190,8 +221,12 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
         out.messages.clear();
         for (const m of set.messages) {
           if (m && typeof m === "object" && !Array.isArray(m) && typeof (m as GeminiMessage).id === "string") {
-            if ((m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") malformedNestedFields++;
-            if (malformedMessageField(m as GeminiMessage)) malformedNestedFields++;
+            if (typeof (m as GeminiMessage).type === "string"
+              && (m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") continue;
+            if (malformedMessageField(m as GeminiMessage)) {
+              malformedNestedFields++;
+              continue;
+            }
             out.messages.set((m as GeminiMessage).id as string, m as GeminiMessage);
           } else {
             malformedCheckpointEntries++;

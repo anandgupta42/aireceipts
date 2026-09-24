@@ -26,6 +26,7 @@ import {
   sanitizeText,
   withTotal,
 } from "./util.js";
+import { validFields, type FieldTable } from "./validate.js";
 
 /** Raw shapes from a Claude Code `.jsonl` transcript line. Only the fields we use. */
 interface RawUsage {
@@ -73,6 +74,44 @@ interface RawRecord {
   gitBranch?: string;
   /** SPEC-0019 R1c — the raw child marker. */
   isSidechain?: boolean;
+}
+
+const blockTypeFields: FieldTable = { type: { type: "string" } };
+const textBlockFields: FieldTable = { ...blockTypeFields, text: { type: "string" } };
+const toolUseFields: FieldTable = {
+  ...blockTypeFields, id: { type: "string" }, name: { type: "string" }, input: { type: "any" },
+};
+const toolResultFields: FieldTable = {
+  ...blockTypeFields, tool_use_id: { type: "string" }, content: { type: "any" }, is_error: { type: "boolean" },
+};
+const usageFields: FieldTable = {
+  input_tokens: { type: "integer" }, output_tokens: { type: "integer" },
+  cache_read_input_tokens: { type: "integer" }, cache_creation_input_tokens: { type: "integer" },
+  cache_creation: { type: "object", fields: {
+    ephemeral_5m_input_tokens: { type: "integer" }, ephemeral_1h_input_tokens: { type: "integer" },
+  } },
+};
+const messageFields: FieldTable = {
+  id: { type: "string" }, model: { type: "string" },
+  content: { type: "stringOrArray", elements: { type: "object" } },
+  usage: { type: "object", fields: usageFields },
+};
+const userMessageFields: FieldTable = { content: { type: "stringOrArray", elements: { type: "object" } } };
+const recordFields: FieldTable = {
+  type: { type: "string" }, timestamp: { type: "stringOrNumber" },
+  aiTitle: { type: "string" }, isMeta: { type: "boolean" },
+  isCompactSummary: { type: "boolean" }, message: { type: "object" },
+  cwd: { type: "string" }, gitBranch: { type: "string" }, isSidechain: { type: "boolean" },
+};
+function validBlocks(content: unknown): boolean {
+  if (!Array.isArray(content)) return true;
+  return content.every((block) => {
+    if (!validFields(block, blockTypeFields)) return false;
+    const type = (block as RawContentBlock).type;
+    const table = type === "text" ? textBlockFields : type === "tool_use" ? toolUseFields
+      : type === "tool_result" ? toolResultFields : blockTypeFields;
+    return validFields(block, table);
+  });
 }
 
 // command-echo wrapper tags injected into the transcript by the CLI itself — not
@@ -316,6 +355,19 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       return;
     }
     const r = raw as RawRecord;
+    if (r.type !== undefined && typeof r.type !== "string") {
+      malformedMessageRecords++;
+      return;
+    }
+    if (r.type !== undefined && r.type !== "assistant" && r.type !== "user" && r.type !== "ai-title"
+      && r.type !== "fork-context-ref" && r.type !== "summary" && r.type !== "system"
+      && !COMPACT_BOUNDARY_TYPES.has(r.type)) return;
+    if (!validFields(r, recordFields)
+      || (r.type === "assistant" && (!validFields(r.message, messageFields) || !validBlocks(r.message?.content)))
+      || (r.type === "user" && (!validFields(r.message, userMessageFields) || !validBlocks(r.message?.content)))) {
+      malformedMessageRecords++;
+      return;
+    }
     if ((r.type === "assistant" || r.type === "user")
       && (!r.message || typeof r.message !== "object" || Array.isArray(r.message))) {
       malformedMessageRecords++;

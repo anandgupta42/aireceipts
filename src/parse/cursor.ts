@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { openReadOnly } from "./sqlite.js";
 import type { AgentSource, Session, SessionAdapter, SessionSummary, ToolCall, Turn } from "./types.js";
 import { emptyUsage, pathExists, truncate, sanitizeText } from "./util.js";
+import { plainObject, validFields, type FieldTable } from "./validate.js";
 
 /**
  * Cursor stores chat history in SQLite (`globalStorage/state.vscdb`, table
@@ -85,6 +86,22 @@ interface Bubble {
   type?: number;
   toolFormerData?: ToolFormerData;
 }
+
+const toolFormerFields: FieldTable = {
+  tool: { type: "stringOrNumber" }, name: { type: "string" }, rawArgs: { type: "any" },
+  result: { type: "any" }, status: { type: "string" },
+};
+const headerFields: FieldTable = { bubbleId: { type: "string", required: true }, type: { type: "number" } };
+const bubbleFields: FieldTable = {
+  type: { type: "number" }, toolFormerData: { type: "object", fields: toolFormerFields },
+};
+const composerFields: FieldTable = {
+  name: { type: "string" }, createdAt: { type: "number" }, lastUpdatedAt: { type: "number" },
+  fullConversationHeadersOnly: { type: "array", elements: { type: "object", fields: headerFields } },
+  tokenCount: { type: "numberOrObject", fields: {
+    inputTokens: { type: "integer" }, outputTokens: { type: "integer" },
+  } },
+};
 
 function parseJson<T>(value: unknown): T | null {
   if (typeof value !== "string") {
@@ -188,8 +205,8 @@ export class CursorAdapter implements SessionAdapter {
         const id = key.slice("composerData:".length);
         const c = parseJson<ComposerData>(r.value);
         // Skip empty draft composers — no turns means no evidence to report.
-        if (c && id && (c.fullConversationHeadersOnly?.length ?? 0) > 0) {
-          out.push(summaryOf(c, id));
+        if (plainObject(c) && validFields(c, composerFields) && id && ((c as ComposerData).fullConversationHeadersOnly?.length ?? 0) > 0) {
+          out.push(summaryOf(c as ComposerData, id));
         }
       }
       return out;
@@ -209,7 +226,7 @@ export class CursorAdapter implements SessionAdapter {
     try {
       const head = db.all(`SELECT value FROM cursorDiskKV WHERE key = 'composerData:${id}'`);
       const composer = parseJson<ComposerData>(head[0]?.value);
-      if (!composer) {
+      if (!plainObject(composer)) {
         return null;
       }
       const order = Array.isArray(composer.fullConversationHeadersOnly) ? composer.fullConversationHeadersOnly : [];
@@ -223,18 +240,18 @@ export class CursorAdapter implements SessionAdapter {
         const key = String(r.key ?? "");
         const bid = key.split(":")[2];
         const b = parseJson<Bubble>(r.value);
-        if (b !== null && typeof b === "object" && !Array.isArray(b) && bid) {
+        if (plainObject(b) && bid) {
           byId.set(bid, b);
         } else if (!bid || !referencedBubbleIds.has(bid)) {
           malformedRecord = true;
         }
       }
 
-      if (composer.fullConversationHeadersOnly !== undefined && !Array.isArray(composer.fullConversationHeadersOnly)) malformedRecord = true;
+      if (!validFields(composer, composerFields)) malformedRecord = true;
       if (composer.tokenCount !== undefined && typeof composer.tokenCount !== "number"
         && (!composer.tokenCount || typeof composer.tokenCount !== "object" || Array.isArray(composer.tokenCount))) malformedRecord = true;
       if (composer.tokenCount && typeof composer.tokenCount === "object" &&
-        [composer.tokenCount.inputTokens, composer.tokenCount.outputTokens].some((value) => value !== undefined
+        [(composer.tokenCount as { inputTokens?: unknown }).inputTokens, (composer.tokenCount as { outputTokens?: unknown }).outputTokens].some((value) => value !== undefined
           && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0))) malformedRecord = true;
       const turns: Turn[] = [];
       let toolCallCount = 0;
@@ -242,19 +259,19 @@ export class CursorAdapter implements SessionAdapter {
       let current: Turn | null = null;
 
       for (const h of order) {
-        if (!h || typeof h !== "object" || Array.isArray(h) || typeof h.bubbleId !== "string") {
+        if (!validFields(h, headerFields)) {
           malformedRecord = true;
           continue;
         }
-        if (h.type !== undefined && typeof h.type !== "number") malformedRecord = true;
         const b = byId.get(h.bubbleId);
         if (!b) {
           missingBubble = true;
           continue;
         }
-        if (b.type !== undefined && typeof b.type !== "number") malformedRecord = true;
-        if (b.toolFormerData !== undefined && (!b.toolFormerData || typeof b.toolFormerData !== "object"
-          || Array.isArray(b.toolFormerData))) malformedRecord = true;
+        if (!validFields(b, bubbleFields)) {
+          malformedRecord = true;
+          continue;
+        }
         const isUser = h.type === 1 || b.type === 1;
         if (isUser) {
           current = null; // a user bubble ends the prior assistant turn

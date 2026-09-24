@@ -258,6 +258,12 @@ customEvents
 | extend cliVersion = tostring(customDimensions.cliVersion), isCI = tostring(customDimensions.isCI),
          exitClass = tostring(customDimensions.exitClass),
          failedPollCountBucket = tostring(customDimensions.failedPollCountBucket),
+         command = tostring(customDimensions.command),
+         errorClass = tostring(customDimensions.errorClass),
+         agentType = tostring(customDimensions.agentType),
+         inPackage = tostring(customDimensions.inPackage),
+         adapterVersion = tostring(customDimensions.adapterVersion),
+         signatureHash = tostring(customDimensions.signatureHash),
          installHash = tostring(customDimensions.installHash)
 | extend versionParts = split(cliVersion, "."), gateParts = split(r2c_min_version, ".")
 | extend versionNumber = toint(versionParts[0]) * 1000000 + toint(versionParts[1]) * 1000 + toint(extract(@"^(\d+)", 1, tostring(versionParts[2]))),
@@ -265,7 +271,8 @@ customEvents
 // cli_run and heartbeat have always carried isCI; the version gate only affects R2c error rows.
 | where (name in ("cli_run", "statusline_heartbeat") and isCI != "true")
     or (name in ("cli_error", "parse_failure") and (versionNumber < gateNumber or isCI != "true"))
-| summarize rows = count() by name, exitClass, failedPollCountBucket, cliVersion
+| summarize rows = count() by name, exitClass, failedPollCountBucket, cliVersion,
+    command, errorClass, agentType, inPackage, adapterVersion, signatureHash
 | order by name asc, cliVersion asc
 ```
 
