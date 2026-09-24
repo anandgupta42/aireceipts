@@ -212,6 +212,10 @@ export class CursorAdapter implements SessionAdapter {
       if (!composer) {
         return null;
       }
+      const order = Array.isArray(composer.fullConversationHeadersOnly) ? composer.fullConversationHeadersOnly : [];
+      const referencedBubbleIds = new Set(order
+        .filter((h) => h && typeof h === "object" && !Array.isArray(h) && typeof h.bubbleId === "string")
+        .map((h) => h.bubbleId));
       const bubbleRows = db.all(`SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${id}:%'`);
       const byId = new Map<string, Bubble>();
       let malformedRecord = false;
@@ -221,12 +225,11 @@ export class CursorAdapter implements SessionAdapter {
         const b = parseJson<Bubble>(r.value);
         if (b !== null && typeof b === "object" && !Array.isArray(b) && bid) {
           byId.set(bid, b);
-        } else {
+        } else if (!bid || !referencedBubbleIds.has(bid)) {
           malformedRecord = true;
         }
       }
 
-      const order = Array.isArray(composer.fullConversationHeadersOnly) ? composer.fullConversationHeadersOnly : [];
       if (composer.fullConversationHeadersOnly !== undefined && !Array.isArray(composer.fullConversationHeadersOnly)) malformedRecord = true;
       if (composer.tokenCount !== undefined && typeof composer.tokenCount !== "number"
         && (!composer.tokenCount || typeof composer.tokenCount !== "object" || Array.isArray(composer.tokenCount))) malformedRecord = true;

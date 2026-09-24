@@ -206,7 +206,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     }
   });
 
-  it.skipIf(sqlite === null).each(["[]", '"bubble text"'])("treats Cursor's %s bubble as missing", async (value) => {
+  it.skipIf(sqlite === null).each(["{bad", "[]", "42", '"bubble text"'])("treats Cursor's %s bubble as missing", async (value) => {
     const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-nonobject-"));
     const dbPath = resolve(temp, "state.vscdb");
@@ -220,12 +220,33 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(value, `bubbleId:${composerId}:bubble-0002`);
       db.close();
       const session = await adapter.loadSession(composerId);
-      expect(session?.parseFailureShapes).toContain("cursor:missing_bubble");
+      expect(session?.parseFailureShapes).toEqual(["cursor:missing_bubble"]);
       expect(session?.totals.turnCount).toBe(1);
       expect(session?.totals.toolCallCount).toBe(1);
       expect(renderReceipt(await buildReceiptModel(session!), { color: false }))
         .toBe(renderReceipt(await buildReceiptModel({ ...session!, parseFailureShapes: undefined }), { color: false }));
       expect(clean?.totals.toolCallCount).toBe(2);
+    } finally {
+      if (previous === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = previous;
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(sqlite === null)("attaches only Cursor's malformed-record shape for an unreferenced malformed bubble", async () => {
+    const { makeCursorDb } = await import("../fixtures/cursor/makeCursorDb.js");
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-cursor-unreferenced-"));
+    const dbPath = resolve(temp, "state.vscdb");
+    const previous = process.env.CURSOR_DB_PATH;
+    try {
+      const composerId = makeCursorDb({ dbPath });
+      const db = new sqlite!.DatabaseSync(dbPath);
+      db.prepare("INSERT INTO cursorDiskKV (key, value) VALUES (?, ?)")
+        .run(`bubbleId:${composerId}:unreferenced`, "{bad");
+      db.close();
+      process.env.CURSOR_DB_PATH = dbPath;
+      const session = await new CursorAdapter().loadSession(composerId);
+      expect(session?.parseFailureShapes).toEqual(["cursor:malformed_record"]);
     } finally {
       if (previous === undefined) delete process.env.CURSOR_DB_PATH;
       else process.env.CURSOR_DB_PATH = previous;
