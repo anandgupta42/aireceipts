@@ -178,17 +178,17 @@ customEvents
 
 ```kql
 let maintainer_hashes = dynamic([]);
-let r2cVersion = "0.12.0";
+let r2c_min_version = "0.12.0";
 customEvents
 | where name in ("cli_run", "cli_error", "parse_failure", "statusline_heartbeat")
 | extend cliVersion = tostring(customDimensions.cliVersion), isCI = tostring(customDimensions.isCI),
          exitClass = tostring(customDimensions.exitClass),
          failedPollCountBucket = tostring(customDimensions.failedPollCountBucket),
          installHash = tostring(customDimensions.installHash)
-| extend versionParts = split(cliVersion, "."), gateParts = split(r2cVersion, ".")
-| extend versionNumber = toint(versionParts[0]) * 1000000 + toint(versionParts[1]) * 1000 + toint(versionParts[2]),
+| extend versionParts = split(cliVersion, "."), gateParts = split(r2c_min_version, ".")
+| extend versionNumber = toint(versionParts[0]) * 1000000 + toint(versionParts[1]) * 1000 + toint(extract(@"^(\d+)", 1, tostring(versionParts[2]))),
          gateNumber = toint(gateParts[0]) * 1000000 + toint(gateParts[1]) * 1000 + toint(gateParts[2])
-| where isCI != "true" or (name in ("cli_error", "parse_failure") and versionNumber < gateNumber)
+| where versionNumber < gateNumber or isCI != "true"
 | summarize rows = count() by name, exitClass, failedPollCountBucket, cliVersion
 | order by name asc, cliVersion asc
 ```
@@ -200,7 +200,7 @@ about their CI status is possible.
 ## Statusline row reduction
 
 ```kql
-let newVersion = "0.12.0";
+let r2c_min_version = "0.12.0";
 let oldVersion = "0.11.0";
 let rows = customEvents
 | extend cliVersion = tostring(customDimensions.cliVersion),
@@ -209,7 +209,7 @@ let rows = customEvents
          command = tostring(customDimensions.command),
          integration = tostring(customDimensions.integration)
 | where installHash matches regex "^[0-9a-f]{64}$"
-| where (cliVersion == newVersion and ((name == "integration_surface_rendered" and integration == "statusline")
+| where (cliVersion == r2c_min_version and ((name == "integration_surface_rendered" and integration == "statusline")
     or name == "statusline_heartbeat" or (name == "cli_error" and command == "statusline")))
     or (cliVersion == oldVersion and name == "cli_run" and commandClass == "statusline")
 | summarize observedRows = count() by installHash, day = startofday(timestamp), cliVersion

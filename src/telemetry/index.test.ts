@@ -160,7 +160,9 @@ describe("SPEC-0094 R2c identity on error events", () => {
     });
     recordCliError({ command: "receipt", agentType: "gemini", err: new Error("broken") });
     recordParseFailure({ agentType: "gemini", adapterVersion: "1", shape: "gemini:malformed_jsonl" });
-    for (const event of peekQueuedEvents().filter((candidate) => candidate.name === "cli_error" || candidate.name === "parse_failure")) {
+    const identityEvents = peekQueuedEvents().filter((candidate) => candidate.name === "cli_error" || candidate.name === "parse_failure");
+    expect(identityEvents).toHaveLength(2);
+    for (const event of identityEvents) {
       expect(event.properties).toMatchObject({
         cliVersion: getCliVersion(),
         installHash: run.installHash,

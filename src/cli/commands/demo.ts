@@ -12,6 +12,7 @@ import { renderReceipt } from "../../receipt/render.js";
 import type { AgentSource } from "../../parse/types.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 const DEMO_FIXTURE = "clean-multi-tool-2-models.jsonl";
 
@@ -56,6 +57,7 @@ async function run(ctx: CommandContext): Promise<number> {
     return 1;
   }
   const model = await buildReceiptModel(session);
+  setAgentType(ctx, sharedAgentType([session]));
   ctx.stderr.write(`${BANNER}\n`);
   // No `color` option → same auto-detection (NO_COLOR / TTY) as the default
   // receipt command; the trailing newline matches how the golden is written.

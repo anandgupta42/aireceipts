@@ -247,6 +247,7 @@ describe("Codex cumulative usage envelopes", () => {
     ]);
 
     expect(session.usageReconciliationFailed).toBe(true);
+    expect(session.parseFailureShapes).toContain("codex:malformed_usage");
     expect(session.totals.tokens).toMatchObject({ input: 150, output: 20, cacheRead: 50, total: 220 });
     expect(session.unattributedUsage).toEqual(session.totals.tokens);
     expect(session.turns.every((turn) => turn.usage === undefined && turn.pricingUnits === undefined)).toBe(true);

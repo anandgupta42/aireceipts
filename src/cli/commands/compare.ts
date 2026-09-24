@@ -13,7 +13,7 @@ import { svgOutOf, writeSvg } from "../common/output.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import type { ExportFormatValue, OutputModeValue } from "../../telemetry/schemas.js";
 import { setExitClass } from "../exitClass.js";
-import { setAgentType } from "../agentType.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 async function recordCompareTelemetry(
   ctx: CommandContext,
@@ -90,7 +90,7 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   ctx.telemetry.observeSession?.(sessionA);
   ctx.telemetry.observeSession?.(sessionB);
-  setAgentType(ctx, sessionA.source === sessionB.source ? sessionA.source : undefined);
+  setAgentType(ctx, sharedAgentType([sessionA, sessionB]));
   const [modelA, modelB] = await Promise.all([
     buildFullSessionReceiptModel(sessionA),
     buildFullSessionReceiptModel(sessionB),

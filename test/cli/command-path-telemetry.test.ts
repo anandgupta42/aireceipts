@@ -39,6 +39,8 @@ import * as preview from "../../src/receipt/preview.js";
 import { peekQueuedEvents, __resetQueueForTests } from "../../src/telemetry/sender.js";
 import { validateEvent, RECEIPT_SURFACE_VALUES, COUNT_BUCKET_VALUES, ORDINAL_BUCKET_VALUES, type TelemetryEvent } from "../../src/telemetry/schemas.js";
 import { main } from "../../src/cli/index.js";
+import { listFullSessions } from "../../src/parse/load.js";
+import { makeCursorDb } from "../fixtures/cursor/makeCursorDb.js";
 
 const fixturesDir = resolve(__dirname, "..", "fixtures");
 
@@ -129,6 +131,40 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect(runs).toHaveLength(1);
     expect((runs[0].properties as Record<string, unknown>).commandClass).toBe("receipt");
     expect((runs[0].properties as Record<string, unknown>).agentType).toBe(props.agentType);
+  });
+
+  it.each(["claude-code", "codex", "cursor", "gemini", "opencode"] as const)("matches cli_run and receipt_generated for %s through main", async (source) => {
+    const roots = [
+      ["claude-code", join(home, ".claude", "projects", "test", "session.jsonl"), "claude-code/clean-multi-tool-2-models.jsonl"],
+      ["codex", join(home, ".codex", "sessions", "rollout-test.jsonl"), "codex/clean-session.jsonl"],
+      ["gemini", join(home, ".gemini", "tmp", "test", "chats", "session.jsonl"), "gemini/clean-session.jsonl"],
+    ] as const;
+    for (const [agent, target, fixture] of roots) {
+      if (agent !== source) continue;
+      mkdirSync(resolve(target, ".."), { recursive: true });
+      copyFileSync(join(fixturesDir, fixture), target);
+    }
+    const oldCursorPath = process.env.CURSOR_DB_PATH;
+    if (source === "cursor") {
+      const path = join(home, "cursor-state.vscdb");
+      makeCursorDb({ dbPath: path });
+      process.env.CURSOR_DB_PATH = path;
+    }
+    try {
+      const summary = (await listFullSessions()).find((item) => item.source === source);
+      expect(summary, source).toBeDefined();
+      expect(await main([summary!.id])).toBe(0);
+      const events = peekQueuedEvents();
+      const runs = events.filter((event) => event.name === "cli_run");
+      const receipts = events.filter((event) => event.name === "receipt_generated");
+      expect(runs).toHaveLength(1);
+      expect(receipts).toHaveLength(1);
+      expect(runs[0]?.properties.agentType).toBe(source);
+      expect(runs[0]?.properties.agentType).toBe(receipts[0]?.properties.agentType);
+    } finally {
+      if (oldCursorPath === undefined) delete process.env.CURSOR_DB_PATH;
+      else process.env.CURSOR_DB_PATH = oldCursorPath;
+    }
   });
 
   it("queues one Gemini parse_failure on a torn full render without changing receipt bytes", async () => {

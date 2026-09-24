@@ -17,7 +17,7 @@ import type { BackfillReport, BackfillReportEntry } from "../../receipt/backfill
 import { noSessionsMessage } from "../common/session.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { setExitClass } from "../exitClass.js";
-import { setAgentType } from "../agentType.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 /** Injectable seams so tests exercise the full command without real agent dirs. */
 export interface BackfillDeps {
@@ -152,7 +152,7 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
 
   const entries: BackfillReportEntry[] = [];
   const written: string[] = [];
-  const renderedSources = new Set<Session["source"]>();
+  const renderedSessions: Session[] = [];
   for (const planned of plan.entries) {
     const base: Omit<BackfillReportEntry, "fileName" | "loadFailed"> = {
       source: planned.summary.source,
@@ -171,7 +171,7 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
       continue;
     }
     ctx.telemetry.observeSession?.(session);
-    renderedSources.add(session.source);
+    renderedSessions.push(session);
     const model = await buildFullSessionReceiptModel(session);
     // I5: renderer bytes + trailing newline — what `aireceipts <selector>` writes
     // with colour off and no budget configured.
@@ -180,7 +180,7 @@ async function run(ctx: CommandContext, deps: BackfillDeps = defaultDeps): Promi
     entries.push({ ...base, fileName: planned.fileName, loadFailed: false });
   }
   await ctx.fs.writeFile(join(options.outDir, "index.txt"), buildManifest(written));
-  if (renderedSources.size === 1) setAgentType(ctx, [...renderedSources][0]);
+  setAgentType(ctx, sharedAgentType(renderedSessions));
 
   const report: BackfillReport = {
     discoveredCount: plan.discoveredCount,

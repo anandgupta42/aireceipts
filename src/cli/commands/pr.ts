@@ -6,6 +6,7 @@ import { loadSession } from "../../parse/load.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setExitClass } from "../exitClass.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const result = await runPrDetailed({
@@ -26,6 +27,7 @@ async function run(ctx: CommandContext): Promise<number> {
     },
   }));
   if (result.bodyRendered && result.receipt) {
+    setAgentType(ctx, sharedAgentType(result.receipt.models));
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({
         surface: "pr",

@@ -12,7 +12,7 @@ import { listFullSessions } from "../../index.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
-import { setAgentType } from "../agentType.js";
+import { setAgentType, sharedAgentType } from "../agentType.js";
 
 /**
  * SPEC-0013 R1: aggregate waste across the trailing-7-day window (SPEC-0008's
@@ -50,7 +50,6 @@ async function run(ctx: CommandContext): Promise<number> {
     return 1;
   }
   ctx.telemetry.observeSession?.(session);
-  setAgentType(ctx, session.source);
   const model = await buildFullSessionReceiptModel(session);
   // SPEC-0042 R1/R2 — counts come from the loaded Session; the render stays pure.
   const counts: HandoffCounts = {
@@ -58,7 +57,12 @@ async function run(ctx: CommandContext): Promise<number> {
     toolCalls: session.totals.toolCallCount,
     compactions: session.compactions?.length ?? 0,
   };
-  const aggregates = await recentWasteAggregates(ctx.now(), (loaded) => ctx.telemetry.observeSession?.(loaded));
+  const sources: Session[] = [session];
+  const aggregates = await recentWasteAggregates(ctx.now(), (loaded) => {
+    ctx.telemetry.observeSession?.(loaded);
+    sources.push(loaded);
+  });
+  setAgentType(ctx, sharedAgentType(sources));
   const suggestions = standingRuleSuggestions(aggregates, threshold);
   // SPEC-0042 R3 — the global `--json` flag is honored (it was previously
   // ignored here). JSON always emits the full structure, empty arrays included.

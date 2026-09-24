@@ -121,6 +121,20 @@ describe("SPEC-0094 R1 statusline", () => {
     expect(rows("statusline_heartbeat")[0]?.properties).toMatchObject({ failedPollCountBucket: "2-10" });
   });
 
+  it.each([true, false])("gives a failed statusline poll the current identity with CI=%s", async (ci) => {
+    const env = { ...ENV, CI: ci ? "true" : "", GITHUB_ACTIONS: "" };
+    await noteStatuslinePoll(SURFACE, new Error("poll failed"), env, BASE);
+    expect(rows("cli_error")).toHaveLength(1);
+    expect(rows("integration_surface_rendered")).toHaveLength(1);
+    const surfaceIdentity = rows("integration_surface_rendered")[0]?.properties as Record<string, unknown>;
+    expect(surfaceIdentity).toMatchObject({ cliVersion: expect.any(String), installHash: expect.stringMatching(/^[0-9a-f]{64}$/), isCI: ci });
+    expect(rows("cli_error")[0]?.properties).toMatchObject({
+      cliVersion: surfaceIdentity.cliVersion,
+      installHash: surfaceIdentity.installHash,
+      isCI: ci,
+    });
+  });
+
   it("tracks first run locally while keeping disabled statusline and install id absent", async () => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     for (let i = 0; i < 50; i++) await noteStatuslinePoll(SURFACE, undefined, { ...ENV, DO_NOT_TRACK: "1" }, BASE + i);

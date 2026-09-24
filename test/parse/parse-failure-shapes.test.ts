@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { adapters } from "../../src/parse/registry.js";
 import { loadById } from "../../src/parse/load.js";
 import { buildReceiptModel } from "../../src/receipt/model.js";
@@ -11,7 +11,7 @@ import { toJsonModel } from "../../src/receipt/json.js";
 import { getExporter } from "../../src/receipt/exporters.js";
 import { CursorAdapter } from "../../src/parse/cursor.js";
 import { completeSummariesWithCache } from "../../src/parse/summaryCache.js";
-import { observeSession, recordObservedParseFailures } from "../../src/cli/parseFailures.js";
+import { ALLOWED, observeSession, recordObservedParseFailures } from "../../src/cli/parseFailures.js";
 import type { CommandContext } from "../../src/cli/types.js";
 import { __resetQueueForTests, peekQueuedEvents } from "../../src/telemetry/sender.js";
 
@@ -43,7 +43,19 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
 
   it("parse code never imports telemetry", () => {
     for (const file of parseFiles(resolve(root, "src/parse"))) {
-      expect(readFileSync(file, "utf8"), file).not.toMatch(/(?:from|import\()\s*["'][^"']*telemetry\//);
+      expect(readFileSync(file, "utf8"), file).not.toMatch(/(?:from\s*|import\s*\(?\s*|export\s+[^;]*?from\s*)["'][^"']*telemetry\//);
+    }
+  });
+
+  it("keeps measurable inventory, allowed shapes, and adapter literals aligned", () => {
+    const measurable = inventory.filter((row) => row.shape !== "not measurable by this spec");
+    expect(new Set(measurable.map((row) => row.shape))).toEqual(new Set(Object.values(ALLOWED).flat()));
+    for (const row of measurable) {
+      expect(ALLOWED[row.adapter as keyof typeof ALLOWED]).toContain(row.shape);
+      for (const adapter of adapters()) {
+        const source = readFileSync(resolve(root, `src/parse/${adapter.id === "claude-code" ? "claudeCode" : adapter.id}.ts`), "utf8");
+        expect(source.includes(`"${row.shape}"`), `${row.shape} in ${adapter.id}`).toBe(adapter.id === row.adapter);
+      }
     }
   });
 
@@ -79,16 +91,25 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       const opts = {
         cachePath: resolve(cacheDir, "cache.json"),
         stat: (file: string) => stat(file),
-        load: () => Promise.resolve(session),
+        load: vi.fn(() => Promise.resolve(session)),
       };
       const first = await completeSummariesWithCache([session!], opts);
+      expect(opts.load).toHaveBeenCalledTimes(1);
+      const cacheLoad = vi.fn(() => { throw new Error("cache hit must not load"); });
       const second = await completeSummariesWithCache([session!], {
         ...opts,
-        load: () => { throw new Error("cache hit must not load"); },
+        load: cacheLoad,
       });
+      expect(cacheLoad).not.toHaveBeenCalled();
       expect(first[0]).not.toHaveProperty("parseFailureShapes");
       expect(second[0]).not.toHaveProperty("parseFailureShapes");
-      expect(await loadById("claude-code", resolve(cacheDir, "missing.jsonl"))).toBeNull();
+      const missing = await loadById("claude-code", resolve(cacheDir, "missing.jsonl"));
+      expect(missing).toBeNull();
+      const ctx = {} as CommandContext;
+      for (const summary of [first[0], second[0], missing]) {
+        if (summary) observeSession(ctx, { ...session!, ...summary, parseFailureShapes: undefined });
+      }
+      recordObservedParseFailures(ctx);
       expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
     } finally {
       await rm(cacheDir, { recursive: true, force: true });
@@ -104,6 +125,21 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
     try {
       const file = resolve(temp, "session.jsonl");
       await writeFile(file, `${readFileSync(resolve(root, "test/fixtures", fixture), "utf8")}\n{torn\n`);
+      const session = await loadById(source, file);
+      expect(session?.parseFailureShapes).toContain(shape);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["codex", "codex/clean-session.jsonl", "codex:malformed_jsonl"],
+    ["gemini", "gemini/clean-session.jsonl", "gemini:malformed_jsonl"],
+  ] as const)("attaches %s shape for a valid JSON non-object line", async (source, fixture, shape) => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-nonobject-"));
+    try {
+      const file = resolve(temp, "session.jsonl");
+      await writeFile(file, `${readFileSync(resolve(root, "test/fixtures", fixture), "utf8")}\n42\n`);
       const session = await loadById(source, file);
       expect(session?.parseFailureShapes).toContain(shape);
     } finally {

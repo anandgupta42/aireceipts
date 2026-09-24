@@ -11,3 +11,8 @@ export function setAgentType(ctx: CommandContext, agentType: AgentSource | undef
 export function agentTypeOf(ctx: CommandContext): AgentSource | undefined {
   return agentTypes.get(ctx);
 }
+
+export function sharedAgentType(items: readonly { source: AgentSource }[]): AgentSource | undefined {
+  const source = items[0]?.source;
+  return source && items.every((item) => item.source === source) ? source : undefined;
+}

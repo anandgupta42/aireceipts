@@ -222,6 +222,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
   let sawCumulative = false;
   let sawLegacyUsage = false;
   let requestEvidenceValid = true;
+  let malformedUsage = false;
+  let nonObjectRecords = 0;
   let toolCallCount = 0;
   const turns: Turn[] = [];
   const toolCallById = new Map<string, ToolCall>();
@@ -257,6 +259,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
 
   const droppedRecords = await readJsonl(filePath, (record) => {
     if (!record || typeof record !== "object") {
+      nonObjectRecords++;
       return;
     }
     const top = record as Record<string, unknown>;
@@ -319,6 +322,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       const mappedReportedDelta = mapUsage(info.last_token_usage);
       if (mappedTotal.malformed || mappedReportedDelta.malformed) {
         requestEvidenceValid = false;
+        malformedUsage = true;
       }
       const total = mappedTotal.usage;
       const reportedDelta = mappedReportedDelta.usage;
@@ -407,6 +411,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
       const mappedPerMsg = mapUsage(item.usage ?? top.usage);
       if (mappedPerMsg.malformed) {
         requestEvidenceValid = false;
+        malformedUsage = true;
       }
       const perMsg = mappedPerMsg.usage;
       if (perMsg && perMsg.total > 0) {
@@ -551,8 +556,8 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
         summary,
         turns,
         compactions,
-        droppedRecords,
-        parseFailureShapes: droppedRecords > 0 ? ["codex:malformed_jsonl"] : [],
+        droppedRecords: droppedRecords + nonObjectRecords,
+        parseFailureShapes: [...(droppedRecords + nonObjectRecords > 0 ? ["codex:malformed_jsonl"] : []), ...(malformedUsage ? ["codex:malformed_usage"] : [])],
         ...(usageReconciliationFailed ? { usageReconciliationFailed: true as const } : {}),
         ...(usageReconciliationFailed && totalUsage.total > 0 ? { unattributedUsage: totalUsage } : {}),
       }
@@ -613,13 +618,14 @@ export class CodexAdapter implements SessionAdapter {
       const { summary, turns, compactions, droppedRecords, parseFailureShapes, usageReconciliationFailed, unattributedUsage } = await parseTranscript(id, true);
       // SPEC-0040 R5 — compactions absent (not `[]`) when none; SPEC-0044 B3 —
       // droppedRecords present only when > 0 (absent → clean).
-      const dropped = droppedRecords > 0 ? { droppedRecords, parseFailureShapes } : {};
+      const dropped = droppedRecords > 0 ? { droppedRecords } : {};
+      const failures = parseFailureShapes.length > 0 ? { parseFailureShapes } : {};
       const reconciliation = usageReconciliationFailed
         ? { usageReconciliationFailed, ...(unattributedUsage ? { unattributedUsage } : {}) }
         : {};
       return compactions.length > 0
-        ? { ...summary, turns, compactions, ...dropped, ...reconciliation }
-        : { ...summary, turns, ...dropped, ...reconciliation };
+        ? { ...summary, turns, compactions, ...dropped, ...failures, ...reconciliation }
+        : { ...summary, turns, ...dropped, ...failures, ...reconciliation };
     } catch {
       return null;
     }

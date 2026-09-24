@@ -4,9 +4,9 @@ import { recordParseFailure } from "../telemetry/index.js";
 import type { CommandContext } from "./types.js";
 
 const observed = new WeakMap<CommandContext, Set<string>>();
-const ALLOWED: Record<Session["source"], readonly string[]> = {
+export const ALLOWED: Record<Session["source"], readonly string[]> = {
   "claude-code": ["claude-code:malformed_jsonl", "claude-code:malformed_usage"],
-  codex: ["codex:malformed_jsonl"],
+  codex: ["codex:malformed_jsonl", "codex:malformed_usage"],
   cursor: ["cursor:missing_bubble"],
   gemini: ["gemini:malformed_jsonl"],
   opencode: ["opencode:malformed_record"],

@@ -129,9 +129,11 @@ interface ParsedRecords {
 
 async function readRecords(filePath: string): Promise<ParsedRecords> {
   const out: ParsedRecords = { messages: new Map() };
+  let nonObjectRecords = 0;
 
   out.droppedRecords = await readJsonl(filePath, (record) => {
     if (!record || typeof record !== "object") {
+      nonObjectRecords++;
       return;
     }
     const top = record as Record<string, unknown>;
@@ -201,6 +203,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     }
   });
 
+  out.droppedRecords += nonObjectRecords;
   return out;
 }
 

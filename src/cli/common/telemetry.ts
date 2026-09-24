@@ -1,4 +1,5 @@
 import type { AgentSource } from "../../parse/types.js";
+import { sharedAgentType } from "../agentType.js";
 import { isTemplateName } from "../../receipt/blocks.js";
 import type { ReceiptModel } from "../../receipt/model.js";
 import type { RecordReceiptGeneratedInput } from "../../telemetry/index.js";
@@ -16,8 +17,7 @@ function pricedRowCoverage(models: readonly ReceiptModel[]): PricedRowCoverageVa
 }
 
 function agentTypeFor(models: readonly ReceiptModel[]): AgentSource | undefined {
-  const sources = new Set(models.map((model) => model.source));
-  return sources.size === 1 ? models[0]?.source : undefined;
+  return sharedAgentType(models);
 }
 
 export function templateTelemetryValue(template: string | undefined): TemplateTelemetryValue {
