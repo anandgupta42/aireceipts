@@ -307,11 +307,18 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     const item = unwrap(top);
     if (typeof top.type === "string" && !knownTypes.has(top.type)) return;
     if (typeof item.type === "string" && !knownTypes.has(item.type)) return;
-    if (!validFields(top, recordFields) || !validFields(item, itemFields)
-      || ((item.type ?? top.type) === "message" && !validMessageContent(item.content))) {
+    if ((top.type !== undefined && typeof top.type !== "string")
+      || (item.type !== undefined && typeof item.type !== "string")
+      || (item.model !== undefined && typeof item.model !== "string")
+      || ["payload", "item", "response"].some((key) => top[key] !== undefined
+        && (!top[key] || typeof top[key] !== "object" || Array.isArray(top[key])))
+      || (item.usage !== undefined && (!item.usage || typeof item.usage !== "object" || Array.isArray(item.usage)))
+      || (top.usage !== undefined && (!top.usage || typeof top.usage !== "object" || Array.isArray(top.usage)))) {
       malformedNestedRecords++;
       return;
     }
+    if (!validFields(top, recordFields) || !validFields(item, itemFields)
+      || ((item.type ?? top.type) === "message" && !validMessageContent(item.content))) malformedNestedRecords++;
     if (["payload", "item", "response"].some((key) => Object.prototype.hasOwnProperty.call(top, key)
       && top[key] !== null && (typeof top[key] !== "object" || Array.isArray(top[key])))) malformedNestedRecords++;
     const ts = parseTimestamp(top.timestamp ?? top.created_at ?? top.time);

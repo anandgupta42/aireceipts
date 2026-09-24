@@ -172,7 +172,7 @@ describe("SPEC-0094 R2b inventory and isolation", () => {
       expect(malformed?.parseFailureShapes).toEqual(["codex:malformed_jsonl"]);
       expect(malformed?.droppedRecords).toBe(clean?.droppedRecords);
       expect(malformed?.turns).toHaveLength(0);
-      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).not.toBe(cleanReceipt);
+      expect(renderReceipt(await buildReceiptModel(malformed!), { color: false })).toBe(cleanReceipt);
 
       await writeFile(file, `${message({ type: "input_image", image_url: "data:image/png;base64,AA==" })}\n`);
       const image = await loadById("codex", file);

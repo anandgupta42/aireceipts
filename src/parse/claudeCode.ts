@@ -84,17 +84,9 @@ const toolUseFields: FieldTable = {
 const toolResultFields: FieldTable = {
   ...blockTypeFields, tool_use_id: { type: "string" }, content: { type: "any" }, is_error: { type: "boolean" },
 };
-const usageFields: FieldTable = {
-  input_tokens: { type: "integer" }, output_tokens: { type: "integer" },
-  cache_read_input_tokens: { type: "integer" }, cache_creation_input_tokens: { type: "integer" },
-  cache_creation: { type: "object", fields: {
-    ephemeral_5m_input_tokens: { type: "integer" }, ephemeral_1h_input_tokens: { type: "integer" },
-  } },
-};
 const messageFields: FieldTable = {
   id: { type: "string" }, model: { type: "string" },
   content: { type: "stringOrArray" },
-  usage: { type: "object", fields: usageFields },
 };
 const userMessageFields: FieldTable = { content: { type: "stringOrArray" } };
 const recordFields: FieldTable = {
@@ -359,17 +351,20 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (r.type !== undefined && r.type !== "assistant" && r.type !== "user" && r.type !== "ai-title"
       && r.type !== "fork-context-ref" && r.type !== "summary" && r.type !== "system"
       && !COMPACT_BOUNDARY_TYPES.has(r.type)) return;
+    if (!validFields(r, { type: recordFields.type!, message: recordFields.message! })
+      || ((r.type === "assistant" || r.type === "user")
+        && (!r.message || typeof r.message !== "object" || Array.isArray(r.message)))
+      || (r.type === "assistant" && r.message &&
+        ((r.message.id !== undefined && typeof r.message.id !== "string")
+          || (r.message.model !== undefined && typeof r.message.model !== "string")))
+      || (r.type === "assistant" && r.message && r.message.usage !== undefined
+        && (!r.message.usage || typeof r.message.usage !== "object" || Array.isArray(r.message.usage)))) {
+      malformedMessageRecords++;
+      return;
+    }
     if (!validFields(r, recordFields)
       || (r.type === "assistant" && !validFields(r.message, messageFields))
-      || (r.type === "user" && !validFields(r.message, userMessageFields))) {
-      malformedMessageRecords++;
-      return;
-    }
-    if ((r.type === "assistant" || r.type === "user")
-      && (!r.message || typeof r.message !== "object" || Array.isArray(r.message))) {
-      malformedMessageRecords++;
-      return;
-    }
+      || (r.type === "user" && !validFields(r.message, userMessageFields))) malformedMessageRecords++;
 
     // SPEC-0017 R1 — extract compactions BEFORE the isMeta/command-echo filters
     // below drop these records. `turns.length` is the index the next assistant
@@ -393,7 +388,7 @@ async function parseTranscript(filePath: string, withTurns: boolean) {
     if (r.type === "ai-title" && typeof r.aiTitle === "string") {
       aiTitle = r.aiTitle;
     }
-    if (r.isMeta) {
+    if (r.isMeta === true) {
       return;
     }
 

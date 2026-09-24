@@ -582,9 +582,9 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     expect(summaries.map((summary) => summary.id)).toContain(`${dbPath}#ses_current_shape`);
     const malformed = await adapter.loadSession(dbPath);
     expect(malformed?.parseFailureShapes).toContain("opencode:malformed_record");
-    expect(malformed?.turns).toHaveLength(0);
+    expect(malformed?.totals.tokens).toEqual(clean?.totals.tokens);
     expect(renderReceipt(await buildReceiptModel(malformed!, dataDir), { color: false }))
-      .not.toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
+      .toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
   });
 
   it.each([
@@ -593,7 +593,7 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
     ["negative", { input: 500, output: 100, reasoning: -1, cache: { read: 50, write: 10 } }, 660],
     ["fractional", { input: 500, output: 100, reasoning: 25, cache: { read: 1.5, write: 10 } }, 635],
     ["non-safe", { input: 500, output: 100, reasoning: 25, cache: { read: 50, write: Number.MAX_SAFE_INTEGER + 1 } }, 675],
-  ] as const)("skips a record with %s OpenCode message usage", async (_label, tokens) => {
+  ] as const)("keeps valid components of %s OpenCode message usage", async (_label, tokens, total) => {
     const dir = tempDir();
     dirs.push(dir);
     const dbPath = path.join(dir, "opencode-malformed-message.db");
@@ -602,8 +602,9 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
 
     const session = await new OpenCodeAdapter({ dbPath }).loadSession(dbPath);
     expect(session).not.toBeNull();
-    expect(session!.turns).toHaveLength(0);
-    expect(session!.droppedRecords).toBeUndefined();
+    expect(session!.turns[0].usage?.total).toBe(total);
+    expect(session!.turns[0].pricingUnits).toEqual([]);
+    expect(session!.droppedRecords).toBe(1);
     expect(session!.parseFailureShapes).toContain("opencode:malformed_record");
     const receipt = await buildReceiptModel(session!, dataDir);
     expect(receipt.totalUsd).toBeNull();

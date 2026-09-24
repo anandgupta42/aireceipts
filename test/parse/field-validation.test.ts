@@ -48,6 +48,129 @@ async function jsonlProperty(
 }
 
 describe("known transcript field types", () => {
+  it.each([
+    ["claude-code", { type: "assistant", timestamp: "2026-09-24T12:00:00Z",
+      message: { id: "msg_1", model: "claude-opus-4-8", content: [{ type: "text", text: "answer" }],
+        usage: { input_tokens: 10, output_tokens: 2 } } }, "claude-code:malformed_jsonl",
+    (r: Json, bad: unknown) => { (((r.message as Json).content as Json[])[0] as Json).text = bad; }],
+    ["codex", { type: "event_msg", timestamp: "2026-09-24T12:00:00Z",
+      payload: { type: "token_count", model: "gpt-5.6-sol", name: "unused",
+        info: { total_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 },
+          last_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } } } },
+    "codex:malformed_jsonl", (r: Json, bad: unknown) => { (r.payload as Json).name = bad; }],
+    ["gemini", { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+      model: "gemini-2.5-flash", content: [{ text: "answer" }], tokens: { input: 10, output: 2 } },
+    "gemini:malformed_jsonl", (r: Json, bad: unknown) => { (r.content as Json[])[0]!.text = bad; }],
+  ] as const)("preserves %s usage for wrong typed non-usage fields", async (agent, clean, shape, mutate) => {
+    const temp = await mkdtemp(resolve(tmpdir(), `aireceipts-${agent}-usage-property-`));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await writeFile(file, `${JSON.stringify(clean)}\n`);
+      const baseline = (await loadById(agent, file))!;
+      const cost = (await buildReceiptModel(baseline)).totalUsd;
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes), async (bad) => {
+        const record = structuredClone(clean) as Json;
+        mutate(record, bad);
+        await writeFile(file, `${JSON.stringify(record)}\n`);
+        const result = (await loadById(agent, file))!;
+        expect(result.parseFailureShapes).toContain(shape);
+        expect(result.totals.tokens).toEqual(baseline.totals.tokens);
+        expect((await buildReceiptModel(result)).totalUsd).toBe(cost);
+      }), { numRuns: 20 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps Claude output tokens from a malformed usage component", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-claude-usage-gate-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await writeFile(file, `${JSON.stringify({ type: "assistant", timestamp: "2026-06-01T12:00:00Z",
+        message: { id: "msg_1", model: "claude-opus-4-8", usage: { input_tokens: "bad", output_tokens: 2 } } })}\n`);
+      const session = (await loadById("claude-code", file))!;
+      expect(session.parseFailureShapes).toContain("claude-code:malformed_usage");
+      expect(session.totals.tokens.output).toBe(2);
+      const receipt = await buildReceiptModel(session);
+      expect(receipt.totalUsd).toBeNull();
+      expect(renderReceipt(receipt).replaceAll(" ", "·")).toMatchInlineSnapshot(`
+        "-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-
+        ····················AIRECEIPTS····················
+        ···Claude·Code···Jun·01·2026·12:00:00·UTC···0s····
+
+        pre-edit:·no·named·edit·tool·observed
+        ··(share·before·the·first·named·edit·tool)
+
+        (thinking/reply)...................2·tok··(1·turn)
+
+        caveat:·session·span·is·non-positive·but·carries·token·usage
+        caveat:·1·transcript·record·unreadable·or·malformed·—·omitted·components·may·make·total·incomplete
+        --------------------------------------------------
+        TOTAL........................................2·tok
+        no·price·table·matched
+        -·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-
+        ················npx·aireceipts-cli················
+        ·········github.com/anandgupta42/receipts·········
+        -·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-·-"
+      `);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps Gemini usage when one content element is malformed", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-part-gate-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      const clean = { id: "answer", type: "gemini", timestamp: "2026-09-24T12:00:00Z",
+        model: "gemini-2.5-flash", content: [{ text: "answer" }], tokens: { input: 10, output: 2 } };
+      await writeFile(file, `${JSON.stringify(clean)}\n`);
+      const baseline = (await loadById("gemini", file))!;
+      const mutated = structuredClone(clean);
+      mutated.content.push({ text: 42 as unknown as string });
+      await writeFile(file, `${JSON.stringify(mutated)}\n`);
+      const result = (await loadById("gemini", file))!;
+      expect(result.parseFailureShapes).toContain("gemini:malformed_jsonl");
+      expect(result.totals.tokens).toEqual(baseline.totals.tokens);
+      expect(renderReceipt(await buildReceiptModel(result))).toBe(renderReceipt(await buildReceiptModel(baseline)));
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("retains valid Gemini usage components and disables pricing for a bad component", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-gemini-usage-parts-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes.slice(1)), async (bad) => {
+        await writeFile(file, `${JSON.stringify({ id: "answer", type: "gemini", model: "gemini-2.5-flash",
+          tokens: { input: bad, output: 2 } })}\n`);
+        const result = (await loadById("gemini", file))!;
+        expect(result.parseFailureShapes).toContain("gemini:malformed_jsonl");
+        expect(result.totals.tokens.output).toBe(2);
+        expect((await buildReceiptModel(result)).totalUsd).toBeNull();
+      }), { numRuns: 20 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("uses Codex's existing fail-closed usage mapping for a bad component", async () => {
+    const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-codex-usage-parts-"));
+    const file = resolve(temp, "session.jsonl");
+    try {
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes.slice(1)), async (bad) => {
+        await writeFile(file, `${JSON.stringify({ type: "event_msg", payload: { type: "token_count",
+          model: "gpt-5.6-sol", info: { total_token_usage: { input_tokens: bad, output_tokens: 2 },
+            last_token_usage: { input_tokens: bad, output_tokens: 2 } } } })}\n`);
+        const result = (await loadById("codex", file))!;
+        expect(result.parseFailureShapes).toContain("codex:malformed_usage");
+        expect(result.totals.tokens.total).toBe(0);
+      }), { numRuns: 20 });
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
   it("Claude Code rejects wrong typed record, message, block and usage fields", async () => {
     await jsonlProperty("claude-code", {
       type: "assistant", message: { id: "msg_1", model: "claude-opus-4-8",
@@ -55,7 +178,6 @@ describe("known transcript field types", () => {
     }, "claude-code:malformed_jsonl", [
       (r, bad) => { r.type = bad; },
       (r, bad) => { (r.message as Json).model = bad; },
-      (r, bad) => { ((r.message as Json).usage as Json).input_tokens = bad; },
     ]);
     await jsonlProperty("claude-code", { type: "user", message: { content: [{ type: "text", text: "prompt" }] } },
       "claude-code:malformed_jsonl", [
@@ -120,8 +242,6 @@ describe("known transcript field types", () => {
         last_token_usage: { input_tokens: 10, output_tokens: 2, total_tokens: 12 } } } },
     "codex:malformed_jsonl", [
       (r, bad) => { (r.payload as Json).model = bad; },
-      (r, bad) => { ((r.payload as Json).info as Json).total_token_usage = bad; },
-      (r, bad) => { (((r.payload as Json).info as Json).last_token_usage as Json).input_tokens = bad; },
     ]);
   });
 
@@ -172,9 +292,6 @@ describe("known transcript field types", () => {
     "gemini:malformed_jsonl", [
       (r, bad) => { r.type = bad; },
       (r, bad) => { r.model = bad; },
-      (r, bad) => { (r.content as Json[])[0]!.text = bad; },
-      (r, bad) => { (r.toolCalls as Json[])[0]!.name = bad; },
-      (r, bad) => { (r.tokens as Json).input = bad; },
     ]);
   });
 
@@ -212,6 +329,11 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       const adapter = new CursorAdapter();
       const clean = await adapter.loadSession(id);
       const db = new sqlite!.DatabaseSync(file);
+      const draftId = "00000000-0000-4000-8000-000000000001";
+      db.prepare("INSERT INTO cursorDiskKV (key, value) VALUES (?, ?)")
+        .run(`composerData:${draftId}`, JSON.stringify({ name: "Untitled", createdAt: Date.now() }));
+      expect((await adapter.listSessions()).map((summary) => summary.id)).not.toContain(draftId);
+      expect(await adapter.loadSession(draftId)).toBeNull();
       const composerKey = `composerData:${id}`;
       const composer = JSON.parse((db.prepare("SELECT value FROM cursorDiskKV WHERE key = ?").get(composerKey) as { value: string }).value) as Json;
       composer.tokenCount = "x";
@@ -220,11 +342,27 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       const malformedComposer = await adapter.loadSession(id);
       expect(malformedComposer?.parseFailureShapes).toContain("cursor:malformed_record");
       expect(malformedComposer?.turns).toEqual(clean?.turns);
-      composer.tokenCount = undefined;
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes.slice(1)), async (bad) => {
+        composer.tokenCount = { inputTokens: 1900, outputTokens: bad };
+        db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
+        const result = (await adapter.loadSession(id))!;
+        expect(result.parseFailureShapes).toContain("cursor:malformed_record");
+        expect(result.totals.tokens.input).toBe(1900);
+        expect(result.totals.tokens.output).toBe(0);
+      }), { numRuns: 16 });
+      composer.tokenCount = { inputTokens: 1900, outputTokens: 268 };
       (composer.fullConversationHeadersOnly as Json[])[0]!.type = "x";
       db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
       expect((await adapter.listSessions()).map((summary) => summary.id)).toContain(id);
-      expect((await adapter.loadSession(id))?.parseFailureShapes).toContain("cursor:malformed_record");
+      const malformedHeader = (await adapter.loadSession(id))!;
+      expect(malformedHeader.parseFailureShapes).toContain("cursor:malformed_record");
+      expect(malformedHeader.totals.tokens).toEqual(clean?.totals.tokens);
+      composer.fullConversationHeadersOnly = "damaged";
+      db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(JSON.stringify(composer), composerKey);
+      expect((await adapter.listSessions()).map((summary) => summary.id)).toContain(id);
+      const damagedHeaders = (await adapter.loadSession(id))!;
+      expect(damagedHeaders.parseFailureShapes).toContain("cursor:malformed_record");
+      expect(damagedHeaders.totals.tokens).toEqual(clean?.totals.tokens);
       for (const value of ["42", "[]", "false", '"text"']) {
         db.prepare("UPDATE cursorDiskKV SET value = ? WHERE key = ?").run(value, composerKey);
         expect(await adapter.loadSession(id)).toBeNull();
@@ -243,6 +381,7 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
         const result = await adapter.loadSession(id);
         expect(result?.parseFailureShapes).toContain("cursor:malformed_record");
         expect(result?.totals.toolCallCount).toBe((clean?.totals.toolCallCount ?? 0) - 1);
+        expect(result?.totals.tokens).toEqual(clean?.totals.tokens);
       };
       await checkToolField("name", 42);
       await checkToolField("status", 42);
@@ -255,7 +394,7 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
     }
   });
 
-  it("opencode rejects wrong typed current tool parts", async () => {
+  it("opencode discards only wrong typed current tool parts", async () => {
     const temp = await mkdtemp(resolve(tmpdir(), "aireceipts-opencode-fields-"));
     const file = resolve(temp, "session.db");
     try {
@@ -265,6 +404,11 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
       const db = new sqlite!.DatabaseSync(file);
       const key = "msg_assistant_1";
       const original = JSON.parse((db.prepare("SELECT data FROM session_message WHERE id = ?").get(key) as { data: string }).data) as Json;
+      const withoutPart = structuredClone(original);
+      withoutPart.content = [];
+      db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(withoutPart), key);
+      const baseline = (await adapter.loadSession(file))!;
+      const baselineReceipt = renderReceipt(await buildReceiptModel(baseline));
       const checkPartField = async (field: "name" | "tool" | "status", bad: unknown) => {
         const message = structuredClone(original);
         const part = (message.content as Json[])[0]!;
@@ -273,11 +417,22 @@ describe.skipIf(sqlite === null)("SQLite adapter field types", () => {
         db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(message), key);
         const result = await adapter.loadSession(file);
         expect(result?.parseFailureShapes).toContain("opencode:malformed_record");
-        expect(result?.turns.length).toBe((clean?.turns.length ?? 0) - 1);
+        expect(result?.turns.length).toBe(clean?.turns.length);
+        expect(result?.totals.tokens).toEqual(baseline.totals.tokens);
+        expect(renderReceipt(await buildReceiptModel(result!))).toBe(baselineReceipt);
         expect(result?.droppedRecords).toBe(clean?.droppedRecords);
       };
       await checkPartField("name", 42);
       await fc.assert(fc.asyncProperty(fc.constantFrom("name", "tool", "status"), fc.constantFrom(...wrongTypes), checkPartField), { numRuns: 48 });
+      await fc.assert(fc.asyncProperty(fc.constantFrom(...wrongTypes.slice(1)), async (bad) => {
+        const message = structuredClone(original);
+        (message.tokens as Json).input = bad;
+        db.prepare("UPDATE session_message SET data = ? WHERE id = ?").run(JSON.stringify(message), key);
+        const result = (await adapter.loadSession(file))!;
+        expect(result.parseFailureShapes).toContain("opencode:malformed_record");
+        expect(result.turns[0]?.usage?.output).toBe(350);
+        expect(result.turns[0]?.pricingUnits).toEqual([]);
+      }), { numRuns: 16 });
       db.close();
     } finally {
       await rm(temp, { recursive: true, force: true });

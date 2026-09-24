@@ -802,10 +802,12 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
-      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) {
+      if ((msg.role !== undefined && typeof msg.role !== "string")
+        || (msg.tokens !== undefined && (!msg.tokens || typeof msg.tokens !== "object" || Array.isArray(msg.tokens)))) {
         malformedNestedRecord = true;
         continue;
       }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) malformedNestedRecord = true;
       if (row.type === "user") {
         if (firstUserText === undefined && typeof msg.text === "string") {
           firstUserText = msg.text;
@@ -845,7 +847,7 @@ export class OpenCodeAdapter implements SessionAdapter {
         usage,
         outputTokens: usage?.output,
         ...(mappedUsage.malformed ? { pricingUnits: [] } : {}),
-        toolCalls: toolsFromContent(msg.content),
+        toolCalls: toolsFromContent(Array.isArray(msg.content) ? msg.content.filter(validPart) : undefined),
       });
     }
 
@@ -929,10 +931,12 @@ export class OpenCodeAdapter implements SessionAdapter {
         droppedRecords++;
         continue;
       }
-      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) {
+      if ((msg.role !== undefined && typeof msg.role !== "string")
+        || (msg.tokens !== undefined && (!msg.tokens || typeof msg.tokens !== "object" || Array.isArray(msg.tokens)))) {
         malformedNestedRecord = true;
         continue;
       }
+      if (!validFields(msg, messageFields) || (Array.isArray(msg.content) && !msg.content.every(validPart))) malformedNestedRecord = true;
       if (msg.role !== "assistant") {
         if (msg.role !== "user") malformedNestedRecord = true;
         continue;

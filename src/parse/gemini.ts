@@ -53,6 +53,7 @@ interface GeminiMessage {
   model?: string;
   tokens?: GeminiTokens;
   toolCalls?: GeminiToolCall[];
+  usageMalformed?: boolean;
 }
 
 const tokensFields: FieldTable = Object.fromEntries(
@@ -154,6 +155,31 @@ function malformedMessageField(msg: GeminiMessage): boolean {
       || ("text" in part && typeof part.text !== "string"))));
 }
 
+function retainValidMessageParts(msg: GeminiMessage): GeminiMessage {
+  const clean = { ...msg };
+  if (Array.isArray(msg.content)) {
+    clean.content = msg.content.filter((part) => typeof part === "string"
+      || (part !== null && typeof part === "object" && !Array.isArray(part)
+        && (!("text" in part) || typeof part.text === "string")));
+  }
+  if (Array.isArray(msg.toolCalls)) {
+    clean.toolCalls = msg.toolCalls.filter((call) => validFields(call, toolCallFields));
+  } else if (msg.toolCalls !== undefined) {
+    clean.toolCalls = [];
+  }
+  if (msg.tokens && typeof msg.tokens === "object" && !Array.isArray(msg.tokens)) {
+    const tokens = { ...msg.tokens } as Record<string, unknown>;
+    for (const key of Object.keys(tokensFields)) {
+      if (tokens[key] !== undefined && !validFields({ [key]: tokens[key] }, { [key]: tokensFields[key]! })) {
+        delete tokens[key];
+        clean.usageMalformed = true;
+      }
+    }
+    clean.tokens = tokens as GeminiTokens;
+  }
+  return clean;
+}
+
 /** A parsed message plus enough metadata to materialize a Turn later. */
 interface ParsedRecords {
   sessionId?: string;
@@ -189,7 +215,10 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     if (typeof top.type === "string" && top.type !== "user" && top.type !== "gemini") return;
     const table = top.type === "user" || top.type === "gemini" ? messageFields
       : "$set" in top || "$rewindTo" in top ? updateFields : metadataFields;
-    if ((top.type !== undefined && typeof top.type !== "string") || !validFields(top, table)) {
+    if ((top.type !== undefined && typeof top.type !== "string")
+      || ((top.type === "user" || top.type === "gemini")
+        ? !validFields(top, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model!, tokens: { type: "object" } })
+        : !validFields(top, table))) {
       malformedNestedFields++;
       return;
     }
@@ -223,11 +252,12 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
           if (m && typeof m === "object" && !Array.isArray(m) && typeof (m as GeminiMessage).id === "string") {
             if (typeof (m as GeminiMessage).type === "string"
               && (m as GeminiMessage).type !== "user" && (m as GeminiMessage).type !== "gemini") continue;
-            if (!validFields(m, messageFields) || malformedMessageField(m as GeminiMessage)) {
+            if (!validFields(m, { id: messageFields.id!, type: messageFields.type!, model: messageFields.model!, tokens: { type: "object" } })) {
               malformedNestedFields++;
               continue;
             }
-            out.messages.set((m as GeminiMessage).id as string, m as GeminiMessage);
+            if (!validFields(m, messageFields) || malformedMessageField(m as GeminiMessage)) malformedNestedFields++;
+            out.messages.set((m as GeminiMessage).id as string, retainValidMessageParts(m as GeminiMessage));
           } else {
             malformedCheckpointEntries++;
           }
@@ -242,7 +272,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
     if (type !== undefined && typeof type !== "string") malformedNestedFields++;
     if (type === "user" || type === "gemini") {
       const msg = top as GeminiMessage;
-      if (malformedMessageField(msg)) malformedNestedFields++;
+      if (!validFields(msg, messageFields) || malformedMessageField(msg)) malformedNestedFields++;
       const ts = parseTimestamp(msg.timestamp);
       if (ts !== undefined) {
         out.startedAt = out.startedAt === undefined ? ts : Math.min(out.startedAt, ts);
@@ -255,7 +285,7 @@ async function readRecords(filePath: string): Promise<ParsedRecords> {
         out.model ??= msg.model;
       }
       if (typeof msg.id === "string") {
-        out.messages.set(msg.id, msg);
+        out.messages.set(msg.id, retainValidMessageParts(msg));
       } else {
         malformedDirectMessages++;
       }
@@ -309,6 +339,7 @@ function buildSession(filePath: string, records: ParsedRecords): { summary: Sess
       model: typeof msg.model === "string" ? msg.model : records.model,
       usage,
       outputTokens: usage?.output,
+      ...(msg.usageMalformed ? { pricingUnits: [] } : {}),
       toolCalls,
     });
   }

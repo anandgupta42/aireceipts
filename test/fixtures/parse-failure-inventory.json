@@ -21,6 +21,11 @@
   },
   {
     "adapter": "claude-code",
+    "path": "assistant usage component has the wrong type; valid components remain unpriced",
+    "shape": "claude-code:malformed_usage"
+  },
+  {
+    "adapter": "claude-code",
     "path": "file absent before full load",
     "shape": "not measurable by this spec",
     "reason": "Full load returns no Session to carry a shape."
@@ -247,7 +252,7 @@
   },
   {
     "adapter": "gemini",
-    "path": "message tokens, toolCalls, or content parts have unsupported nesting or token fields",
+    "path": "message token components, tool calls, or content parts have unsupported nesting; valid usage remains",
     "shape": "gemini:malformed_jsonl"
   },
   {
@@ -264,7 +269,7 @@
   },
   {
     "adapter": "opencode",
-    "path": "current assistant content parts or time object have unsupported nesting",
+    "path": "current assistant content parts or time object have unsupported nesting; the assistant usage remains",
     "shape": "opencode:malformed_record"
   },
   {
@@ -358,27 +363,27 @@
   },
   {
     "adapter": "claude-code",
-    "path": "known record discriminator, message, content block, or usage field has the wrong type; the whole record is skipped",
+    "path": "known record discriminator or message identity has the wrong type and is skipped; a wrong typed content part is skipped alone",
     "shape": "claude-code:malformed_jsonl"
   },
   {
     "adapter": "codex",
-    "path": "known wrapper, item, model, content part, or usage field has the wrong type; the whole record is skipped",
+    "path": "known wrapper or model identity has the wrong type and is skipped; a wrong typed content part retains independent usage",
     "shape": "codex:malformed_jsonl"
   },
   {
     "adapter": "gemini",
-    "path": "known message, content part, tool call, or token field has the wrong type; the whole record is skipped",
+    "path": "known message identity has the wrong type and is skipped; a wrong typed content, tool, or token component retains independent usage",
     "shape": "gemini:malformed_jsonl"
   },
   {
     "adapter": "opencode",
-    "path": "known current or legacy message, tool part, or usage field has the wrong type; the row is skipped",
+    "path": "known current or legacy message identity has the wrong type and is skipped; a wrong typed tool or usage component retains independent usage",
     "shape": "opencode:malformed_record"
   },
   {
     "adapter": "cursor",
-    "path": "known composer, header, bubble, or toolFormerData field has the wrong type; the row is skipped",
+    "path": "known composer, header, bubble, or toolFormerData field has the wrong type; valid session usage remains",
     "shape": "cursor:malformed_record"
   },
   {
