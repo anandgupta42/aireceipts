@@ -323,6 +323,7 @@ export interface WeekOptions {
   sinceMs?: number;
   byProject?: boolean;
   dataDir?: string;
+  loadSession?: typeof loadSession;
 }
 
 interface LoadedWindow {
@@ -330,8 +331,8 @@ interface LoadedWindow {
   unreadableSummaries: SessionSummary[];
 }
 
-async function loadAll(summaries: SessionSummary[]): Promise<LoadedWindow> {
-  const loaded = await Promise.all(summaries.map((s) => loadSession(s)));
+async function loadAll(summaries: SessionSummary[], load: typeof loadSession): Promise<LoadedWindow> {
+  const loaded = await Promise.all(summaries.map((s) => load(s)));
   const sessions: Session[] = [];
   const unreadableSummaries: SessionSummary[] = [];
   for (let index = 0; index < summaries.length; index += 1) {
@@ -392,7 +393,8 @@ export async function buildWeekDigest(opts: WeekOptions = {}): Promise<WeekDiges
     (summary) => summary.isSidechain !== true && summary.parentSessionId === undefined,
   );
   const partitioned = partitionWindows(summaries, bounds);
-  const [current, prior] = await Promise.all([loadAll(partitioned.current), loadAll(partitioned.prior)]);
+  const load = opts.loadSession ?? loadSession;
+  const [current, prior] = await Promise.all([loadAll(partitioned.current, load), loadAll(partitioned.prior, load)]);
 
   return assembleWeekDigest(bounds, current.sessions, prior.sessions, {
     sinceOverride: opts.sinceMs !== undefined,

@@ -69,6 +69,7 @@ export interface PrOptions {
 export interface PrDeps {
   listSessions: () => Promise<SessionSummary[]>;
   loadSession: (summary: SessionSummary) => Promise<Session | null>;
+  loadNested?: (childFilePath: string) => Promise<Session | null>;
   runGit: CommandRunner;
   runGh: CommandRunner;
   rollup: (parentFilePath: string, window: RollupWindow, excluded?: ReadonlySet<string>) => Promise<SubagentRow[]>;
@@ -172,7 +173,8 @@ async function resolveContributors(
   // SPEC-0038 R3 — nested subagent sessions of window-overlapping Claude
   // parents join the candidate set under the same gates (and are explicitly
   // selectable). Loaded once here; selection reuses the preloaded sessions.
-  const nested = await nestedCandidates(sessions, commitMs);
+  const nested = await nestedCandidates(sessions, commitMs,
+    deps.loadNested ? { load: deps.loadNested } : {});
   const preloaded = new Map(nested.map((n) => [n.summary.filePath, n.session]));
   const loadSession = (summary: SessionSummary): Promise<Session | null> => {
     const hit = preloaded.get(summary.filePath);

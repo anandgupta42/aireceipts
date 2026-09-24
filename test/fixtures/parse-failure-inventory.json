@@ -14,6 +14,7 @@
   {"adapter":"gemini","path":"full read throws and loadSession returns null","shape":"not measurable by this spec"},
   {"adapter":"opencode","path":"current message row has malformed JSON","shape":"opencode:malformed_record"},
   {"adapter":"opencode","path":"legacy message row has malformed JSON","shape":"opencode:malformed_record"},
+  {"adapter":"opencode","path":"legacy part row has malformed JSON","shape":"opencode:malformed_record"},
   {"adapter":"opencode","path":"assistant usage tokens are malformed","shape":"opencode:malformed_record"},
   {"adapter":"opencode","path":"session aggregate usage is malformed","shape":"opencode:malformed_record"},
   {"adapter":"opencode","path":"database absent or cannot open","shape":"not measurable by this spec"},

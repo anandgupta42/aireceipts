@@ -9,22 +9,22 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setAgentType } from "../agentType.js";
+import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   try {
-    const resolved = await resolveSelector(ctx.options.positional[0]);
+    const resolved = await resolveSelector(ctx.options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
     if ("error" in resolved) {
       ctx.stderr.write(`${resolved.error}\n`);
       return 0;
     }
-    const session = await loadSession(resolved.summary);
+    const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
     if (!session) {
       return 0;
     }
-    ctx.telemetry.observeSession?.(session);
     setAgentType(ctx, session.source);
     // SPEC-0061 R4 — subagent rollup; attach is itself fail-safe (parent-only on error).
-    const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
+    const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
     ctx.stdout.write(`${renderMiniReceipt(model)}\n`);
     await ctx.telemetry.noteReceiptGenerated(
       receiptTelemetryFromModels({

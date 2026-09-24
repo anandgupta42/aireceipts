@@ -112,7 +112,7 @@ function offers(): SetupOffer[] {
   }));
 }
 
-export async function buildSetupReport(now: number = Date.now()): Promise<SetupReport> {
+export async function buildSetupReport(now: number = Date.now(), load: typeof loadSession = loadSession): Promise<SetupReport> {
   const summaries = await listFullSessions();
   const agents = agentRows(summaries);
 
@@ -128,7 +128,7 @@ export async function buildSetupReport(now: number = Date.now()): Promise<SetupR
   }
 
   const latestSummary = summaries[0];
-  const [latestSession, weekDigest] = await Promise.all([loadSession(latestSummary), buildWeekDigest({ now })]);
+  const [latestSession, weekDigest] = await Promise.all([load(latestSummary), buildWeekDigest({ now, loadSession: load })]);
   const latestReceipt = latestSession ? await buildFullSessionReceiptWithCoverage(latestSession) : null;
   const latest: SetupLatest | null =
     latestSession && latestReceipt

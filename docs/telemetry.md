@@ -67,7 +67,7 @@ a surface event for each new state in an hour plus a heartbeat after the hour en
 | `isCI` | boolean | | True when a CI environment marker is present. |
 | `errorClass` | enum | `parse_error` \| `io_error` \| `network_error` \| `validation_error` \| `unknown_error` | Derived from bounded error metadata; never `error.message`. |
 | `command` | enum | `backfill` \| `benchmark` \| `check-budget` \| `compare` \| `demo` \| `handoff` \| `help` \| `install-hook` \| `integrations` \| `list` \| `methodology` \| `mini` \| `pr` \| `quota` \| `receipt` \| `setup` \| `stats` \| `statusline` \| `telemetry-show` \| `templates` \| `uninstall-hook` \| `version` \| `week` | Never raw argv. |
-| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Resolved after a single-source command sets it. `pr` sets it after a body renders, and backfill sets it after writing receipts. Earlier errors and mixed-source commands use `unknown`. |
+| `agentType` | enum | `claude-code` \| `codex` \| `cursor` \| `gemini` \| `opencode` \| `unknown` | Resolved after a successful session load for single-source commands, including `pr` and backfill. Errors before a load and mixed-source commands use `unknown`. |
 | `inPackage` | boolean | | Whether the top stack frame is inside aireceipts; the stack text never leaves the process. |
 
 ```json

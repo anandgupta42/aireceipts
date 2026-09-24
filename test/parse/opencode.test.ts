@@ -12,6 +12,7 @@ const hasNodeSqlite = sqliteMod !== null;
 import { afterEach, describe, expect, it } from "vitest";
 import { OpenCodeAdapter } from "../../src/parse/opencode.js";
 import { buildReceiptModel, sliceSessionForReceipt } from "../../src/receipt/model.js";
+import { renderReceipt } from "../../src/receipt/render.js";
 
 const dataDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/prices");
 const fixturesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../fixtures/opencode");
@@ -895,6 +896,33 @@ describe.skipIf(!hasNodeSqlite)("OpenCodeAdapter", () => {
       input: { cmd: "pwd" },
       output: "/tmp/aireceipts-opencode-legacy",
     });
+  });
+
+  it("marks malformed legacy parts without changing session data or receipt bytes", async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const dbPath = path.join(dir, "legacy-malformed-part.db");
+    makeSessionMessageDb(dbPath);
+    addLegacySession(dbPath);
+    const adapter = new OpenCodeAdapter({ dbPath });
+    const clean = await adapter.loadSession(`${dbPath}#ses_legacy_shape`);
+    expect(clean).not.toBeNull();
+    const malformedPath = path.join(dir, "legacy-malformed-part-copy.db");
+    makeSessionMessageDb(malformedPath);
+    addLegacySession(malformedPath);
+    const db = new DatabaseSync(malformedPath);
+    db.prepare("INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("part_torn", "msg_legacy_asst_1", "ses_legacy_shape", Date.parse("2026-06-30T12:01:04Z"),
+        Date.parse("2026-06-30T12:01:05Z"), "{torn");
+    db.close();
+    const malformed = await new OpenCodeAdapter({ dbPath: malformedPath }).loadSession(`${malformedPath}#ses_legacy_shape`);
+    expect(malformed?.parseFailureShapes).toEqual(["opencode:malformed_record"]);
+    expect(malformed?.droppedRecords).toBe(clean?.droppedRecords);
+    const { parseFailureShapes: _shapes, ...unchanged } = malformed!;
+    void _shapes;
+    expect(unchanged).toEqual({ ...clean, id: unchanged.id, filePath: unchanged.filePath });
+    expect(renderReceipt(await buildReceiptModel(malformed!, dataDir), { color: false }))
+      .toBe(renderReceipt(await buildReceiptModel(clean!, dataDir), { color: false }));
   });
 
   // 24 sessions cover the full structural combination cycle (LCM of the

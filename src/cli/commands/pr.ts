@@ -3,12 +3,14 @@
 // upserts via gh; without it, a dry run prints the body.
 import { defaultPrDeps, runPrDetailed } from "../../pr/index.js";
 import { loadSession } from "../../parse/load.js";
+import { loadById } from "../../parse/load.js";
 import type { Session } from "../../parse/types.js";
 import { rollupChildren } from "../../pr/rollup.js";
 import type { CommandContext, CommandDef } from "../types.js";
 import { receiptTelemetryFromModels } from "../common/telemetry.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
+import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const loadedSessions: Session[] = [];
@@ -24,16 +26,23 @@ async function run(ctx: CommandContext): Promise<number> {
     samosa: ctx.options.samosa,
   }, defaultPrDeps({
     loadSession: async (summary) => {
-      const session = await loadSession(summary);
+      const session = await loadObservedSession(ctx, () => loadSession(summary));
       if (session) {
-        ctx.telemetry.observeSession?.(session);
+        loadedSessions.push(session);
+        setAgentType(ctx, sharedAgentType(loadedSessions));
+      }
+      return session;
+    },
+    loadNested: async (childFilePath) => {
+      const session = await loadObservedSession(ctx, () => loadById("claude-code", childFilePath));
+      if (session) {
         loadedSessions.push(session);
         setAgentType(ctx, sharedAgentType(loadedSessions));
       }
       return session;
     },
     rollup: async (parentFilePath, window, excluded) =>
-      (await rollupChildren(parentFilePath, window, { onChildLoaded: ctx.telemetry.observeSession }, excluded)).rows,
+      (await rollupChildren(parentFilePath, window, { onChildLoaded: (child) => observeLoadedSession(ctx, child) }, excluded)).rows,
   }));
   if (result.bodyRendered && result.receipt) {
     setAgentType(ctx, sharedAgentType(result.receipt.models));

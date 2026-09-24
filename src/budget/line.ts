@@ -64,7 +64,7 @@ export interface BudgetEvaluation {
  * renders its line. `now` is always explicit (R6 determinism) — pass a
  * frozen clock in tests, `Date.now()` at the real CLI entrypoint.
  */
-export async function evaluateBudget(now: number, homeOverride?: string, dataDir?: string): Promise<BudgetEvaluation> {
+export async function evaluateBudget(now: number, homeOverride?: string, dataDir?: string, load?: typeof import("../parse/load.js").loadSession): Promise<BudgetEvaluation> {
   const loaded = await loadBudgetConfig(homeOverride);
   if (loaded.status === "absent") {
     return { status: "absent", lines: [], exceeded: false };
@@ -84,7 +84,7 @@ export async function evaluateBudget(now: number, homeOverride?: string, dataDir
   const lines: string[] = [];
   let exceeded = false;
   for (const [period, periodConfig] of periods) {
-    const sum = await computeBudgetSum(period, periodConfig, now, dataDir);
+    const sum = await computeBudgetSum(period, periodConfig, now, dataDir, load);
     lines.push(renderBudgetLine(period, sum));
     if (budgetExceeded(sum)) {
       exceeded = true;

@@ -3,6 +3,7 @@
 // fallthrough when no other command's selector fires (byte-identical to the old
 // parser's final `return { command: "receipt" }`).
 import { loadSession } from "../../index.js";
+import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
 import { evaluateBudget } from "../../budget/index.js";
 import { getExporter } from "../../receipt/exporters.js";
 import { buildFullSessionReceiptModel } from "../../receipt/subagents.js";
@@ -52,7 +53,7 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "invalid-arguments");
     return 1;
   }
-  const resolved = await resolveSelector(options.positional[0]);
+  const resolved = await resolveSelector(options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     if ((resolved.kind === "no-session-data" || resolved.kind === "no-sessions") && isDefaultHumanTextReceipt(ctx)) {
       ctx.stdout.write(`${resolved.error}\n`);
@@ -64,16 +65,15 @@ async function run(ctx: CommandContext): Promise<number> {
   }
   // SPEC-0045 R3 — the no-selector default already loaded a readable session
   // (skipping any unreadable newest); reuse it, no second parse.
-  const session = resolved.session ?? (await loadSession(resolved.summary));
+  const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
   if (!session) {
     ctx.stderr.write(`failed to load session "${resolved.summary.id}"\n`);
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  ctx.telemetry.observeSession?.(session);
   setAgentType(ctx, session.source);
   // SPEC-0061 — fold the session's subagents into the model before any format renders.
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
   const svgOut = svgOutOf(options);
   if (svgOut.svg) {
     await writeSvg(ctx, renderReceiptSvg(model, { theme: svgOut.theme, template, details: options.details }), svgOut.output ?? "receipt.svg");
@@ -138,7 +138,8 @@ async function run(ctx: CommandContext): Promise<number> {
   // R1/R5: absent or malformed budget.json → `lines` is [] → output below is
   // byte-identical to pre-SPEC-0009 (goldens gate this). Malformed only adds
   // a stderr note, never a rendered line.
-  const budget = await evaluateBudget(ctx.now());
+  const budget = await evaluateBudget(ctx.now(), undefined, undefined,
+    (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if (budget.status === "invalid") {
     ctx.stderr.write(`budget.json ignored: ${budget.invalidReason}\n`);
   }

@@ -609,7 +609,7 @@ function summarySql(where = ""): string {
       (
         SELECT COUNT(*)
         FROM part p
-        WHERE p.session_id = s.id AND json_extract(p.data, '$.type') = 'tool'
+        WHERE p.session_id = s.id AND CASE WHEN json_valid(p.data) THEN json_extract(p.data, '$.type') = 'tool' ELSE 0 END
       ) AS tool_count,
       (
         SELECT ${safeSqlInteger("SUM(COALESCE(json_extract(m.data, '$.tokens.input'), 0))")}
@@ -849,8 +849,10 @@ export class OpenCodeAdapter implements SessionAdapter {
     ) as unknown as PartRow[];
 
     const partsByMessage = new Map<string, ToolCall[]>();
+    let malformedPart = false;
     for (const row of parts) {
       const parsed = parseJsonObject<RawPartData>(row.data);
+      if (!parsed) malformedPart = true;
       const call = parsed ? toToolCall(parsed) : null;
       if (!call) {
         continue;
@@ -931,7 +933,8 @@ export class OpenCodeAdapter implements SessionAdapter {
       ...(reconciled.unattributed ? { unattributedUsage: reconciled.unattributed } : {}),
       ...(reconciled.conflicting ? { conflictingAggregateUsage: reconciled.conflicting } : {}),
       // SPEC-0044 B3: present only when > 0 (absent → clean).
-      ...(droppedRecords > 0 ? { droppedRecords, parseFailureShapes: ["opencode:malformed_record"] } : {}),
+      ...(droppedRecords > 0 ? { droppedRecords } : {}),
+      ...(droppedRecords > 0 || malformedPart ? { parseFailureShapes: ["opencode:malformed_record"] } : {}),
     };
   }
 

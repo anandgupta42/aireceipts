@@ -13,6 +13,7 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType, sharedAgentType } from "../agentType.js";
+import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
 
 /**
  * SPEC-0013 R1: aggregate waste across the trailing-7-day window (SPEC-0008's
@@ -20,11 +21,12 @@ import { setAgentType, sharedAgentType } from "../agentType.js";
  * distinct-session recurrence check for standing-rule suggestions. Re-exported
  * from `src/cli/index.js` for the existing handoff-recent test.
  */
-export async function recentWasteAggregates(now: number = Date.now(), observe?: (session: Session) => void): Promise<WasteClassAggregate[]> {
+export async function recentWasteAggregates(now: number = Date.now(), observe?: (session: Session) => void,
+  load: typeof loadSession = loadSession): Promise<WasteClassAggregate[]> {
   const bounds = windowBounds(now);
   const summaries = await listFullSessions();
   const { current } = partitionWindows(summaries, bounds);
-  const loaded = await Promise.all(current.map((s) => loadSession(s)));
+  const loaded = await Promise.all(current.map((s) => load(s)));
   for (const session of loaded) if (session) observe?.(session);
   return aggregateWaste(loaded.filter((s): s is Session => s !== null));
 }
@@ -37,22 +39,21 @@ async function run(ctx: CommandContext): Promise<number> {
     setExitClass(ctx, "invalid-arguments");
     return 1;
   }
-  const resolved = await resolveSelector(options.positional[0]);
+  const resolved = await resolveSelector(options.positional[0], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     ctx.stderr.write(`${resolved.error}\n`);
     setExitClass(ctx, "no-session-match");
     return 1;
   }
-  const session = await loadSession(resolved.summary);
+  const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
   if (!session) {
     ctx.stderr.write(`failed to load session "${resolved.summary.id}"\n`);
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  ctx.telemetry.observeSession?.(session);
   const sources: Session[] = [session];
   setAgentType(ctx, sharedAgentType(sources));
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
   // SPEC-0042 R1/R2 — counts come from the loaded Session; the render stays pure.
   const counts: HandoffCounts = {
     turns: session.turns.length,
@@ -60,10 +61,9 @@ async function run(ctx: CommandContext): Promise<number> {
     compactions: session.compactions?.length ?? 0,
   };
   const aggregates = await recentWasteAggregates(ctx.now(), (loaded) => {
-    ctx.telemetry.observeSession?.(loaded);
     sources.push(loaded);
     setAgentType(ctx, sharedAgentType(sources));
-  });
+  }, (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   const suggestions = standingRuleSuggestions(aggregates, threshold);
   // SPEC-0042 R3 — the global `--json` flag is honored (it was previously
   // ignored here). JSON always emits the full structure, empty arrays included.

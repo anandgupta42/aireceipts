@@ -196,6 +196,7 @@ describe("R3 render-first ordering", () => {
 
   it("explicit --session can select a subagent by stem, render, and post", async () => {
     const parent = (await loadById("claude-code", PARENT_WITH_SUBAGENTS))!;
+    const nestedLoads: string[] = [];
     const ghCalls: string[] = [];
     const gh: CommandRunner = (_cmd, args) => {
       ghCalls.push(args.join(" "));
@@ -204,11 +205,21 @@ describe("R3 render-first ordering", () => {
     };
     const { deps, out, err } = await makeDeps({
       listSessions: async () => [parent],
+      loadNested: async (childFilePath) => {
+        nestedLoads.push(childFilePath);
+        const child = await loadById("claude-code", childFilePath);
+        return child ? { ...child, parseFailureShapes: ["claude-code:malformed_jsonl"] } : null;
+      },
+      loadSession: async (summary) => {
+        if (summary.filePath === CHILD_ONE) throw new Error("preloaded child must not be reloaded");
+        return loadById(summary.source, summary.id);
+      },
       runGit: gitSubagentTime,
       runGh: gh,
     });
     const code = await runPr({ post: true, session: "agent-child1" }, deps);
     expect(code).toBe(0);
+    expect(nestedLoads).toContain(CHILD_ONE);
     expect(out[0].startsWith(DOGFOOD_MARKER)).toBe(true);
     // Explicit selection renders a single-contributor body; round 2 moved the
     // child stem + slice reason to the details section's stat line.

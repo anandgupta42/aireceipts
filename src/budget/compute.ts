@@ -53,6 +53,7 @@ export async function computeBudgetSum(
   periodConfig: BudgetPeriodConfig,
   now: number,
   dataDir: string = defaultDataDir(),
+  load: typeof loadSession = loadSession,
 ): Promise<BudgetSum> {
   const bounds = windowFor(period, now);
   const all = await listFullSessions(undefined, { includeDegraded: true });
@@ -88,7 +89,7 @@ export async function computeBudgetSum(
   let unreadable = 0;
   let unpricedTokens = 0;
   for (const summary of inWindowSummaries) {
-    const session = await loadSession(summary);
+    const session = await load(summary);
     if (!session || session.degraded !== undefined) {
       excludedUnpriced += 1;
       unreadable += 1;

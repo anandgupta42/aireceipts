@@ -8,24 +8,24 @@ import type { CommandContext, CommandDef } from "../types.js";
 import { resolveSelector } from "../common/session.js";
 import { setExitClass } from "../exitClass.js";
 import { setAgentType } from "../agentType.js";
+import { loadObservedSession, observeLoadedSession } from "../loadedSession.js";
 
 async function run(ctx: CommandContext): Promise<number> {
   const { options } = ctx;
-  const resolved = await resolveSelector(options.positional[1]);
+  const resolved = await resolveSelector(options.positional[1], (summary) => loadObservedSession(ctx, () => loadSession(summary)));
   if ("error" in resolved) {
     ctx.stderr.write(`${resolved.error}\n`);
     setExitClass(ctx, "no-session-match");
     return 1;
   }
-  const session = await loadSession(resolved.summary);
+  const session = resolved.session ?? (await loadObservedSession(ctx, () => loadSession(resolved.summary)));
   if (!session) {
     ctx.stderr.write(`failed to load session "${resolved.summary.id}"\n`);
     setExitClass(ctx, "other-controlled");
     return 1;
   }
-  ctx.telemetry.observeSession?.(session);
   setAgentType(ctx, session.source);
-  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: ctx.telemetry.observeSession });
+  const model = await buildFullSessionReceiptModel(session, { onChildLoaded: (child) => observeLoadedSession(ctx, child) });
   const payload = buildBenchmarkPayload(model, session.totals.turnCount);
 
   if (options.dryRun) {

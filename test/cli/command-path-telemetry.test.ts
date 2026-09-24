@@ -224,6 +224,37 @@ describe("SPEC-0043 command-path telemetry", () => {
     expect(peekQueuedEvents().filter((event) => event.name === "parse_failure")).toHaveLength(0);
   });
 
+  it.each(["week", "setup", "check-budget"])("observes one malformed full load through %s", async (command) => {
+    const chatDir = join(home, ".gemini", "tmp", "project", "chats");
+    mkdirSync(chatDir, { recursive: true });
+    const date = new Date().toISOString().slice(0, 10);
+    const chat = join(chatDir, `torn-${command}.jsonl`);
+    const clean = readFileSync(join(fixturesDir, "gemini", "clean-session.jsonl"), "utf8");
+    writeFileSync(chat, `${clean.replaceAll("2026-06-20", date)}\n{torn\n`);
+    if (command === "check-budget") {
+      writeFileSync(join(home, ".aireceipts", "budget.json"), JSON.stringify({ daily: { usd: 1000 } }));
+    }
+    const previousTelemetry = process.env.AIRECEIPTS_TELEMETRY;
+    const previousConnection = process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+    try {
+      process.env.AIRECEIPTS_TELEMETRY = "on";
+      process.env.AIRECEIPTS_TELEMETRY_CONNECTION = "InstrumentationKey=test;IngestionEndpoint=https://example.com/";
+      const args = command === "check-budget" ? ["--check-budget"] : command === "week" ? ["week", "--since", date] : ["setup", "--json"];
+      expect(await main(args)).toBe(0);
+      const failures = peekQueuedEvents().filter((event) => event.name === "parse_failure");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.properties.agentType).toBe("gemini");
+      expect(failures[0]?.properties.signatureHash).toBe(hashSignature("gemini:malformed_jsonl"));
+    } finally {
+      rmSync(chat, { force: true });
+      if (command === "check-budget") rmSync(join(home, ".aireceipts", "budget.json"), { force: true });
+      if (previousTelemetry === undefined) delete process.env.AIRECEIPTS_TELEMETRY;
+      else process.env.AIRECEIPTS_TELEMETRY = previousTelemetry;
+      if (previousConnection === undefined) delete process.env.AIRECEIPTS_TELEMETRY_CONNECTION;
+      else process.env.AIRECEIPTS_TELEMETRY_CONNECTION = previousConnection;
+    }
+  });
+
   it("a setup run emits cli_run with its own commandClass", async () => {
     expect(await main(["setup", "--json"])).toBe(0);
 
